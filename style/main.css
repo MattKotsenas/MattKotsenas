@@ -4,16 +4,22 @@
     padding: 0;
 }
 
-body
+html
 {
-    background-color: #fdfdfd;
-    font-family: Helvetica, sans-serif;
-
     max-width: 600px;
     min-width: 520px; /* TODO: Make this a snap point to change viewport */
 
     margin-left: auto;
     margin-right: auto;
+}
+
+body
+{
+    background-color: #fdfdfd;
+    font-family: Helvetica, sans-serif;
+
+    width: 100%;
+
 }
 
 a
@@ -41,19 +47,6 @@ hr
     margin: 20px 0px 20px 0px;
 }
 
-#content
-{
-    width: 100%;
-}
-
-.section .entry
-{
-    vertical-align: top;
-    display: inline-block;
-    margin-left: 10px;
-    max-width: 375px; /* TODO: When smaller viewport is made, remove this */
-}
-
 #get-in-touch .contact
 {
     text-align: center;
@@ -68,7 +61,15 @@ hr
     font-size: 10px;
 }
 
-.section .icon
+section .entry
+{
+    vertical-align: top;
+    display: inline-block;
+    margin-left: 10px;
+    max-width: 375px; /* TODO: When smaller viewport is made, remove this */
+}
+
+section .icon
 {
     height: 16px;
     position: relative;
@@ -77,18 +78,18 @@ hr
     border: 0;
 }
 
-.section .header
+section header
 {
     display: inline-block;
     vertical-align: top;
     margin-bottom: 10px;
     text-transform: uppercase;
     width: 130px;
-    font-size: 18px;
+    font-size: 12px;
     text-align: right;
 }
 
-.section
+section
 {
     margin-bottom: 25px;
     font-size: 14px;
