@@ -99,6 +99,8 @@ section
 {
     float: left;
     margin-right: 10px;
+    width: 140px;
+    height: 140px;
 }
 
 .clear
