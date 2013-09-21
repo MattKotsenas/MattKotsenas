@@ -28,6 +28,50 @@ a
     text-decoration: none;
 }
 
+a:visited
+{
+    color: #808080;
+    text-decoration: none;
+}
+
+nav
+{
+    text-transform: uppercase;
+    text-align: center;
+}
+
+nav ul
+{
+    list-style: none;
+    margin: 10px 0 10px 0;
+
+}
+
+nav ul li
+{
+display: inline;
+margin: 0 10px 0 10px;
+}
+
+nav ul li *
+{
+    padding: 5px;
+}
+
+nav ul li *:hover
+{
+    background-color: #7E7E7E; /* for browsers that don't support rgba() */
+    background-color: rgba(0, 0, 0, 0.5);
+    color: #f0f0f0 !important;
+    border-radius: 2px 2px;
+}
+
+nav ul li *:active
+{
+    background-color: #000;
+    color: #fff !important;
+}
+
 h1, h2, h3, h4, h5, h6
 {
     font-family: Helvetica, Verdana, Geneva, sans-serif;
@@ -47,60 +91,10 @@ hr
     margin: 20px 0px 20px 0px;
 }
 
-#get-in-touch .contact
-{
-    text-align: center;
-    margin: 0px 0px 0px 10px; 
-    width: 110px;
-    display: inline-block;
-}
-
-#get-in-touch p
-{
-    margin-top: 1px;
-    font-size: 10px;
-}
-
-section .entry
-{
-    vertical-align: top;
-    display: inline-block;
-    margin-left: 10px;
-    max-width: 375px; /* TODO: When smaller viewport is made, remove this */
-}
-
-section .icon
-{
-    height: 16px;
-    position: relative;
-    top: 2px;
-    margin: 0px 5px 0px 0px;
-    border: 0;
-}
-
-section header
-{
-    display: inline-block;
-    vertical-align: top;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    width: 130px;
-    font-size: 12px;
-    text-align: right;
-}
-
 section
 {
     margin-bottom: 25px;
     font-size: 14px;
-}
-
-.photo
-{
-    float: left;
-    margin-right: 10px;
-    width: 140px;
-    height: 140px;
 }
 
 .clear
