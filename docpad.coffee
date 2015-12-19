@@ -15,6 +15,11 @@ docpadConfig = {
           section: 'home'
         },
         {
+          name: 'About',
+          href: '/about.html',
+          section: 'about'
+        },
+        {
           name: 'Photos',
           href: '/photos.html',
           section: 'photos'
