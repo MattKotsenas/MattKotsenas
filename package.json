@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "The Casper theme for Docpad",
   "dependencies": {
-    "docpad": "~6.78.1",
+    "docpad": "~6.75.2",
     "docpad-plugin-eco": "~2.1.0",
     "docpad-plugin-marked": "~2.3.0",
     "docpad-plugin-paged": "~2.4.0",
