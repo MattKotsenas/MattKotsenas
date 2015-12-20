@@ -6,7 +6,7 @@ docpadConfig = {
       tagline: 'Programmer. Runner. Trying my best.'
       description: 'A personal website for Matt Kotsenas'
       logo: '/img/home.png'
-      url: ''
+      url: '/'
       cover: '/img/cover.jpg'
       navigation: [
         {
