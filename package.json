@@ -12,6 +12,10 @@
     "docpad-plugin-tags": "~2.0.7",
     "moment": "^2.10.3"
   },
+  "engines": {
+    "node": "5.0.0",
+    "npm": "1.2"
+  },
   "main": "node_modules/.bin/docpad-server",
   "scripts": {
     "start": "node_modules/.bin/docpad-server"
