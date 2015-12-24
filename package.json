@@ -5,6 +5,7 @@
   "dependencies": {
     "docpad": "~6.75.2",
     "docpad-plugin-eco": "~2.1.0",
+    "docpad-plugin-highlightjs": "~2.3.0",
     "docpad-plugin-marked": "~2.3.0",
     "docpad-plugin-paged": "~2.4.0",
     "docpad-plugin-partials": "~2.9.2",

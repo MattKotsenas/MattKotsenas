@@ -8,7 +8,7 @@
     <meta name="HandheldFriendly" content="True" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="shortcut icon" href="/favicon.ico">
-    <%- @getBlock("styles").add('/css/screen.css').add('//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400').toHTML() %>
+    <%- @getBlock("styles").add('/css/screen.css').add('/css/hljs.css').add('//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400').toHTML() %>
     <meta name="generator" content="Docpad 6.x" />
     <link rel="alternate" type="application/rss+xml" title="<%= @site.title %>" href="/rss.xml" />
   </head>
