@@ -4,7 +4,7 @@ cover: /img/ie10-graphics-performance-and-quality-demo.png
 isPost: true
 active: true
 excerpt: In IE 10 we're focusing on performance and quality of our canvas implementation...
-postDate: 'Wed Jun 29 2011 13:42:00 GMT-0700 (Pacific Daylight Time)'
+postDate: '2011-06-29 13:42:00 GMT-0700'
 tags:
  - microsoft
  - ie

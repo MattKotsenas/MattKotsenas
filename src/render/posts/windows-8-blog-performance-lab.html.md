@@ -4,7 +4,7 @@ cover: /img/windows-8-blog-performance-lab.jpg
 isPost: true
 active: true
 excerpt: Exciting times! The Building Windows 8 blog recently published a post written by myself and my collegues...
-postDate: 'Thu Feb 16 2012 12:50:54 GMT-0800 (Pacfic Standard Time)'
+postDate: '2012-02-16 12:50:54 GMT-0800'
 tags:
  - microsoft
  - ie

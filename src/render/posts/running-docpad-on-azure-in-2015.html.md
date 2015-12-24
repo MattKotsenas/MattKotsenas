@@ -3,11 +3,12 @@ title: "Running docpad on Azure in 2015"
 isPost: true
 active: true
 excerpt: I really needed to freshen up the site. It was created hastily and really didn't follow best practices...
-postDate: 'Wed Dec 23 2015 06:19:19 GMT-0800 (Pacific Standard Time)'
+postDate: '2015-12-23 06:19:19 GMT-0800'
 tags:
  - docpad
  - azure
 ---
+
 ## Why docpad
 
 I really needed to freshen up the site. It was created hastily and really didn't follow best practices. I wanted something that would reflect better on me and that I wouldn't be embarrassed to direct people to. So I started evaluating my options against these criteria:

@@ -53,7 +53,7 @@ docpadConfig = {
       moment(ts).format(format)
   collections:
     posts: ->
-      @getCollection("html").findAllLive({active:true, isPost: true, isPagedAuto: {$ne: true}}, {postDate: 1}).on "add", (model) ->
+      @getCollection("html").findAllLive({active:true, isPost: true, isPagedAuto: {$ne: true}}, {postDate: -1}).on "add", (model) ->
         model.setMetaDefaults({layout:"post"})
   plugins:
     tags:
