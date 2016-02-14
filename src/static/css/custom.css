@@ -1,0 +1,9 @@
+.icon-github
+{
+    background-image: url('/img/github-mark.svg');
+    background-size: 32px;
+    width: 32px;
+    height: 32px;
+    display: inline-block;
+    margin-bottom: -8px;
+}
