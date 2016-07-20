@@ -43,7 +43,7 @@ public class MyClass : MyInterface
 }
 ```
 
-This is the object we ultimately care about and what to expose to the world. Next we need a DyanmicProxy interceptor to proxy the object
+This is the object we ultimately care about and want to expose to the world. Next we need a DyanmicProxy `IInterceptor` to proxy the object
 
 ```csharp
 public class MyProxy : IInterceptor
@@ -164,7 +164,7 @@ Direct construction --> $Obj[1] = 2.2    $Obj.get_Item(1) = 2.2
           Via proxy --> $Obj[1] =        $Obj.get_Item(1) = 2.2
 ```
 
-Note that in the proxy case using the indexer directly results in no result, but using the underlying `get_Item()` method (which is how the indexer is actually implemented) works fine.
+Note that in the proxy case using the indexer directly gives no result, but using the underlying `get_Item()` method (which is how the indexer is actually implemented) works fine.
 
 Here's the same sample setup in a C# console app
 
