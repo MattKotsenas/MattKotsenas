@@ -210,7 +210,7 @@ public Task<string> OpenAsync(CancellationToken cancellationToken)
 }
 ```
 
-Interestingly, the `this.listeningAddress` has "http" hardcoded!. We can update this code to pull the protocol from the endpoint definition in the manifest, and while we're at it, let's add some additional logging which will come in handy later. The diff should look like this
+Interestingly, the `this.listeningAddress` has "http" hardcoded! We can update this code to pull the protocol from the endpoint definition in the manifest, and while we're at it, let's add some additional logging which will come in handy later. The diff should look like this
 
 ```diff
 diff --git a/SampleWebApi/OwinCommunicationListener.cs b/SampleWebApi/OwinCommunicationListener.cs
