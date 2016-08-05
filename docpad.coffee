@@ -29,7 +29,7 @@ docpadConfig = {
       ]
     author:
       name: 'Matt Kotsenas'
-      img: 'http://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55'
+      img: 'https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55'
       url: '/'
       location: 'Seattle, WA',
       bio: ''
