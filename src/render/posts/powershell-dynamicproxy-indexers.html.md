@@ -9,6 +9,8 @@ tags:
  - .net
 ---
 
+> UPDATE: This issue is now [tracked in uservoice][uservoice]. If it's affecting you, please upvote!
+
 ## Prerequisites
 
 As I usually like to do, here's the prerequisites for the article. Instructions and techniques likely apply to other versions, but if you're having problems replicating my results, ensure your environment matches.
@@ -247,8 +249,9 @@ In this case the indexer works as expected. Both samples try to run the same cod
 
 ## Wrap Up
 
-Of course as a workaround you can use `get_Item()` for now, but I'm hopeful that someone will reach out and explain what's going on and how to fix this the issue. Of course it's always possible my setup is incorrect and I have a bug, so if that's the case please let me know at [@MattKotsenas](https://twitter.com/MattKotsenas), or send a PR with fixes!
+Of course as a workaround you can use `get_Item()` for now, but I'm hopeful for a [fix][uservoice]. Of course it's always possible my setup is incorrect and I have a bug, so if that's the case please let me know at [@MattKotsenas](https://twitter.com/MattKotsenas), or send a PR with fixes!
 
 
 [castle-dynamicproxy]: http://www.castleproject.org/projects/dynamicproxy/
 [indexer]: https://msdn.microsoft.com/en-us/library/6x16t2tx.aspx
+[uservoice]: https://windowsserver.uservoice.com/forums/301869-powershell/suggestions/15425352--bug-castle-s-dynamicproxy-breaks-property-indexe?tracking_code=29201113a860fa7a2196756b8e488001
