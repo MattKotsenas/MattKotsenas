@@ -3,19 +3,19 @@
   "version": "0.1.0",
   "description": "The Casper theme for Docpad",
   "dependencies": {
-    "docpad": "~6.75.2",
-    "docpad-plugin-eco": "~2.1.0",
-    "docpad-plugin-highlightjs": "~2.3.0",
-    "docpad-plugin-marked": "~2.3.0",
-    "docpad-plugin-paged": "~2.4.0",
-    "docpad-plugin-partials": "~2.9.2",
-    "docpad-plugin-rss": "~2.2.0",
-    "docpad-plugin-services": "~2.6.0",
-    "docpad-plugin-tags": "~2.0.7",
+    "docpad": "~6.79.4",
+    "docpad-plugin-eco": "~2.2.1",
+    "docpad-plugin-highlightjs": "~2.5.0",
+    "docpad-plugin-marked": "~2.4.0",
+    "docpad-plugin-paged": "~2.5.0",
+    "docpad-plugin-partials": "~2.12.0",
+    "docpad-plugin-rss": "~2.3.1",
+    "docpad-plugin-services": "~2.7.0",
+    "docpad-plugin-tags": "~2.1.0",
     "moment": "^2.10.3"
   },
   "engines": {
-    "node": "5.0.0"
+    "node": "8.9.0"
   },
   "main": "node_modules/.bin/docpad-server",
   "scripts": {
