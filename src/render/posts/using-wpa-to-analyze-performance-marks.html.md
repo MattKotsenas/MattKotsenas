@@ -83,6 +83,7 @@ call "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" --trace-expor
 ```
 
 > NOTE: You may need to close existing instances of Chrome before passing this flag to ensure you get the correct behavior.
+> NOTE: Make sure to start Chrome from a regular Command line instance and not from an Administrator Command Line. The higher priveleges used in the admin command line can at times mess with the execution of Chrome.
 
 ### Using a Chrome WPR Recording Profile
 
