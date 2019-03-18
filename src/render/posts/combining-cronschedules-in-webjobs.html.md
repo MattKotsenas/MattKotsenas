@@ -125,7 +125,7 @@ public class CombinedCronSchedule : TimerSchedule
 }
 ```
 
-So that's all we need _support_ combining cron expressions, but now how do we _use_ it as our WebJob trigger?
+So that's all we need to _support_ combining cron expressions, but now how do we _use_ it as our WebJob trigger?
 The simplest way is to create a class that represents our new schedule:
 
 ```csharp
