@@ -4,4 +4,7 @@ WORKDIR /app
 COPY . .
 RUN npm install --production
 RUN cd src && npm test
-ENTRYPOINT [ "sh" ]
+
+FROM flashspys/nginx-static as final
+RUN apk update && apk upgrade
+COPY --from=builder /app/out /static
