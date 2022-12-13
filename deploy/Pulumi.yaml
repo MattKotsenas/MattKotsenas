@@ -1,0 +1,3 @@
+name: deploy
+description: A minimal Kubernetes C# Pulumi program
+runtime: dotnet
