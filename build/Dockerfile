@@ -1,5 +1,7 @@
-FROM tzenderman/docker-nvm:latest as builder
+FROM node:8.9.0 as builder
 
-ENV NODE_VERSION 8.9.0
-
-RUN /bin/bash -l -c "nvm install $NODE_VERSION && nvm use $NODE_VERSION"
+WORKDIR /app
+COPY . .
+RUN npm install --production
+RUN cd src && npm test
+ENTRYPOINT [ "sh" ]
