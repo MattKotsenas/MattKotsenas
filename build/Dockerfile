@@ -1,7 +1,7 @@
 FROM node:8.9.0 as builder
 
 WORKDIR /app
-COPY . .
+COPY . ./
 RUN npm install --production
 RUN cd src && npm test
 
