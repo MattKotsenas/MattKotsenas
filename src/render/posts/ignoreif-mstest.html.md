@@ -240,7 +240,7 @@ Now that we have our extension point for the `[IgnoreIf]` attribute, it's time t
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
 public class IgnoreIfAttribute : Attribute
 {
-    public string IgnoreCriteriaMethodName { get; set; }
+    public string IgnoreCriteriaMethodName { get; }
 
     public IgnoreIfAttribute(string ignoreCriteriaMethodName = "IgnoreIf")
     {
