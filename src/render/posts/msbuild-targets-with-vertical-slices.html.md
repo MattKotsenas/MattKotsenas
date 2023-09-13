@@ -1,10 +1,10 @@
 ---
-title: "Use vertical slices with MSBuild Directory.Build.props and Directory.Build.targets files"
-xx cover: /img/ignoreif-mstest/cover.png
+title: "Simplify MSBuild Directory.Build.props and .targets files with vertical slices"
+xx cover: /img/msbuild-targets-with-vertical-slices/cover.png
 isPost: true
 active: true
-xx excerpt: Create a custom attribute to extend MSTest to programmatically skip / ignore tests based on factors like OS or framework version
-xx postDate: '2019-03-20 10:38:20 GMT-0700'
+excerpt: Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with
+postDate: '2023-09-13 17:07:20 GMT-0700'
 tags:
  - .net
  - msbuild
