@@ -1,6 +1,6 @@
 # MattKotsenas
 
-Personal website for [matt.kotsenas.com](http://matt.kotsenas.com). The site is generated using [DocPad](http://docpad.org/) and uses the [Casper](https://github.com/TryGhost/Casper) theme.
+Personal website for [matt.kotsenas.com](http://matt.kotsenas.com). The site is generated using DocPad](https://docpad.bevry.me/) and uses the [Casper](https://github.com/TryGhost/Casper) theme.
 
 # Credits
 
