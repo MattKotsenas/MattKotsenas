@@ -27,3 +27,7 @@
     display: inline-block;
     margin-bottom: -8px;
 }
+
+.post-footer .share .icon-feed:hover {
+    color: #ea7818;
+}

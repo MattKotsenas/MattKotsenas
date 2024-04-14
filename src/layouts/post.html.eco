@@ -53,7 +53,7 @@ layout: 'default'
       </section>
 
       <section class="share">
-        <h4>Share this post</h4>
+        <h4>Share / feeds</h4>
         <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=<%= @encode(@document.title) %>&amp;url="
           onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
           <span class="hidden">Twitter</span>
@@ -62,9 +62,8 @@ layout: 'default'
           onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
           <span class="hidden">Facebook</span>
         </a>
-        <a class="icon-google-plus" href="https://plus.google.com/share?url="
-          onclick="window.open(this.href + window.location.href, 'google-plus-share', 'width=490,height=530');return false;">
-          <span class="hidden">Google+</span>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
         </a>
       </section>
       <section>
