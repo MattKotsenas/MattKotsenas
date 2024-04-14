@@ -1,108 +1,78 @@
-/*
+/*!
+ * StackOverflow.com light style
+ *
+ * @stackoverflow/stacks v0.56.0
+ * https://github.com/StackExchange/Stacks
+ */
 
-Orginal Style from ethanschoonover.com/solarized (c) Jeremy Hull <sourdrums@gmail.com>
-
-*/
-
-.hljs {
+ .hljs {
   display: block;
+  overflow-x: auto;
   padding: 0.5em;
-  background: #002b36;
-  color: #839496;
-  line-height: 1em;
+  color: #2f3337;
+  background: #f6f6f6;
 }
 
-.hljs-comment,
-.hljs-template_comment,
-.diff .hljs-header,
-.hljs-doctype,
-.hljs-pi,
-.lisp .hljs-string,
-.hljs-javadoc {
-  color: #586e75;
+.hljs-comment {
+  color: #656e77;
 }
 
-/* Solarized Green */
 .hljs-keyword,
-.hljs-winutils,
-.method,
-.hljs-addition,
-.css .hljs-tag,
-.hljs-request,
-.hljs-status,
-.nginx .hljs-title {
-  color: #859900;
+.hljs-selector-tag,
+.hljs-meta-keyword,
+.hljs-doctag,
+.hljs-section,
+.hljs-selector-class,
+.hljs-meta,
+.hljs-selector-pseudo,
+.hljs-attr {
+  color: #015692;
 }
 
-/* Solarized Cyan */
+.hljs-attribute {
+  color: #803378;
+}
+
+.hljs-name,
+.hljs-type,
 .hljs-number,
-.hljs-command,
-.hljs-string,
-.hljs-tag .hljs-value,
-.hljs-rules .hljs-value,
-.hljs-phpdoc,
-.tex .hljs-formula,
-.hljs-regexp,
-.hljs-hexcolor,
-.hljs-link_url {
-  color: #2aa198;
-}
-
-/* Solarized Blue */
-.hljs-title,
-.hljs-localvars,
-.hljs-chunk,
-.hljs-decorator,
+.hljs-selector-id,
+.hljs-quote,
+.hljs-template-tag,
 .hljs-built_in,
-.hljs-identifier,
-.vhdl .hljs-literal,
-.hljs-id,
-.css .hljs-function {
-  color: #268bd2;
+.hljs-title,
+.hljs-literal {
+  color: #b75501;
 }
 
-/* Solarized Yellow */
-.hljs-attribute,
-.hljs-variable,
-.lisp .hljs-body,
-.smalltalk .hljs-number,
-.hljs-constant,
-.hljs-class .hljs-title,
-.hljs-parent,
-.haskell .hljs-type,
-.hljs-link_reference {
-  color: #b58900;
-}
-
-/* Solarized Orange */
-.hljs-preprocessor,
-.hljs-preprocessor .hljs-keyword,
-.hljs-pragma,
-.hljs-shebang,
+.hljs-string,
+.hljs-regexp,
 .hljs-symbol,
-.hljs-symbol .hljs-string,
-.diff .hljs-change,
-.hljs-special,
-.hljs-attr_selector,
-.hljs-subst,
-.hljs-cdata,
-.clojure .hljs-title,
-.css .hljs-pseudo,
-.hljs-header {
-  color: #cb4b16;
+.hljs-variable,
+.hljs-template-variable,
+.hljs-link,
+.hljs-selector-attr,
+.hljs-meta-string {
+  color: #54790d;
 }
 
-/* Solarized Red */
-.hljs-deletion,
-.hljs-important {
-  color: #dc322f;
+.hljs-bullet,
+.hljs-code {
+  color: #535a60;
 }
 
-/* Solarized Violet */
-.hljs-link_label {
-  color: #6c71c4;
+.hljs-deletion {
+  color: #c02d2e;
 }
 
-.tex .hljs-formula {
-  background: #073642;
+.hljs-addition {
+  color: #2f6f44;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
 }
