@@ -5,6 +5,6 @@ COPY . ./
 RUN npm install --production
 RUN cd src && npm run generate
 
-FROM flashspys/nginx-static as final
-RUN apk update && apk upgrade
-COPY --from=builder /app/out /static
+FROM nginx:alpine as final
+COPY --from=builder /app/build/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/out /usr/share/nginx/html
