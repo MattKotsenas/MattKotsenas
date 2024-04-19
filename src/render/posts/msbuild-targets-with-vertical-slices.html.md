@@ -64,12 +64,11 @@ because there's no common root that all projects share (besides the root itself)
 common workaround is to use the root .props file and [MSBuild conditions][msbuild-conditions] to apply the appropriate
 properties to a given project. 
 
-For example, let's say you want all test projects to automatically reference [FluentAssertions][fluentassertions], you
-can add this to your `Directory.Build.targets`:
+For example, let's say you want all test projects to automatically reference [FluentAssertions][fluentassertions]. You
+can add this to your `Directory.Build.props`:
 
-> NOTE: This snippet must go in a _.targets_ file because it uses the `IsTestProject` property that's defined (or not)
-> in each project. Putting it in the .props file may result in incorrect behavior because the .props file is imported
-> before each project can customize its properties. See [Customize your build][props-targets-msdn] for more information.
+> NOTE: Choosing between .props and .targets can be a tricky decision. See
+> [Choose between adding properties to a .props or .targets file][choosing-props-targets] for more information.
 
 ```xml
 <Project>
@@ -85,7 +84,7 @@ into all test projects.
 ## Accumulation of cruft
 
 If left unchecked, Directory.Build.props tends to accumulate a lot of cruft: workarounds for bugs, fixes for edge cases,
-customizations for dependencies no longer in use, etc. Additionally, because some scenarios are split across the .props
+customizations for dependencies no longer in use, etc. Additionally, because code is often split across the .props
 and .targets files, it can be difficult to understand _why_ some sections exist and how they interact with the other
 sections.
 
@@ -124,17 +123,8 @@ length, and add in `Directory.Package.props`, which is used by NuGet's
     -->
     <ArtifactsPath>$(RepoRoot)/artifacts</ArtifactsPath>
   </PropertyGroup>
-</Project>
-```
 
-**Directory.Build.targets**
-
-```xml
-<Project>
   <!-- Polyfill -->
-  <PropertyGroup>
-    <LangVersion Condition="'$(UsePolyfill)' == 'true'">latest</LangVersion>
-  </PropertyGroup>
   <ItemGroup Condition="'$(UsePolyfill)' == 'true'">
     <PackageReference Include="Polyfill">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -147,22 +137,6 @@ length, and add in `Directory.Package.props`, which is used by NuGet's
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
-
-  <PropertyGroup>
-    <!-- Test projects can't also be shipping projects -->
-    <IsShipping Condition="'$(IsTestProject)' == true">false</IsShipping>
-  </PropertyGroup>
-
-  <Target Name="MapToAbsoluteFilePaths" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
-    <!--
-      Work around .editorconfig evaluation bugs in command line builds. See https://github.com/dotnet/roslyn/issues/43371
-    -->
-    <ItemGroup>
-      <_AbsoluteCompile Include="@(Compile->'%(FullPath)')" />
-      <Compile Remove="@(Compile)" />
-      <Compile Include="@(_AbsoluteCompile)" />
-    </ItemGroup>
-  </Target>
 
   <ItemGroup Condition="'$(IsTestProject)' == 'true'">
     <!-- Add xunit to test projects -->
@@ -191,6 +165,33 @@ length, and add in `Directory.Package.props`, which is used by NuGet's
 
     <Using Include="FluentAssertions" />
   </ItemGroup>
+</Project>
+```
+
+**Directory.Build.targets**
+
+```xml
+<Project>
+  <!-- Polyfill -->
+  <PropertyGroup>
+    <LangVersion Condition="'$(UsePolyfill)' == 'true'">latest</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Test projects can't also be shipping projects -->
+    <IsShipping Condition="'$(IsTestProject)' == true">false</IsShipping>
+  </PropertyGroup>
+
+  <Target Name="MapToAbsoluteFilePaths" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <!--
+      Work around .editorconfig evaluation bugs in command line builds. See https://github.com/dotnet/roslyn/issues/43371
+    -->
+    <ItemGroup>
+      <_AbsoluteCompile Include="@(Compile->'%(FullPath)')" />
+      <Compile Remove="@(Compile)" />
+      <Compile Include="@(_AbsoluteCompile)" />
+    </ItemGroup>
+  </Target>
 
   <PropertyGroup>
     <!-- Force warnings as errors for shipping projects -->
@@ -244,7 +245,7 @@ Skimming through this code, I hope a few patterns emerge:
 1. It's not clear where one "feature" ends and another begins; comments are required to delineate sections
 2. There are several workarounds and (hopefully) temporary additions
 3. A "feature" is spread across multiple files; for instance our `IsShipping` property appears in both .props and
-  .targets files, while our Polyfill and Reproducible builds features are in both .targets and .Packages.props files
+  .targets files, while our Polyfill and Reproducible builds features are in all three files
 4. "Features" are interleaved; without a lot of discipline, it's easy to end up in a situation where a feature like
   `IsShipping` is smeared across a file in multiple places and intermingled with other features
 
@@ -339,54 +340,34 @@ Your root files now contain no functionality. Instead they only import the featu
 From here it's much easier to understand which features are being included. Each feature, no longer cluttered amongst the
 others, is able to easily signal its intent. Comments can be used to explain _why_ rather than as a separator.
 
-Refactoring each feature would make this post long and boring, so I'll focus on the `TestProjects` directory as an example:
+Refactoring each feature would make this post long and boring, so I'll focus on the `Polyfill` directory as an example:
 
-**TestProjects.props**
+**Polyfill.props**
 
 ```xml
 <Project>
-  <ItemGroup>
-    <!-- Specify global versions for test helpers using Central Package Management -->
-    <PackageVersion Include="FluentAssertions" Version="6.12.0" />
+  <ItemGroup Condition="'$(UsePolyfill)' == 'true'">
+    <PackageReference Include="Polyfill">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    <PackageReference>
+    <PackageReference Include="System.Memory" Condition="$(TargetFrameworkIdentifier) == '.NETStandard' or $(TargetFrameworkIdentifier) == '.NETFramework' or $(TargetFramework.StartsWith('netcoreapp2'))">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.Threading.Tasks.Extensions" Condition="$(TargetFramework) == 'netstandard2.0' or $(TargetFramework) == 'netcoreapp2.0' or $(TargetFrameworkIdentifier) == '.NETFramework'">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
-
-  <ItemGroup>
-    <!-- Specify global versions for xUnit + dependencies using Central Package Management -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
-    <PackageVersion Include="xunit" Version="2.5.0" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.0" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.0" />
-  </ItemGroup>
-
 </Project>
 ```
 
-**TestProjects.targets**
+**Polyfill.targets**
 
 ```xml
 <Project>
-  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
-    <!-- Add FluentAssertions to test projects and add global using -->
-    <PackageReference Include="FluentAssertions" />
-    <Using Include="FluentAssertions" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
-    <!-- Add xunit test harness references and add global using -->
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="coverlet.collector">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-
-    <Using Include="Xunit" />
-    <Using Include="Xunit.Abstractions" />
-  </ItemGroup>
+  <PropertyGroup>
+    <LangVersion Condition="'$(UsePolyfill)' == 'true'">latest</LangVersion>
+  </PropertyGroup>
 </Project>
 ```
 
@@ -398,8 +379,8 @@ Organizing your properties this way has several benefits:
   `<Import>` chain and updates dependencies like you'd expect (I haven't used Renovate, please let me know if that tool
   also works / has problems)
 3. _Removing_ a feature, such as our .editorconfig workaround, is as simple as deleting the folder and corresponding
-  imports. By grouping all parts of the workaround together, we've eliminated the opportunity for parts of features /
-  workarounds to be incompletely removed and prevented a major source of cruft
+  imports. By grouping all parts of the workaround together, we've reduced the chance that some pieces are incompletely
+  removed and as a result prevented a major source of cruft
 4. Sharing between projects is much easier; we've reduced the temptation to copy /paste an ever-growing .props file from
 project to project and avoided another common source of cruft accumulation
 
@@ -412,6 +393,7 @@ Using vertical slices / features as an organization principle brings some sanity
 [directory-build-props-blog]: https://garywoodfine.com/what-is-this-directory-build-props-file-all-about/
 [directory-build-props-msdn]: https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory?view=vs-2022
 [props-targets-msdn]: https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-your-build?view=vs-2022
+[choosing-props-targets]: https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-your-build?view=vs-2022#choose-between-adding-properties-to-a-props-or-targets-file
 [msbuild-conditions]: https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-conditions?view=vs-2022
 [fluentassertions]: https://fluentassertions.com/
 [nuget-central-package-management]: https://devblogs.microsoft.com/nuget/introducing-central-package-management/
