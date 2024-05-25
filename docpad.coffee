@@ -8,8 +8,6 @@ docpadConfig = {
       logo: '/img/home.png'
       url: '/'
       cover: '/img/cover.jpg'
-      services:
-        googleAnalytics: 'UA-8867357-1'
       navigation: [
         {
           name: 'Home',
