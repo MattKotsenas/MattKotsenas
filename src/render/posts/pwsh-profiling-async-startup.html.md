@@ -1,6 +1,6 @@
 ---
 title: "Profiling and asynchronous initialization to improve PowerShell startup"
-cover: /img/pwsh-profiling-async-startup/cover.png
+cover: /img/pwsh-profiling-async-startup/cover.jpeg
 isPost: true
 active: true
 excerpt: Initialize your PowerShell profile asynchronously using idle events
