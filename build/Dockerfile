@@ -1,8 +1,9 @@
 FROM node:8.9.0 as builder
 
 WORKDIR /app
-COPY . ./
+COPY ./package.json ./package.json
 RUN npm install --production
+COPY . ./
 RUN cd src && npm run generate
 
 FROM nginx:alpine as final
