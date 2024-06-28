@@ -110,9 +110,6 @@ length, and add in `Directory.Package.props`, which is used by NuGet's
   <!-- https://github.com/dotnet/reproducible-builds -->
   <ItemGroup>
     <PackageReference Include="DotNet.ReproducibleBuilds" PrivateAssets="All" />
-
-    <!-- This can be removed once the fix for https://github.com/dotnet/reproducible-builds/issues/19 is released -->
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" />
   </ItemGroup>
   <Sdk Name="DotNet.ReproducibleBuilds.Isolated" />
 
@@ -224,9 +221,7 @@ length, and add in `Directory.Package.props`, which is used by NuGet's
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
 
     <!-- Reproducible builds + dependencies -->
-    <PackageVersion Include="DotNet.ReproducibleBuilds" Version="1.1.1" />
-    <!-- TODO: This can be removed once the fix for https://github.com/dotnet/reproducible-builds/issues/19 is released -->
-    <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" />
+    <PackageVersion Include="DotNet.ReproducibleBuilds" Version="1.2.4" />
 
     <!-- xUnit + dependencies -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
