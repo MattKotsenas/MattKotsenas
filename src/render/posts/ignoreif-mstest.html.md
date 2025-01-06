@@ -293,15 +293,13 @@ public class TestClassWithIgnoreIfSupportAttribute : TestClassAttribute
 
 Also note that after writing this post, I found that a snippet called `[ConditionalFact]` for xUnit seems to be [floating around][conditionalfact-github-search].
 
-
 [winnt-case-insensitive]: https://devblogs.microsoft.com/commandline/per-directory-case-sensitivity-and-wsl/
 [bdd]: https://medium.com/@TechMagic/get-started-with-behavior-driven-development-ecdca40e827b
 [testcategory-mstest]: https://visualstudiomagazine.com/blogs/tool-tracker/2018/07/organizing-test-cases.aspx
 [testcategory-xunit]: https://www.brendanconnolly.net/organizing-tests-with-xunit-traits/
-[testcategory-nunit]: https://github.com/nunit/docs/wiki/Category-Attribute
+[testcategory-nunit]: https://docs.nunit.org/articles/nunit/writing-tests/attributes/category.html
 [testfx]: https://github.com/Microsoft/testfx
 [testfx-docs]: https://github.com/Microsoft/testfx-docs/tree/master/RFCs
 [meziantou]: https://www.meziantou.net/2018/02/26/mstest-v2-customize-test-execution
 [conditionalfact-github-search]: https://github.com/search?l=C%23&q=ConditionalFactAttribute&type=Code
-
 [test-explorer]: /img/ignoreif-mstest/test-explorer.png
