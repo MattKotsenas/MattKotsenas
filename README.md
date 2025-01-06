@@ -7,6 +7,7 @@ Personal website for [matt.kotsenas.com](http://matt.kotsenas.com). The site is 
 ```powershell
 docker build -f .\build\Dockerfile -t mattkotsenas/site:latest .
 docker run --rm -it -p 3000:80 mattkotsenas/site:latest
+start http://localhost:3000
 ```
 
 ## Credits
