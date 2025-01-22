@@ -116,11 +116,16 @@ function prompt {
 }
 ```
 
-I chose to break each module into its own callback to further increase parallelism. Here's an example of loading the same
-tools asynchronously.
+Next, break your profile into "chunks". One chunk will be loaded per idle callback. I chose a chunk per tool to keep
+things simple.
+
+Last, we need a queue to track our chunk work, and a bit of cleanup afterwards.
+
+Here's an example of loading those same tools asynchronously:
 
 ```powershell
-@(
+# Create a queue of modules to load
+[System.Collections.Queue]$__initQueue = @(
   {
     oh-my-posh init pwsh | Invoke-Expression
     $Env:POSH_GIT_ENABLED = $true
@@ -135,12 +140,28 @@ tools asynchronously.
     $Env:PYTHONIOENCODING='utf-8'
     New-Module -Name thefuck -ScriptBlock { iex "$(thefuck --alias)" } | Import-Module -Global
   }
-) | Foreach-Object { Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -MaxTriggerCount 1 -Action $_ } | Out-Null
+)
+
+# Register our idle callback; use `-SupportEvent` to hide the registration from the user
+Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -SupportEvent -Action {
+    if ($__initQueue.Count -gt 0) {
+      & $__initQueue.Dequeue()
+    } else {
+      # NOTE: Use `-Force` when unregistering because we used `-SupportEvent` when registering
+      Unregister-Event -SubscriptionId $EventSubscriber.SubscriptionId -Force
+
+      # Remove our queue variable to avoid polluting the environment
+      Remove-Variable -Name '__initQueue' -Scope Global -Force
+
+      # Re-render the prompt so we get pretty colors ASAP!
+      [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+    }
+}
 ```
 
 And here's PowerShell being interactive instantly with the pretty prompt rendering once loaded.
 
-![Example running an interactive shell that loads in the backgroun][img-example-async]
+![Example running an interactive shell that loads in the background][img-example-async]
 
 Hope this makes your day a bit more productive! 🧑‍💻
 
