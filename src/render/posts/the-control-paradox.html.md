@@ -49,10 +49,9 @@ what they're doing. Pipeline-driven orchestration = Iron Man."
 
 The Narrow Context Pattern is Ultron in disguise.
 
-When the pipeline fails at step 47 of 52, what are your options? You can retry. You can restart from scratch. You can...
-that's basically it. The agent has no memory of why it made decisions in steps 1-46. The orchestrator has state, such as
-outputs and completed steps, but the *reasoning* is gone. The agent was a hired gun, called in for specific jobs,
-dismissed after each one.
+When the pipeline fails at step 47 of 52, what are your options? In practice: retry or restart. Yes, some pipelines
+offer checkpointing and partial reruns. But even those preserve *outputs*, not reasoning. The agent has no memory of
+the decisions made in steps 1-46. It was a hired gun, called in for specific jobs, dismissed after each one.
 
 There's no collaboration. There's no graceful recovery. There's just "try again."
 
@@ -88,7 +87,7 @@ Early in our experimentation, we built exactly this kind of system. It worked at
 simple transformations. We thought we were being rigorous. We thought deterministic control meant predictable outcomes.
 What we discovered was that we'd drawn the box too big around the orchestrator and too small around the agent. At scale,
 the narrow context pattern produced _locally reasonable but globally suboptimal decisions_. The agent would try to do
-exactly what we asked in each step; however, without visibility into the overall goal it couldn't course-correct. It
+exactly what we asked in each step, however, without visibility into the overall goal it couldn't course-correct. It
 couldn't reuse prior investigation. It re-reasoned about how to build each time. Small issues compound and
 frequently the agent fails or gives up.
 
@@ -101,7 +100,10 @@ have senior engineers who can vibe-code their way through the wreckage. It doesn
 rigorous engineering.
 
 The answer is an emerging pattern that others have arrived at independently: **let the agent decompose its own work, but
-persist that decomposition outside the context window**. Tools such as [Trekker][trekker] create a simple SQLite db of
+persist that decomposition outside the context window**. This solves the core problem: the agent retains goal visibility
+and decision history even across restarts, without the context rot that comes from endless conversations.
+
+Tools like [Trekker][trekker] create a simple SQLite db of
 issues with a CLI interface. The agent can easily query "what's ready to work on". The [Ralph Loop][ralph-technique]
 takes a complementary approach: spawn a fresh agent instance per iteration, with state persisted to filesystem and git.
 Each agent reads the current state, does a unit of work, updates the state, and terminates. No context rot. No
@@ -158,15 +160,11 @@ Here's a framework for thinking about it:
 - **Decision authority over approach**: If there are multiple ways to accomplish a task, let the agent choose
 - **Recovery and adaptation**: When things go wrong, the agent should be first responder
 - **Context accumulation**: History of decisions, not just history of outputs
+- **Sandbox ownership**: Let the agent own everything inside the sandbox—filesystem, local git operations, build and
+    test, design and work breakdown, retry and marking tasks blocked
 
-- **DO**: Let the agent own everything inside the sandbox
-    - filesystem
-    - local git operations
-    - build and test
-    - design and work breakdown
-    - retry and marking tasks blocked
-- **DON'T**: Strip ambient state by driving the agent externally step-by-step
-- **DON'T**: Hide what tasks remain or what's been done; the agent needs that visibility
+Avoid stripping ambient state by driving the agent externally step-by-step, or hiding what tasks remain. The agent
+needs that visibility to reason effectively.
 
 ### Keep in deterministic control
 
@@ -174,13 +172,11 @@ Here's a framework for thinking about it:
 - **Concurrency boundaries**: Which repos are being worked on, lease management, preventing conflicts
 - **Audit trail**: What happened, when, what state resulted, and full reasoning and tool call logs
 - **Resource limits**: Timeouts, token budgets, iteration caps
+- **Safety net**: Use policy, via hooks or a broker, for operations with side effects (force-push or PR creation),
+    meta-recovery (retry with different model), and resource enforcement
 
-- **DO**: Provide a safety net for operations with side effects
-    - a broker / hook for force-push or PR creation
-    - meta-recovery (retry with different model)
-    - resource enforcement
-- **DON'T**: Let the agent mutate campaign scope. It can mark tasks blocked; only the harness can abandon them. The
-    agent proposes, the harness disposes.
+Don't let the agent mutate campaign scope. It can mark tasks blocked; only the harness can abandon them. The agent
+proposes, the harness disposes.
 
 ### The risk framing matters
 
@@ -194,7 +190,7 @@ irreversible effect—not in the exploratory work that precedes it.
 
 ## Lessons Learned
 
-Some things we learned the hard way.
+The opinions above emerged from experimentation. Here's patterns that surprised us and mistakes we made more than once.
 
 ### On Focus
 - Agents get "bored" with parallelism—their word, not mine. Give them too many concurrent tasks and they start cutting
@@ -250,6 +246,9 @@ keeping deterministic control over irreversible effects. Focus through purpose, 
 The control paradox: sometimes you get more control by giving it away.
 
 ## What Now
+
+If you're convinced (or at least curious), here's how to put these ideas into practice. I've split recommendations by
+audience: practitioners building on existing tools, and toolmakers shaping what comes next.
 
 ### For practitioners
 
