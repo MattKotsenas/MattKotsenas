@@ -2,7 +2,7 @@
 title: "MSBuild Traversal project best practices"
 cover: /img/traversal-project-best-practices/cover.jpeg
 socialImage: /img/traversal-project-best-practices/cover-social.jpg
-excerpt: Best practices for using MSBuild traversal projects
+description: Best practices for using MSBuild traversal projects
 date: 2025-03-07T17:48:22.000Z
 tags:
   - dotnet

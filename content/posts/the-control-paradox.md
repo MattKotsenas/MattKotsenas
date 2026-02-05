@@ -2,7 +2,7 @@
 title: "The Control Paradox"
 cover: /img/the-control-paradox/cover.jpg
 socialImage: /img/the-control-paradox/cover-social.jpg
-excerpt: Your agent orchestrator probably gives you less control than you think.
+description: Your agent orchestrator probably gives you less control than you think.
 date: 2026-02-05T04:39:59.000Z
 tags:
  - ai

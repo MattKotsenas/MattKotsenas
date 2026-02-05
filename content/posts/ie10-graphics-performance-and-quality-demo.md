@@ -2,7 +2,7 @@
 title: "A tech demo showing canvas performance and quality in IE 10"
 cover: /img/ie10-graphics-performance-and-quality-demo.png
 socialImage: /img/ie10-graphics-performance-and-quality-demo-social.jpg
-excerpt: In IE 10 we're focusing on performance and quality of our canvas implementation...
+description: In IE 10 we're focusing on performance and quality of our canvas implementation...
 date: 2011-06-29T20:42:00.000Z
 tags:
  - microsoft

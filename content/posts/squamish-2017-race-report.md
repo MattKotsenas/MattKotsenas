@@ -2,7 +2,7 @@
 title: "A 2017 Squamish 50/50 race report"
 cover: /img/squamish-2017/squamish-start.jpg
 socialImage: /img/squamish-2017/squamish-start-social.jpg
-excerpt: Team RunRun has a tradition of writing race reports, both as an opportunity for reflection, and to share lessons learned with other runners. I decided to write a longer-than-usual report because in planning for this race I felt there wasn't a lot of information about the Squamish races available.
+description: Team RunRun has a tradition of writing race reports, both as an opportunity for reflection, and to share lessons learned with other runners. I decided to write a longer-than-usual report because in planning for this race I felt there wasn't a lot of information about the Squamish races available.
 date: 2017-12-19T15:02:01.000Z
 tags:
  - running

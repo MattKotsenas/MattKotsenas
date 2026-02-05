@@ -947,7 +947,7 @@ body:not(.post-template) .post-title {
     text-decoration: none;
 }
 
-.post-excerpt p {
+.post-description p {
     margin: 0;
     font-size: 0.9em;
     line-height: 1.7em;
@@ -1858,7 +1858,7 @@ body:not(.post-template) .post-title {
         font-size: 3rem;
     }
 
-    .post-excerpt p {
+    .post-description p {
         font-size: 0.85em;
     }
 

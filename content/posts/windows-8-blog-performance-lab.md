@@ -2,7 +2,7 @@
 title: "New blog post over at Building Windows 8 blog"
 cover: /img/windows-8-blog-performance-lab.jpg
 socialImage: /img/windows-8-blog-performance-lab-social.jpg
-excerpt: Exciting times! The Building Windows 8 blog recently published a post written by myself and my colleagues...
+description: Exciting times! The Building Windows 8 blog recently published a post written by myself and my colleagues...
 date: 2012-02-16T20:50:54.000Z
 tags:
  - microsoft

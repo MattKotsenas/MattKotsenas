@@ -8,8 +8,8 @@
     <header class="post-header">
       <h2 class="post-title"><a href="{{ .Permalink }}">{{ .Title }}</a></h2>
     </header>
-    <section class="post-excerpt">
-      <p>{{ with .Params.excerpt }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 200 }}{{ end }} <a class="read-more" href="{{ .Permalink }}">&raquo;</a></p>
+    <section class="post-description">
+      <p>{{ with .Description }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 200 }}{{ end }} <a class="read-more" href="{{ .Permalink }}">&raquo;</a></p>
     </section>
     <footer class="post-meta">
       {{ with $.Site.Params.authorImg }}

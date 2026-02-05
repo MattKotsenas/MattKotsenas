@@ -71,7 +71,7 @@
         <a class="read-next-story" style="background-image: url({{ with $next.Params.cover }}{{ . }}{{ else }}{{ $.Site.Params.cover }}{{ end }})" href="{{ $next.Permalink }}">
           <section class="post">
             <h2>{{ $next.Title }}</h2>
-            <p>{{ with $next.Params.excerpt }}{{ . }}{{ else }}{{ $next.Summary | plainify | truncate 100 }}{{ end }}&hellip;</p>
+            <p>{{ with $next.Description }}{{ . }}{{ else }}{{ $next.Summary | plainify | truncate 100 }}{{ end }}&hellip;</p>
           </section>
         </a>
       {{ end }}
@@ -80,7 +80,7 @@
         <a class="read-next-story prev" style="background-image: url({{ with $prev.Params.cover }}{{ . }}{{ else }}{{ $.Site.Params.cover }}{{ end }})" href="{{ $prev.Permalink }}">
           <section class="post">
             <h2>{{ $prev.Title }}</h2>
-            <p>{{ with $prev.Params.excerpt }}{{ . }}{{ else }}{{ $prev.Summary | plainify | truncate 100 }}{{ end }}&hellip;</p>
+            <p>{{ with $prev.Description }}{{ . }}{{ else }}{{ $prev.Summary | plainify | truncate 100 }}{{ end }}&hellip;</p>
           </section>
         </a>
       {{ end }}
