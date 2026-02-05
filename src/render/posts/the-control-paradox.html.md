@@ -6,8 +6,8 @@ active: true
 excerpt: Your agent orchestrator probably gives you less control than you think.
 postDate: '2026-02-04 15:22:59 GMT-0800'
 tags:
- - running
- - race reports
+ - ai
+ - agents
 ---
 
 Your agent orchestrator probably gives you less control than you think.
@@ -64,8 +64,8 @@ That's Iron Man. The suit enhances Tony Stark's judgment. It doesn't replace it 
 
 ## The complexity cliff
 
-I've taken to calling the failure mode implied by Limoncelli's thinking the **complexity cliff**: automation becomes
-binary. Either it works, or it doesn't. No middle ground. No partial success.
+I've taken to calling the failure mode implied by Limoncelli's thinking the **complexity cliff**: automation works until
+it doesn't, and when it fails, it fails completely. No middle ground or partial success.
 
 This is important because it changes how you reach for the tool. Before you run it, you have to estimate the probability
 of success. If that probability is low, you don't bother. The cliff limits usefulness before you even start.
@@ -84,12 +84,12 @@ Your Ultron falls off the cliff. The agent that made the decisions is long gone.
 completed. And by Limoncelli's Leftover Principle, because this happens rarely, engineers don't know what to do. They
 stare at logs trying to reconstruct what happened, quickly give up, and do the work by hand. 
 
-Early in our experimentation, we built exactly this kind of system. It worked at small scale:a handful of repos, simple
-transformations. We thought we were being rigorous. We thought deterministic control meant predictable outcomes. What we
-discovered was that we'd drawn the box too big around the orchestrator and too small around the agent. At scale, the
-narrow context pattern produced _locally reasonable but globally suboptimal decisions_. The agent would try to do
-exactly what we asked in each step. However, without visibility into the overall goal it couldn't course-correct. It
-couldn't reuse use prior investigation. It re-reasoned about how to build each time. Small issues compound and
+Early in our experimentation, we built exactly this kind of system. It worked at small scale for a handful of repos and
+simple transformations. We thought we were being rigorous. We thought deterministic control meant predictable outcomes.
+What we discovered was that we'd drawn the box too big around the orchestrator and too small around the agent. At scale,
+the narrow context pattern produced _locally reasonable but globally suboptimal decisions_. The agent would try to do
+exactly what we asked in each step; however, without visibility into the overall goal it couldn't course-correct. It
+couldn't reuse prior investigation. It re-reasoned about how to build each time. Small issues compound and
 frequently the agent fails or gives up.
 
 ## Persistent task tracking
@@ -97,8 +97,8 @@ frequently the agent fails or gives up.
 So what's the alternative? Let the agent run wild? Full autonomy, hope for the best?
 
 No. That way lies what some have affectionately called "agent chaos at scale". In this world, pure autonomy works if you
-have senior engineers with deep pockets who can vibe-code their way through the wreckage. It doesn't work for production
-systems that need rigorous engineering.
+have senior engineers who can vibe-code their way through the wreckage. It doesn't work for production systems that need
+rigorous engineering.
 
 The answer is an emerging pattern that others have arrived at independently: **let the agent decompose its own work, but
 persist that decomposition outside the context window**. [Beads][beads-github] encodes tasks as a dependency-aware DAG
@@ -110,9 +110,11 @@ terminates. No context rot. No compounding errors from long conversations.
 What these patterns share:
 - **Agent owns work breakdown**: The agent decomposes goals into tasks, not externally imposed by an orchestrator
 - **Persistent tracking outside context**: Task state lives on outside chat history
-- **Goal visibility**: The agent can always see the overall objective and remaining work and giving it a trajectory
-- **Explore, then preserve**: The agent can fork, experiment, and backtrack with only the chosen path gets persisted.
-    This works better than simple context compaction for reasons that aren't entirely clear to me.
+- **Goal visibility**: The agent can always see the overall objective and remaining work, giving it a trajectory
+- **Explore, then preserve**: The agent can fork, experiment, and backtrack where only the chosen path is persisted.
+    This works better than simple context compaction. I saw repeatedly that agents that could explore and backtrack
+    produced better diffs than agents with a single longer exploration that experienced compaction. Whether this is
+    about preserved optionality or something deeper about how models reason, I don't know.
 
 ## Isn't this where we started?
 
@@ -127,7 +129,7 @@ with. Both involve discrete units of work. Both persist state externally. But th
 Same practical effect (focus on immediate work), completely different reasoning dynamics.
 
 We discovered this need through trial and error. Before adopting persistent task tracking, the agent would wander
-aimlessly and make "carless mistakes" like cloning repos to different locations between iterations, losing track of its
+aimlessly and make "careless mistakes" like cloning repos to different locations between iterations, losing track of its
 work, etc. Giving it an external driver didn't help either; the agent would reason correctly on each narrow step, but
 lose that reasoning on the next iteration. Each restart compounded failure risk because context was lost. When we gave
 the agent persistent task tracking with the overall goal visible, something shifted. It stopped wandering. It could
@@ -180,7 +182,7 @@ Here's a framework for thinking about it:
 - **DON'T**: Let the agent mutate campaign scope. It can mark tasks blocked; only the harness can abandon them. The
     agent proposes, the harness disposes.
 
-### The Risk Framing That Changes Everything
+### The risk framing matters
 
 Here's what makes agent orchestration fundamentally different from the ops automation that Limoncelli was writing about:
 **before opening a PR, mistakes are cheap**.
@@ -243,7 +245,7 @@ But this framing carries hidden costs:
 - Recovery from failure means restart, not resume
 - The complexity cliff looms as edge cases accumulate
 
-Ceeding control to the agent offers an alternative: give agents goal visibility and a vector to reason against while
+Ceding control to the agent offers an alternative: give agents goal visibility and a vector to reason against while
 keeping deterministic control over irreversible effects. Focus through purpose, not through blindness. I don't know
 exactly where the line belongs. But I'm convinced it's closer to the agent-native end than most people think.
 
@@ -286,7 +288,7 @@ to add `--reference-if-able` to git clone commands to use a local cache automati
 instructions and other configuration. It should be possible to create a "profile" that specifies the installed
 instructions, tools, skills, etc. Anything not listed should be disabled for the session.
 
-**Expose task state as a first-class primitive.** The current todowrite tools are inadequate for proper supervision.
+**Expose task state as a first-class primitive.** The current TodoWrite tools are inadequate for proper supervision.
 Make it easy for agents to know what's done, what's pending, and what's blocked. Make it easy for humans to see the same
 thing. Allow it to persist across sessions.
 
