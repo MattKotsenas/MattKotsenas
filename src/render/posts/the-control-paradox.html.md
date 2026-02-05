@@ -150,7 +150,7 @@ When you hit the complexity cliff—and you will—Iron Man can fly. Ultron just
 
 ![Agent kanban board][kanban-board]
 
-## Where to draw "The Line"
+## Where to draw the line
 
 I don't know exactly where the line should be drawn between agent autonomy and deterministic control. I don't think
 anybody does yet. But I'm increasingly convinced it's **closer to the agent-native end than most engineers assume**.
