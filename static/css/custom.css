@@ -31,3 +31,10 @@
 .post-footer .share .icon-feed:hover {
     color: #ea7818;
 }
+
+/* Admonition callout styling */
+.admonition .admonition-header span {
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+}

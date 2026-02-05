@@ -8,6 +8,11 @@ publishDir = 'out'
 # Clean URLs (no .html extension)
 uglyURLs = false
 
+# Hugo modules
+[module]
+  [[module.imports]]
+    path = "github.com/KKKZOZ/hugo-admonitions"
+
 [params]
   tagline = 'Programmer. Runner. Trying my best.'
   description = 'A personal website for Matt Kotsenas'
