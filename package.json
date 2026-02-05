@@ -1,31 +1,14 @@
 {
-  "name": "casper-skeleton.docpad",
-  "version": "0.1.0",
-  "description": "The Casper theme for Docpad",
-  "dependencies": {
-    "docpad": "~6.79.4",
-    "docpad-plugin-eco": "~2.2.1",
-    "docpad-plugin-highlightjs": "~2.5.0",
-    "docpad-plugin-marked": "~2.4.0",
-    "docpad-plugin-paged": "~2.5.0",
-    "docpad-plugin-partials": "~2.12.0",
-    "docpad-plugin-rss": "~2.3.1",
-    "docpad-plugin-services": "~2.7.0",
-    "docpad-plugin-tags": "~2.1.0",
-    "moment": "^2.10.3"
-  },
-  "engines": {
-    "node": "8.9.0"
-  },
-  "main": "node_modules/.bin/docpad-server",
+  "name": "mattkotsenas-blog",
+  "version": "1.0.0",
+  "description": "Personal website for matt.kotsenas.com",
   "scripts": {
-    "start": "node_modules/.bin/docpad-server",
-    "generate": "docpad -e static generate",
     "generate:social-images": "node scripts/generate-social-images.js",
     "validate": "node scripts/validate-social-tags.js",
-    "build": "npm run generate && npm run validate"
+    "crawl": "node scripts/crawl-site.js"
   },
   "devDependencies": {
+    "playwright": "^1.58.1",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5"
   }

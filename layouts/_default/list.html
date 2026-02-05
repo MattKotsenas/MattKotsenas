@@ -1,0 +1,68 @@
+{{ define "main" }}
+<header class="main-header" style="background-image: url({{ .Site.Params.cover }})">
+  <nav class="main-nav overlay clearfix">
+    {{ with .Site.Params.logo }}
+    <a class="blog-logo" href="/"><img src="{{ . }}" alt="{{ $.Site.Title }}" /></a>
+    {{ end }}
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+  <div class="vertical">
+    <div class="main-header-content inner">
+      <h1 class="page-title">{{ .Site.Title }}</h1>
+      <h2 class="page-description">{{ .Site.Params.tagline }}</h2>
+    </div>
+  </div>
+  <a class="scroll-down icon-arrow-left" href="#content" data-offset="-45"><span class="hidden">Scroll Down</span></a>
+</header>
+
+<main id="content" class="content" role="main">
+
+{{ $paginator := .Paginate (where .Site.RegularPages "Section" "posts") 5 }}
+
+{{ if gt $paginator.PageNumber 1 }}
+<nav class="pagination" role="navigation">
+  {{ if $paginator.HasPrev }}
+    <a class="newer-posts" href="{{ $paginator.Prev.URL }}">← Newer Posts</a>
+  {{ end }}
+  <span class="page-number">Page {{ $paginator.PageNumber }} of {{ $paginator.TotalPages }}</span>
+  {{ if $paginator.HasNext }}
+    <a class="older-posts" href="{{ $paginator.Next.URL }}">Older Posts →</a>
+  {{ end }}
+</nav>
+{{ end }}
+
+{{ range $paginator.Pages }}
+<article class="post">
+    <header class="post-header">
+        <h2 class="post-title"><a href="{{ .Permalink }}">{{ .Title }}</a></h2>
+    </header>
+    <section class="post-excerpt">
+      <p>{{ with .Params.excerpt }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 200 }}{{ end }} <a class="read-more" href="{{ .Permalink }}">&raquo;</a></p>
+    </section>
+    <footer class="post-meta">
+      {{ with $.Site.Params.authorImg }}
+        <img class="author-thumb" src="{{ . }}" alt="{{ $.Site.Params.author }}" nopin="nopin" />
+      {{ end }}
+      <a href="/">{{ $.Site.Params.author }}</a>
+      {{ with .Params.tags }}
+        {{ range $i, $tag := . }}{{ if $i }}, {{ end }}<a href="/tags/{{ $tag | urlize }}/">{{ $tag }}</a>{{ end }}
+      {{ end }}
+      <time class="post-date" datetime="{{ .Date.Format "2006-January-02" }}">{{ .Date.Format "02 January 2006" }}</time>
+    </footer>
+</article>
+{{ end }}
+
+<nav class="pagination" role="navigation">
+  {{ if $paginator.HasPrev }}
+    <a class="newer-posts" href="{{ $paginator.Prev.URL }}">← Newer Posts</a>
+  {{ end }}
+  {{ if or $paginator.HasPrev $paginator.HasNext }}
+  <span class="page-number">Page {{ $paginator.PageNumber }} of {{ $paginator.TotalPages }}</span>
+  {{ end }}
+  {{ if $paginator.HasNext }}
+    <a class="older-posts" href="{{ $paginator.Next.URL }}">Older Posts →</a>
+  {{ end }}
+</nav>
+
+</main>
+{{ end }}
