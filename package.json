@@ -20,7 +20,10 @@
   "main": "node_modules/.bin/docpad-server",
   "scripts": {
     "start": "node_modules/.bin/docpad-server",
-    "generate": "docpad -e static generate"
+    "generate": "docpad -e static generate",
+    "generate:social-images": "node scripts/generate-social-images.js",
+    "validate": "node scripts/validate-social-tags.js",
+    "build": "npm run generate && npm run validate"
   },
   "devDependencies": {
     "png-to-ico": "^3.0.1",

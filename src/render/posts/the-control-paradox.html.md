@@ -1,6 +1,7 @@
 ---
 title: "The Control Paradox"
 cover: /img/the-control-paradox/cover.jpg
+socialImage: /img/the-control-paradox/cover-social.jpg
 isPost: true
 active: true
 excerpt: Your agent orchestrator probably gives you less control than you think.

@@ -1,6 +1,7 @@
 ---
 title: "Programmatically skip / ignore tests in MSTest v2"
 cover: /img/ignoreif-mstest/cover.png
+socialImage: /img/ignoreif-mstest/cover-social.jpg
 isPost: true
 active: true
 excerpt: Create a custom attribute to extend MSTest to programmatically skip / ignore tests based on factors like OS or framework version

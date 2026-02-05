@@ -1,6 +1,7 @@
 ---
 title: "Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome"
 cover: /img/wpa-marks/filter-to-marks.png
+socialImage: /img/wpa-marks/filter-to-marks-social.jpg
 isPost: true
 active: true
 excerpt: Learn how to use the Windows Performance Toolkit to drill into web app scenarios using performance.mark

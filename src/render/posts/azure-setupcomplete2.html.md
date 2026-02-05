@@ -1,6 +1,7 @@
 ---
 title: "Running post setup commands on Azure VMs with SetupComplete2"
 cover: /img/azure-setupcomplete2.jpg
+socialImage: /img/azure-setupcomplete2-social.jpg
 isPost: true
 active: true
 excerpt: Trying to enable the Administrator account on a custom VM image for Azure lead down a rabbit hole
