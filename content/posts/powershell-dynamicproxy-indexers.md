@@ -4,7 +4,7 @@ excerpt: I seem to have hit some sort of edge case between the Castle DynamicPro
 date: 2016-07-19T23:33:34.000Z
 tags:
  - powershell
- - .net
+ - dotnet
 slug: "powershell-dynamicproxy-indexers"
 ---
 

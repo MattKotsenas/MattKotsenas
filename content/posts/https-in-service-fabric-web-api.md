@@ -5,7 +5,7 @@ date: 2016-04-27T01:19:19.000Z
 tags:
  - azure
  - service fabric
- - .net
+ - dotnet
 slug: "https-in-service-fabric-web-api"
 ---
 
