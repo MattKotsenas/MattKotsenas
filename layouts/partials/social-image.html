@@ -1,0 +1,21 @@
+{{- /* Generate social image: cover resized to 1200x630 */ -}}
+{{- $socialImage := "" -}}
+
+{{- with .Params.cover -}}
+  {{- with $.Resources.GetMatch . -}}
+    {{- $socialImage = .Fill "1200x630 Center" -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Return the image URL, or fall back to site default */ -}}
+{{- if $socialImage -}}
+  {{- $socialImage.Permalink -}}
+{{- else if .Params.cover -}}
+  {{- with .Resources.GetMatch .Params.cover -}}
+    {{- .Permalink -}}
+  {{- else -}}
+    {{- .Params.cover | absURL -}}
+  {{- end -}}
+{{- else -}}
+  {{- .Site.Params.cover | absURL -}}
+{{- end -}}

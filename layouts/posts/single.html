@@ -68,7 +68,9 @@
     {{ if eq $post.Permalink $.Permalink }}
       {{ if lt (add $i 1) (len $posts) }}
         {{ $next := index $posts (add $i 1) }}
-        <a class="read-next-story" style="background-image: url({{ with $next.Params.cover }}{{ . }}{{ else }}{{ $.Site.Params.cover }}{{ end }})" href="{{ $next.Permalink }}">
+        {{ $nextCover := $.Site.Params.cover }}
+        {{ with $next.Params.cover }}{{ with $next.Resources.GetMatch . }}{{ $nextCover = .RelPermalink }}{{ end }}{{ end }}
+        <a class="read-next-story" style="background-image: url({{ $nextCover }})" href="{{ $next.Permalink }}">
           <section class="post">
             <h2>{{ $next.Title }}</h2>
             <p>{{ with $next.Description }}{{ . }}{{ else }}{{ $next.Summary | plainify | truncate 100 }}{{ end }}&hellip;</p>
@@ -77,7 +79,9 @@
       {{ end }}
       {{ if gt $i 0 }}
         {{ $prev := index $posts (sub $i 1) }}
-        <a class="read-next-story prev" style="background-image: url({{ with $prev.Params.cover }}{{ . }}{{ else }}{{ $.Site.Params.cover }}{{ end }})" href="{{ $prev.Permalink }}">
+        {{ $prevCover := $.Site.Params.cover }}
+        {{ with $prev.Params.cover }}{{ with $prev.Resources.GetMatch . }}{{ $prevCover = .RelPermalink }}{{ end }}{{ end }}
+        <a class="read-next-story prev" style="background-image: url({{ $prevCover }})" href="{{ $prev.Permalink }}">
           <section class="post">
             <h2>{{ $prev.Title }}</h2>
             <p>{{ with $prev.Description }}{{ . }}{{ else }}{{ $prev.Summary | plainify | truncate 100 }}{{ end }}&hellip;</p>
