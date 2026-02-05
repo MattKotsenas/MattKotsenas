@@ -80,14 +80,14 @@ sediment.
 Now something truly novel happens. A repo with a structure no one anticipated. A build system that violates assumptions.
 
 Your Ultron falls off the cliff. The agent that made the decisions is long gone. Its context evaporated after each step
-completed. And by Limoncelli's Leftover Principle, because this happens rarely, engineers don't know what to do. They
-stare at logs trying to reconstruct what happened, quickly give up, and do the work by hand. 
+completed. And because Ultron-style automation treats failure as exceptional, not expected, there's no graceful recovery
+path; engineers stare at logs trying to reconstruct what happened, quickly give up, and do the work by hand.
 
 Early in our experimentation, we built exactly this kind of system. It worked at small scale for a handful of repos and
 simple transformations. We thought we were being rigorous. We thought deterministic control meant predictable outcomes.
-What we discovered was that we'd drawn the box too big around the orchestrator and too small around the agent. At scale,
+What we discovered was that we'd given the orchestrator too much responsibility and the agent too little context. At scale,
 the narrow context pattern produced _locally reasonable but globally suboptimal decisions_. The agent would try to do
-exactly what we asked in each step, however, without visibility into the overall goal it couldn't course-correct. It
+exactly what we asked in each step. However, without visibility into the overall goal it couldn't course-correct. It
 couldn't reuse prior investigation. It re-reasoned about how to build each time. Small issues compound and
 frequently the agent fails or gives up.
 
@@ -95,9 +95,9 @@ frequently the agent fails or gives up.
 
 So what's the alternative? Let the agent run wild? Full autonomy, hope for the best?
 
-No. That way lies what some have affectionately called "agent chaos at scale". In this world, pure autonomy works if you
-have senior engineers who can vibe-code their way through the wreckage. It doesn't work for production systems that need
-rigorous engineering.
+No. That way lies what some have affectionately called "agent chaos at scale". Pure autonomy can work—if you have senior
+engineers willing to heroically untangle the wreckage each time. But heroics don't scale. Production systems need
+predictable recovery, not individual brilliance.
 
 The answer is an emerging pattern that others have arrived at independently: **let the agent decompose its own work, but
 persist that decomposition outside the context window**. This solves the core problem: the agent retains goal visibility
