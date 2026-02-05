@@ -8,6 +8,7 @@ docpadConfig = {
       logo: '/img/home.png'
       url: '/'
       cover: '/img/cover.jpg'
+      baseUrl: 'https://matt.kotsenas.com'
       navigation: [
         {
           name: 'Home',
@@ -32,7 +33,7 @@ docpadConfig = {
       location: 'Seattle, WA',
       bio: ''
     getPreparedTitle: -> if @document.title then "#{@document.title} | #{@site.title}" else @site.title
-    getDescription: -> if @document.description then "#{@document.description} | #{@site.description}" else @site.description
+    getDescription: -> @document.excerpt || @document.description || @site.description
     bodyClass: -> if @document.isPost then "post-template" else "home-template"
     masthead: (d) ->
       d = d || @document
