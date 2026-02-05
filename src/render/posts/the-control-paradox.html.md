@@ -21,7 +21,7 @@ years.
 Let's call this kind of cross-repo effort a _campaign_: a named initiative with a defined scope, tracked state, and a
 finish line.
 
-And then someone says the magic words: "we need a pipeline."
+And then someone says the magic words: "we need a pipeline".
 
 Of course we do! We're engineers. We build pipelines. We've been building pipelines since Jenkins was just a glimmer in
 Kohsuke Kawaguchi's eye. Clone, build, test, transform, verify, PR. Steps. States. Transitions. This is our comfort zone.
@@ -43,28 +43,28 @@ autonomously until it hits a wall, then fails catastrophically. Iron Man-style a
 empowering them to do more while staying in control.
 
 Most people read this and think: "Right, so we should constrain our AI agents. Keep them on a leash so we understand
-what they're doing. Pipeline-driven orchestration = Iron Man."
+what they're doing. Pipeline-driven orchestration = Iron Man".
 
 **They have it exactly backwards.**
 
 The Narrow Context Pattern is Ultron in disguise.
 
 When the pipeline fails at step 47 of 52, what are your options? In practice: retry or restart. Yes, some pipelines
-offer checkpointing and partial reruns. But even those preserve *outputs*, not reasoning. The agent has no memory of
-the decisions made in steps 1-46. It was a hired gun, called in for specific jobs, dismissed after each one.
+offer checkpointing and partial reruns. But even those only preserve *outputs*, not reasoning. The agent has no memory
+of the decisions made in steps 1-46. It was a hired gun, called in for specific jobs, dismissed after each one.
 
-There's no collaboration. There's no graceful recovery. There's just "try again."
+There's no collaboration. There's no graceful recovery. There's just "try again".
 
 Meanwhile, an agent that understands the overall goal, has visibility into its own history, and can reason about the
-entire campaign can say "step 47 failed because of a decision I made in step 12, let me reconsider." It can collaborate
+entire campaign can say "step 47 failed because of a decision I made in step 12, let me reconsider". It can collaborate
 with a human who drops in to help. It can *adapt*.
 
 That's Iron Man. The suit enhances Tony Stark's judgment. It doesn't replace it with a rigid flowchart.
 
 ## The complexity cliff
 
-I've taken to calling the failure mode implied by Limoncelli's thinking the **complexity cliff**: automation works until
-it doesn't, and when it fails, it fails completely. No middle ground or partial success.
+I've taken to calling the failure mode implied by Limoncelli's thinking the **complexity cliff**: automation that works
+until it doesn't, and when it fails, it fails completely. No middle ground or partial success.
 
 This is important because it changes how you reach for the tool. Before you run it, you have to estimate the probability
 of success. If that probability is low, you don't bother. The cliff limits usefulness before you even start.
@@ -88,8 +88,8 @@ simple transformations. We thought we were being rigorous. We thought determinis
 What we discovered was that we'd given the orchestrator too much responsibility and the agent too little context. At scale,
 the narrow context pattern produced _locally reasonable but globally suboptimal decisions_. The agent would try to do
 exactly what we asked in each step. However, without visibility into the overall goal it couldn't course-correct. It
-couldn't reuse prior investigation. It re-reasoned about how to build each time. Small issues compound and
-frequently the agent fails or gives up.
+couldn't reuse prior investigation. It re-reasoned about how to compile each time. Small issues compounded and
+frequently the agent failed or gave up.
 
 ## Persistent task tracking
 
@@ -98,7 +98,7 @@ what it did or why.
 
 So what's the alternative? Let the agent run wild? Full autonomy, hope for the best?
 
-No. That way lies what some have affectionately called "agent chaos at scale". Pure autonomy can work—if you have senior
+No. That way lies what some have affectionately called "agent chaos at scale". Pure autonomy can work if you have senior
 engineers willing to heroically untangle the wreckage each time. But heroics don't scale. Production systems need
 predictable recovery, not individual brilliance.
 
@@ -136,9 +136,9 @@ tracking work:
 We discovered this need through trial and error. Before adopting persistent task tracking, the agent would wander
 aimlessly and make "careless mistakes" like cloning repos to different locations between iterations, losing track of its
 work, etc. Giving it an external driver didn't help either; the agent would reason correctly on each narrow step, but
-lose that reasoning on the next iteration. Each restart compounded failure risk because context was lost. When we gave
-the agent persistent task tracking with the overall goal visible, something shifted. It stopped wandering. It could
-reason about whether its current action served the larger purpose.
+lose that reasoning on the next iteration. Each restart compounded failure risk. When we gave the agent persistent task
+tracking, something shifted. It stopped wandering. It could reason about whether its current action served the larger
+purpose.
 
 Persistent task tracking also enables the Iron Man collaboration we actually want:
 - A human can see what the agent is working on
@@ -146,7 +146,7 @@ Persistent task tracking also enables the Iron Man collaboration we actually wan
 - A human can adjust goals mid-flight without starting over
 - Multiple agents or humans can collaborate on the same campaign
 
-When you hit the complexity cliff—and you will—Iron Man can fly. Ultron just crashes.
+When you inevitably encounter a novel situation, Iron Man helps you calculate a new path. Ultron just crashes.
 
 ![Agent kanban board][kanban-board]
 
@@ -171,12 +171,11 @@ needs that visibility to reason effectively.
 
 ### Keep in deterministic control
 
-- **Irreversible external effects**: Opening PRs, merging code, modifying production systems
+- **Irreversible external effects**: Use policy, via hooks or a broker, for operations with side effects
+    (force-push or PR creation) and resource enforcement
 - **Concurrency boundaries**: Which repos are being worked on, lease management, preventing conflicts
 - **Audit trail**: What happened, when, what state resulted, and full reasoning and tool call logs
 - **Resource limits**: Timeouts, token budgets, iteration caps
-- **Safety net**: Use policy, via hooks or a broker, for operations with side effects (force-push or PR creation),
-    meta-recovery (retry with different model), and resource enforcement
 
 Don't let the agent mutate campaign scope. It can mark tasks blocked; only the harness can abandon them. The agent
 proposes, the harness disposes.
@@ -188,15 +187,15 @@ Here's what makes agent orchestration fundamentally different from the ops autom
 
 We're not doing ops work. Nothing is unrecoverable. If the agent clones a repo wrong, clone again. If it generates bad
 code, regenerate. If it goes down a blind alley, backtrack. The entire pre-PR phase is a sandbox. We can afford way more
-agent autonomy than our ops-trained instincts suggest. The place to be rigorous is at the gate—the moment of
-irreversible effect—not in the exploratory work that precedes it.
+agent autonomy than our ops-trained instincts suggest. The place to be rigorous is at the moment of irreversible effect,
+not in the exploratory work that precedes it.
 
 ## Lessons Learned
 
-The opinions above emerged from experimentation. Here's patterns that surprised us and mistakes we made more than once.
+The opinions above emerged from experimentation. Here's surpising patterns and mistakes made more than once.
 
 ### On Focus
-- Agents get "bored" with parallelism—their word, not mine. Give them too many concurrent tasks and they start cutting
+- Agents get "bored" with parallelism (their word, not mine). Give them too many concurrent tasks and they start cutting
     corners. Sequential focus keeps the work coherent.
 - External task tracking (visible to the agent) is remarkably effective. It provides a vector to reason against that
     prevents drift.
@@ -204,14 +203,14 @@ The opinions above emerged from experimentation. Here's patterns that surprised 
     The latter produces better decisions.
 
 ### On Collaboration
-- A ledger or persistent record of what's been done and what's pending enables collaboration in ways stateless pipelines
-    cannot.
+- A ledger or persistent record of what's been done and what's pending enables collaboration in ways traditional
+    pipelines cannot.
 - When a human can see agent state and resume from where it left off, the whole system becomes more robust. Failures
     become pauses, not restarts.
 - Claude Code / Copilot [plugins][how-to-build-a-plugin] are underrated for collaboration. They let teams share
-    capabilities across workflows, enable reuse between engineers, and—critically—bridge the gap between "works on my
-    machine" and "works at scale." That bridge shrinks the complexity cliff; you can test a plugin locally on one repo
-    and gradually scale up.
+    capabilities across workflows, enable reuse between engineers, and bridge the gap between "works on my machine" and
+    "works at scale". That bridge shrinks the complexity cliff; you can test a plugin locally on one repo and gradually
+    scale up.
 
 ### On Debugging
 - Debug logs make agent behavior auditable. But there's a difference between auditable (what happened) and interpretable
@@ -219,7 +218,7 @@ The opinions above emerged from experimentation. Here's patterns that surprised 
 - LLM-as-judge patterns are useful for evaluating outcomes. Have a separate agent analyze the work, reflecting on the
     original prompt and the diff to assess alignment.
 - When the agent fails consistently, feed it its own debug logs and ask "what went wrong" to produce surprisingly useful
-    meta-analysis (but don't trust it blindly)
+    meta-analysis (but don't trust it blindly).
 
 ### On Nondeterminism
 - We used to worry a lot about agent nondeterminism. What we discovered is that it matters less than we thought for
@@ -236,7 +235,7 @@ The opinions above emerged from experimentation. Here's patterns that surprised 
 
 Most engineers orchestrating agents default to deterministic control because that's how we've always built automation.
 We extend our mental models from CI pipelines and workflow engines. This isn't distrust of AI but rather the path of
-least resistance.
+cognitive least resistance.
 
 But this framing carries hidden costs:
 - Agents make locally reasonable but globally suboptimal decisions
@@ -271,11 +270,11 @@ original prompt and diff and ask "did this accomplish the goal?"
 
 **Separate tool brand from campaign brand.** If you're running refactoring campaigns for many engineers, one
 poorly-conceived campaign can teach your users that the tool produces slop. Make sure they know the difference between
-"this campaign was bad" and "this tool is bad."
+"this campaign was bad" and "this tool is bad".
 
-**Think about composability.** Create packages with vertical skills. Skills explain _how_ to do something and should
-work in any context. The prompt provides the policy or decision framework for how to leverage the skill in a particular
-context.
+**Think about composability.** Create packages with vertical skills. [Skills][agent-skills] explain _how_ to do
+something and should work in any context. The prompt provides the policy or decision framework for how to leverage the
+skill in a particular context.
 
 ### For toolmakers
 
@@ -283,7 +282,7 @@ context.
 rewrite commands. `UserPromptSubmit` should be able to inject context. For example, it should be possible with a hook
 to add `--reference-if-able` to git clone commands to use a local cache automatically.
 
-**Consider a "hermetic mode."** Large scale refactors need to isolate themselves from machine state like user
+**Consider a "hermetic mode".** Large scale refactors need to isolate themselves from machine state like user
 instructions and other configuration. It should be possible to create a "profile" that specifies the installed
 instructions, tools, skills, etc. Anything not listed should be disabled for the session.
 
@@ -296,3 +295,4 @@ thing. Allow it to persist across sessions.
 [kanban-board]: /img/the-control-paradox/kanban.png
 [trekker]: https://omercan.io/trekker/
 [how-to-build-a-plugin]: https://code.claude.com/docs/en/plugins
+[agent-skills]: https://docs.github.com/en/copilot/concepts/agents/about-agent-skills

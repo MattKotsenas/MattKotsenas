@@ -21,5 +21,8 @@
   "scripts": {
     "start": "node_modules/.bin/docpad-server",
     "generate": "docpad -e static generate"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
   }
 }
