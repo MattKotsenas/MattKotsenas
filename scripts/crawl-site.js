@@ -45,8 +45,9 @@ function fetch(url) {
 
 function extractLinks(html, baseUrl) {
   const links = [];
-  const hrefRegex = /href=["']([^"']+)["']/gi;
-  const srcRegex = /src=["']([^"']+)["']/gi;
+  // Match href with or without quotes
+  const hrefRegex = /href=(?:["']([^"']+)["']|([^\s>]+))/gi;
+  const srcRegex = /src=(?:["']([^"']+)["']|([^\s>]+))/gi;
   let match;
 
   const processMatch = (href) => {
@@ -82,11 +83,11 @@ function extractLinks(html, baseUrl) {
   };
 
   while ((match = hrefRegex.exec(html)) !== null) {
-    processMatch(match[1]);
+    processMatch(match[1] || match[2]);
   }
 
   while ((match = srcRegex.exec(html)) !== null) {
-    processMatch(match[1]);
+    processMatch(match[1] || match[2]);
   }
 
   return links;

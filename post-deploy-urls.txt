@@ -1,128 +1,128 @@
 Crawling https://matt.kotsenas.com...
 
-Crawled: 1 pages, Queue: 33   
-Crawled: 2 pages, Queue: 32   
-Crawled: 3 pages, Queue: 31   
-Crawled: 4 pages, Queue: 30   
-Crawled: 5 pages, Queue: 29   
-Crawled: 6 pages, Queue: 38   
-Crawled: 7 pages, Queue: 61   
-Crawled: 8 pages, Queue: 64   
-Crawled: 9 pages, Queue: 66   
-Crawled: 10 pages, Queue: 64   
-Crawled: 11 pages, Queue: 63   
-Crawled: 12 pages, Queue: 63   
-Crawled: 13 pages, Queue: 63   
-Crawled: 14 pages, Queue: 62   
-Crawled: 15 pages, Queue: 62   
-Crawled: 16 pages, Queue: 62   
-Crawled: 17 pages, Queue: 61   
-Crawled: 18 pages, Queue: 61   
-Crawled: 19 pages, Queue: 58   
-Crawled: 20 pages, Queue: 56   
-Crawled: 21 pages, Queue: 54   
-Crawled: 22 pages, Queue: 53   
-Crawled: 23 pages, Queue: 52   
-Crawled: 24 pages, Queue: 60   
-Crawled: 25 pages, Queue: 59   
-Crawled: 26 pages, Queue: 58   
-Crawled: 27 pages, Queue: 57   
-Crawled: 28 pages, Queue: 56   
-Crawled: 29 pages, Queue: 55   
-Crawled: 30 pages, Queue: 54   
-Crawled: 31 pages, Queue: 53   
-Crawled: 32 pages, Queue: 52   
-Crawled: 33 pages, Queue: 51   
-Crawled: 34 pages, Queue: 19   
-Crawled: 35 pages, Queue: 18   
-Crawled: 36 pages, Queue: 17   
-Crawled: 37 pages, Queue: 16   
-Crawled: 38 pages, Queue: 15   
-Crawled: 39 pages, Queue: 14   
-Crawled: 40 pages, Queue: 13   
-Crawled: 41 pages, Queue: 12   
-Crawled: 42 pages, Queue: 11   
-Crawled: 43 pages, Queue: 11   
-Crawled: 44 pages, Queue: 37   
-Crawled: 45 pages, Queue: 37   
-Crawled: 46 pages, Queue: 37   
-Crawled: 47 pages, Queue: 37   
-Crawled: 48 pages, Queue: 37   
-Crawled: 49 pages, Queue: 37   
-Crawled: 50 pages, Queue: 37   
-Crawled: 51 pages, Queue: 36   
-Crawled: 52 pages, Queue: 35   
-Crawled: 53 pages, Queue: 34   
-Crawled: 54 pages, Queue: 34   
-Crawled: 55 pages, Queue: 34   
-Crawled: 56 pages, Queue: 34   
-Crawled: 57 pages, Queue: 32   
-Crawled: 58 pages, Queue: 32   
-Crawled: 59 pages, Queue: 32   
-Crawled: 60 pages, Queue: 31   
-Crawled: 61 pages, Queue: 31   
-Crawled: 62 pages, Queue: 31   
-Crawled: 63 pages, Queue: 31   
-Crawled: 64 pages, Queue: 30   
-Crawled: 65 pages, Queue: 30   
-Crawled: 66 pages, Queue: 30   
-Crawled: 67 pages, Queue: 28   
-Crawled: 68 pages, Queue: 21   
-Crawled: 69 pages, Queue: 22   
-Crawled: 70 pages, Queue: 23   
-Crawled: 71 pages, Queue: 24   
-Crawled: 72 pages, Queue: 25   
-Crawled: 73 pages, Queue: 25   
-Crawled: 74 pages, Queue: 24   
-Crawled: 75 pages, Queue: 23   
-Crawled: 76 pages, Queue: 36   
-Crawled: 77 pages, Queue: 41   
-Crawled: 78 pages, Queue: 40   
-Crawled: 79 pages, Queue: 39   
-Crawled: 80 pages, Queue: 38   
-Crawled: 81 pages, Queue: 37   
-Crawled: 82 pages, Queue: 36   
-Crawled: 83 pages, Queue: 35   
-Crawled: 84 pages, Queue: 34   
-Crawled: 85 pages, Queue: 33   
-Crawled: 86 pages, Queue: 32   
-Crawled: 87 pages, Queue: 31   
-Crawled: 88 pages, Queue: 30   
-Crawled: 89 pages, Queue: 23   
-Crawled: 90 pages, Queue: 21   
-Crawled: 91 pages, Queue: 17   
-Crawled: 92 pages, Queue: 17   
-Crawled: 93 pages, Queue: 16   
-Crawled: 94 pages, Queue: 16   
-Crawled: 95 pages, Queue: 15   
-Crawled: 96 pages, Queue: 15   
-Crawled: 97 pages, Queue: 8   
-Crawled: 98 pages, Queue: 9   
-Crawled: 99 pages, Queue: 8   
-Crawled: 100 pages, Queue: 7   
+Crawled: 1 pages, Queue: 38   
+Crawled: 2 pages, Queue: 37   
+Crawled: 3 pages, Queue: 36   
+Crawled: 4 pages, Queue: 35   
+Crawled: 5 pages, Queue: 34   
+Crawled: 6 pages, Queue: 34   
+Crawled: 7 pages, Queue: 57   
+Crawled: 8 pages, Queue: 57   
+Crawled: 9 pages, Queue: 57   
+Crawled: 10 pages, Queue: 55   
+Crawled: 11 pages, Queue: 53   
+Crawled: 12 pages, Queue: 53   
+Crawled: 13 pages, Queue: 53   
+Crawled: 14 pages, Queue: 50   
+Crawled: 15 pages, Queue: 50   
+Crawled: 16 pages, Queue: 50   
+Crawled: 17 pages, Queue: 48   
+Crawled: 18 pages, Queue: 48   
+Crawled: 19 pages, Queue: 44   
+Crawled: 20 pages, Queue: 41   
+Crawled: 21 pages, Queue: 39   
+Crawled: 22 pages, Queue: 38   
+Crawled: 23 pages, Queue: 37   
+Crawled: 24 pages, Queue: 37   
+Crawled: 25 pages, Queue: 12   
+Crawled: 26 pages, Queue: 11   
+Crawled: 27 pages, Queue: 11   
+Crawled: 28 pages, Queue: 10   
+Crawled: 29 pages, Queue: 9   
+Crawled: 30 pages, Queue: 8   
+Crawled: 31 pages, Queue: 7   
+Crawled: 32 pages, Queue: 8   
+Crawled: 33 pages, Queue: 9   
+Crawled: 34 pages, Queue: 8   
+Crawled: 35 pages, Queue: 8   
+Crawled: 36 pages, Queue: 32   
+Crawled: 37 pages, Queue: 40   
+Crawled: 38 pages, Queue: 39   
+Crawled: 39 pages, Queue: 38   
+Crawled: 40 pages, Queue: 37   
+Crawled: 41 pages, Queue: 37   
+Crawled: 42 pages, Queue: 36   
+Crawled: 43 pages, Queue: 36   
+Crawled: 44 pages, Queue: 34   
+Crawled: 45 pages, Queue: 34   
+Crawled: 46 pages, Queue: 34   
+Crawled: 47 pages, Queue: 33   
+Crawled: 48 pages, Queue: 33   
+Crawled: 49 pages, Queue: 33   
+Crawled: 50 pages, Queue: 33   
+Crawled: 51 pages, Queue: 32   
+Crawled: 52 pages, Queue: 32   
+Crawled: 53 pages, Queue: 32   
+Crawled: 54 pages, Queue: 30   
+Crawled: 55 pages, Queue: 30   
+Crawled: 56 pages, Queue: 29   
+Crawled: 57 pages, Queue: 29   
+Crawled: 58 pages, Queue: 29   
+Crawled: 59 pages, Queue: 29   
+Crawled: 60 pages, Queue: 21   
+Crawled: 61 pages, Queue: 20   
+Crawled: 62 pages, Queue: 19   
+Crawled: 63 pages, Queue: 19   
+Crawled: 64 pages, Queue: 18   
+Crawled: 65 pages, Queue: 29   
+Crawled: 66 pages, Queue: 34   
+Crawled: 67 pages, Queue: 33   
+Crawled: 68 pages, Queue: 33   
+Crawled: 69 pages, Queue: 32   
+Crawled: 70 pages, Queue: 31   
+Crawled: 71 pages, Queue: 30   
+Crawled: 72 pages, Queue: 33   
+Crawled: 73 pages, Queue: 32   
+Crawled: 74 pages, Queue: 31   
+Crawled: 75 pages, Queue: 30   
+Crawled: 76 pages, Queue: 29   
+Crawled: 77 pages, Queue: 29   
+Crawled: 78 pages, Queue: 28   
+Crawled: 79 pages, Queue: 27   
+Crawled: 80 pages, Queue: 26   
+Crawled: 81 pages, Queue: 25   
+Crawled: 82 pages, Queue: 25   
+Crawled: 83 pages, Queue: 25   
+Crawled: 84 pages, Queue: 23   
+Crawled: 85 pages, Queue: 23   
+Crawled: 86 pages, Queue: 22   
+Crawled: 87 pages, Queue: 22   
+Crawled: 88 pages, Queue: 21   
+Crawled: 89 pages, Queue: 21   
+Crawled: 90 pages, Queue: 13   
+Crawled: 91 pages, Queue: 12   
+Crawled: 92 pages, Queue: 11   
+Crawled: 93 pages, Queue: 10   
+Crawled: 94 pages, Queue: 9   
+Crawled: 95 pages, Queue: 8   
+Crawled: 96 pages, Queue: 8   
+Crawled: 97 pages, Queue: 9   
+Crawled: 98 pages, Queue: 8   
+Crawled: 99 pages, Queue: 7   
+Crawled: 100 pages, Queue: 6   
 Crawled: 101 pages, Queue: 6   
-Crawled: 102 pages, Queue: 6   
-Crawled: 103 pages, Queue: 7   
-Crawled: 104 pages, Queue: 8   
+Crawled: 102 pages, Queue: 7   
+Crawled: 103 pages, Queue: 8   
+Crawled: 104 pages, Queue: 7   
 Crawled: 105 pages, Queue: 7   
-Crawled: 106 pages, Queue: 7   
-Crawled: 107 pages, Queue: 0   
+Crawled: 106 pages, Queue: 0   
 # Site Crawl Results
-# Crawled: 2026-02-05T20:33:19.843Z
+# Crawled: 2026-02-05T22:18:58.602Z
 # Base URL: https://matt.kotsenas.com
-# Total URLs: 107
+# Total URLs: 106
 #
 # Format: STATUS_CODE PATH
 #
 200 /
 200 /
-200 /2/index
-301 /2/index.html
-200 /3/index
-301 /3/index.html
-200 /4/index
-301 /4/index.html
-200 /about
+301 /2
+200 /2/
+301 /3
+200 /3/
+301 /4
+200 /4/
+301 /about
+200 /about/
 200 /css/custom.css
 200 /css/hljs.css
 200 /css/screen.css
@@ -141,88 +141,86 @@ Crawled: 107 pages, Queue: 0
 200 /img/wpa-marks/edge-marks.png
 200 /img/wpa-marks/filter-to-marks.png
 200 /img/wpa-regions/edge-regions-sample.png
-200 /index
-301 /index.html
 200 /js/index.js
 200 /js/jquery.fitvids.js
-200 /photos
-200 /posts/azure-setupcomplete2
-301 /posts/azure-setupcomplete2.html
-200 /posts/combining-cronschedules-in-webjobs
-301 /posts/combining-cronschedules-in-webjobs.html
-200 /posts/generate-wpa-regions-from-performance-marks
-301 /posts/generate-wpa-regions-from-performance-marks.html
-200 /posts/https-in-service-fabric-web-api
-301 /posts/https-in-service-fabric-web-api.html
-200 /posts/ie10-graphics-performance-and-quality-demo
-301 /posts/ie10-graphics-performance-and-quality-demo.html
-200 /posts/ignoreif-mstest
-301 /posts/ignoreif-mstest.html
-200 /posts/implementing-ioptionsfactory-to-create-options-instances
-301 /posts/implementing-ioptionsfactory-to-create-options-instances.html
-200 /posts/msbuild-targets-with-vertical-slices
-301 /posts/msbuild-targets-with-vertical-slices.html
-200 /posts/powershell-dynamicproxy-indexers
-301 /posts/powershell-dynamicproxy-indexers.html
-200 /posts/pwsh-profiling-async-startup
-301 /posts/pwsh-profiling-async-startup.html
-200 /posts/running-docpad-on-azure-in-2015
-301 /posts/running-docpad-on-azure-in-2015.html
-200 /posts/squamish-2017-race-report
-301 /posts/squamish-2017-race-report.html
-200 /posts/the-control-paradox
-301 /posts/the-control-paradox.html
-200 /posts/traversal-project-best-practices
-301 /posts/traversal-project-best-practices.html
-200 /posts/using-wpa-to-analyze-performance-marks
-301 /posts/using-wpa-to-analyze-performance-marks.html
-200 /posts/windows-8-blog-performance-lab
-301 /posts/windows-8-blog-performance-lab.html
+301 /photos
+200 /photos/
+301 /posts/azure-setupcomplete2
+200 /posts/azure-setupcomplete2/
+301 /posts/combining-cronschedules-in-webjobs
+200 /posts/combining-cronschedules-in-webjobs/
+301 /posts/generate-wpa-regions-from-performance-marks
+200 /posts/generate-wpa-regions-from-performance-marks/
+301 /posts/https-in-service-fabric-web-api
+200 /posts/https-in-service-fabric-web-api/
+301 /posts/ie10-graphics-performance-and-quality-demo
+200 /posts/ie10-graphics-performance-and-quality-demo/
+301 /posts/ignoreif-mstest
+200 /posts/ignoreif-mstest/
+301 /posts/implementing-ioptionsfactory-to-create-options-instances
+200 /posts/implementing-ioptionsfactory-to-create-options-instances/
+301 /posts/msbuild-targets-with-vertical-slices
+200 /posts/msbuild-targets-with-vertical-slices/
+301 /posts/powershell-dynamicproxy-indexers
+200 /posts/powershell-dynamicproxy-indexers/
+301 /posts/pwsh-profiling-async-startup
+200 /posts/pwsh-profiling-async-startup/
+301 /posts/running-docpad-on-azure-in-2015
+200 /posts/running-docpad-on-azure-in-2015/
+301 /posts/squamish-2017-race-report
+200 /posts/squamish-2017-race-report/
+301 /posts/the-control-paradox
+200 /posts/the-control-paradox/
+301 /posts/traversal-project-best-practices
+200 /posts/traversal-project-best-practices/
+301 /posts/using-wpa-to-analyze-performance-marks
+200 /posts/using-wpa-to-analyze-performance-marks/
+301 /posts/windows-8-blog-performance-lab
+200 /posts/windows-8-blog-performance-lab/
 200 /rss.xml
 404 /tags/.net
-301 /tags/.net.html
-200 /tags/agents
-301 /tags/agents.html
-200 /tags/ai
-301 /tags/ai.html
-200 /tags/azure
-301 /tags/azure.html
-200 /tags/chrome
-301 /tags/chrome.html
-200 /tags/docpad
-301 /tags/docpad.html
-200 /tags/edge
-301 /tags/edge.html
-200 /tags/ie
-301 /tags/ie.html
-200 /tags/microsoft
-301 /tags/microsoft.html
-200 /tags/msbuild
-301 /tags/msbuild.html
-200 /tags/mstest
-301 /tags/mstest.html
-200 /tags/performance
-301 /tags/performance.html
-200 /tags/powershell
-301 /tags/powershell.html
-200 /tags/race-reports
-301 /tags/race-reports.html
-200 /tags/running
-301 /tags/running.html
-200 /tags/service-fabric
-301 /tags/service-fabric.html
-200 /tags/testfx
-301 /tags/testfx.html
-200 /tags/testing
-301 /tags/testing.html
-200 /tags/webjobs
-301 /tags/webjobs.html
-200 /tags/windows
-301 /tags/windows.html
-200 /tags/wpa
-301 /tags/wpa.html
+301 /tags/agents
+200 /tags/agents/
+301 /tags/ai
+200 /tags/ai/
+301 /tags/azure
+200 /tags/azure/
+301 /tags/chrome
+200 /tags/chrome/
+301 /tags/docpad
+200 /tags/docpad/
+301 /tags/edge
+200 /tags/edge/
+301 /tags/ie
+200 /tags/ie/
+301 /tags/microsoft
+200 /tags/microsoft/
+301 /tags/msbuild
+200 /tags/msbuild/
+301 /tags/mstest
+200 /tags/mstest/
+301 /tags/performance
+200 /tags/performance/
+301 /tags/powershell
+200 /tags/powershell/
+301 /tags/race-reports
+200 /tags/race-reports/
+301 /tags/running
+200 /tags/running/
+301 /tags/service-fabric
+200 /tags/service-fabric/
+301 /tags/testfx
+200 /tags/testfx/
+301 /tags/testing
+200 /tags/testing/
+301 /tags/webjobs
+200 /tags/webjobs/
+301 /tags/windows
+200 /tags/windows/
+301 /tags/wpa
+200 /tags/wpa/
 #
 # Summary:
-#   200: 65
+#   200: 64
 #   301: 41
 #   404: 1

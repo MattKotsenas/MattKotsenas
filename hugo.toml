@@ -41,3 +41,6 @@ uglyURLs = false
   [markup.goldmark]
     [markup.goldmark.renderer]
       unsafe = true
+
+[minify.tdewolff.html]
+  keepQuotes = true # We live in a society
