@@ -1,0 +1,297 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Generating WPA Regions of Interest from performance marks | void where_prohibited() { ... }</title>
+    <meta name="description" content="Automate creating WPA Regions of Interest files using PowerShell">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="Generating WPA Regions of Interest from performance marks | void where_prohibited() { ... }">
+    <meta property="og:description" content="Automate creating WPA Regions of Interest files using PowerShell">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/generate-wpa-regions-from-performance-marks.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/wpa-regions/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Generating WPA Regions of Interest from performance marks | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Automate creating WPA Regions of Interest files using PowerShell">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/wpa-regions/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/wpa-regions/cover.png)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Generating WPA Regions of Interest from performance marks</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2017-July-26">26 July 2017</time> 
+  <a href="/tags/performance.html">performance</a>, 
+
+  <a href="/tags/chrome.html">chrome</a>, 
+
+  <a href="/tags/edge.html">edge</a>, 
+
+  <a href="/tags/wpa.html">wpa</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <p>In a <a href="/posts/using-wpa-to-analyze-performance-marks">recent post</a>, I showed how to view <code>performance.mark()</code>s in WPA. This post is a small follow-on on how to
+simplify and automate that process to make performance analysis easier.</p>
+<h2 id="regions-of-interest">Regions of Interest</h2>
+<p>Regions of Interest is a native <a href="https://msdn.microsoft.com/en-us/library/dn450838.aspx">WPA concept</a> that provides the capability of visualizing and zooming to an
+interesting part of a trace easily.</p>
+<h2 id="using-regions-with-performance-mark">Using Regions with performance.mark</h2>
+<p>Now that we know how to get <code>performance.mark()</code> to emit ETW events, we can write a Regions of Interest file to automatically
+pull those events into a graph. It isn't too difficult to <a href="https://msdn.microsoft.com/en-us/library/dn450840.aspx">write your own</a> regions file, here's a sample
+one for Edge that assumes we're looking for two measures, one called "Widget Load" with marks named <code>widgetload-start</code> and
+<code>widgetload-end</code>, and the other named "Flyout Animation" and marked by <code>animation.flyout.begin</code> and <code>animation.flyout.end</code>:</p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-meta">&lt;?xml version="1.0" encoding="utf-8" standalone="yes"?&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">InstrumentationManifest</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Instrumentation</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">Regions</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">RegionRoot</span> <span class="hljs-attr">Guid</span>=<span class="hljs-string">"{aac4e926-e56e-4fd8-bd18-e0af3656558a}"</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"My App Scenarios"</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">Region</span> <span class="hljs-attr">Guid</span>=<span class="hljs-string">"{fac57cdb-bc3d-41b9-9d12-fa755a39be94}"</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"Widget Load"</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">Match</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">Event</span> <span class="hljs-attr">TID</span>=<span class="hljs-string">"true"</span> <span class="hljs-attr">PID</span>=<span class="hljs-string">"true"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">Match</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">Start</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">Event</span> <span class="hljs-attr">Provider</span>=<span class="hljs-string">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"211"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"0"</span> /&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">PayloadIdentifier</span> <span class="hljs-attr">FieldName</span>=<span class="hljs-string">"Name"</span> <span class="hljs-attr">FieldValue</span>=<span class="hljs-string">"WidgetLoad-Start"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">Start</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">Stop</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">Event</span> <span class="hljs-attr">Provider</span>=<span class="hljs-string">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"211"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"0"</span> /&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">PayloadIdentifier</span> <span class="hljs-attr">FieldName</span>=<span class="hljs-string">"Name"</span> <span class="hljs-attr">FieldValue</span>=<span class="hljs-string">"WidgetLoad-End"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">Stop</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">Region</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">Region</span> <span class="hljs-attr">Guid</span>=<span class="hljs-string">"{2c8c2da9-5930-4c78-85dd-1f9b83d462f6}"</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"Flyout Animation"</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">Match</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">Event</span> <span class="hljs-attr">TID</span>=<span class="hljs-string">"true"</span> <span class="hljs-attr">PID</span>=<span class="hljs-string">"true"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">Match</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">Start</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">Event</span> <span class="hljs-attr">Provider</span>=<span class="hljs-string">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"211"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"0"</span> /&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">PayloadIdentifier</span> <span class="hljs-attr">FieldName</span>=<span class="hljs-string">"Name"</span> <span class="hljs-attr">FieldValue</span>=<span class="hljs-string">"animation.flyout.begin"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">Start</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">Stop</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">Event</span> <span class="hljs-attr">Provider</span>=<span class="hljs-string">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"211"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"0"</span> /&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">PayloadIdentifier</span> <span class="hljs-attr">FieldName</span>=<span class="hljs-string">"Name"</span> <span class="hljs-attr">FieldValue</span>=<span class="hljs-string">"animation.flyout.end"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">Stop</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">Region</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-name">RegionRoot</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">Regions</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">Instrumentation</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">InstrumentationManifest</span>&gt;</span>
+</code></pre>
+<p>The format is pretty straightforward, but why do all that copy / pasting and GUID creation? We easily can <em>generate</em> these
+files for both Chrome and Edge!</p>
+<h2 id="auto-generating-regions-files">Auto-generating Regions files</h2>
+<p>I've created a simple PowerShell script called <code>New-RegionsXml.ps1</code> and put it up on <a href="https://github.com/MattKotsenas/WPA-Regions-Generator">GitHub</a>. To create
+a Regions of Interest file for both Chrome and Edge, just supply a collection of objects with <code>Name</code>, <code>Start</code>, and <code>Stop</code>,
+properties. Here's the same example as before:</p>
+<pre class="highlight"><code class="hljs powershell">PS&gt; <span class="hljs-variable">$measures</span> = <span class="hljs-selector-tag">@</span>(
+        <span class="hljs-selector-tag">@</span>{
+            Name = <span class="hljs-string">"Widget Load"</span>;
+            Start = <span class="hljs-string">"WidgetLoad-Start"</span>;
+            Stop = <span class="hljs-string">"WidgetLoad-End"</span>
+        },
+        <span class="hljs-selector-tag">@</span>{
+            Name = <span class="hljs-string">"Flyout Animation"</span>;
+            Start = <span class="hljs-string">"animation.flyout.begin"</span>;
+            Stop = <span class="hljs-string">"animation.flyout.end"</span>
+        }
+    )
+PS&gt; <span class="hljs-variable">$measures</span> | .\<span class="hljs-built_in">New-RegionsXml</span>.ps1 <span class="hljs-literal">-RootName</span> <span class="hljs-string">"My App Scenarios"</span>
+</code></pre>
+<blockquote>
+<p>NOTE: If you aren't familiar with PowerShell, <code>@()</code> is the shorthand syntax for an array, and <code>@{}</code> is shorthand for a hashtable,
+much like an object literal in JavaScript.</p>
+</blockquote>
+<p>The output will be two Regions files, one for Chrome and one for Edge, which can be <a href="https://msdn.microsoft.com/en-us/library/dn450838.aspx#Anchor_1">loaded</a> in WPA.</p>
+<p>The script supports any event provider(s), the default value of <code>-EventProviders</code>, as previously mentioned is Edge and Chrome</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-selector-tag">@</span>(
+    <span class="hljs-selector-tag">@</span>{
+        Name = <span class="hljs-string">"Edge"</span>;
+        Provider = [<span class="hljs-type">Guid</span>]<span class="hljs-string">"9e3b3947-ca5d-4614-91a2-7b624e0e7244"</span>;
+        Id = <span class="hljs-number">211</span>;
+        Version = <span class="hljs-number">0</span>;
+        FieldName = <span class="hljs-string">"Name"</span>
+    },
+    <span class="hljs-selector-tag">@</span>{
+        Name = <span class="hljs-string">"Chrome"</span>;
+        Provider = [<span class="hljs-type">Guid</span>]<span class="hljs-string">"d2d578d9-2936-45b6-a09f-30e32715f42d"</span>;
+        Id = <span class="hljs-number">1</span>;
+        Version = <span class="hljs-number">0</span>;
+        FieldName = <span class="hljs-string">"Name"</span>
+    }
+)
+</code></pre>
+<p>but you can override it with anything you like.</p>
+<p>Here's an example of of a popular benchmark that exposes each test step as a set of marks, and those marks have been turned into
+WPA regions:</p>
+<p><img src="/img/wpa-regions/edge-regions-sample.png" alt="A single mark selected with the corresponding CPU chart highlighted in that same region"></p>
+<p>Notice that by selecting a region of interest (item 1), each occurrence of that region is selected not just in the Regions chart
+(item 2), but also in the CPU Usage chart (item 3), making it super simple to zoom in and out of the trace; much easier to
+understand what's happening now!</p>
+<p>Ideally browsers would export the User Timings directly into the ETW stream like they do in the F12 developer tools, but until
+then this script should make things a bit simpler.</p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Generating%20WPA%20Regions%20of%20Interest%20from%20performance%20marks&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/wpa-marks/filter-to-marks.png)" href="/posts/using-wpa-to-analyze-performance-marks.html">
+          <section class="post">
+            <h2>Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome</h2>
+            <p>Learn how to use the Windows Performance Toolkit to drill into web app scenarios using performance.mark…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/combining-cronschedules-in-webjobs.png)" href="/posts/combining-cronschedules-in-webjobs.html">
+          <section class="post">
+            <h2>Combining cron expressions in Azure WebJobs TimerTriggers</h2>
+            <p>Azure supports using cron expressions to trigger WebJobs, but each job can have only a single cron schedule. Learn how to use the TimerSchedule class to create custom schedules and combine cron expressions…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

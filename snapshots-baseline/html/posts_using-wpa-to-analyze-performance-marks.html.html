@@ -1,0 +1,323 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome | void where_prohibited() { ... }</title>
+    <meta name="description" content="Learn how to use the Windows Performance Toolkit to drill into web app scenarios using performance.mark">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome | void where_prohibited() { ... }">
+    <meta property="og:description" content="Learn how to use the Windows Performance Toolkit to drill into web app scenarios using performance.mark">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/using-wpa-to-analyze-performance-marks.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/wpa-marks/filter-to-marks-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Learn how to use the Windows Performance Toolkit to drill into web app scenarios using performance.mark">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/wpa-marks/filter-to-marks-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/wpa-marks/filter-to-marks.png)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2017-July-24">24 July 2017</time> 
+  <a href="/tags/performance.html">performance</a>, 
+
+  <a href="/tags/chrome.html">chrome</a>, 
+
+  <a href="/tags/edge.html">edge</a>, 
+
+  <a href="/tags/wpa.html">wpa</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <p>I have a bit of a love / hate relationship with the <a href="https://docs.microsoft.com/en-us/windows-hardware/test/wpt/index">Windows Performance Toolkit</a>. It's easy to be overwhelmed by
+it, and it can be a bear to use sometimes, but there's very few tools as powerful when it comes to understanding
+performance, and it's hands down the best tool on Windows for doing apples-to-apples comparisons of browser performance.</p>
+<h2 id="what-is-wpa-">What is WPA?</h2>
+<p>The part of the Windows Performance Toolkit that we're instersted in is the Windows Performance Recorder (WPR) and the
+Windows Performance Analyzer (WPA). There's extensive information on using both like <a href="https://blogs.windows.com/msedgedev/2016/05/11/top-down-analysis-wpt">this</a>, <a href="https://channel9.msdn.com/Events/Build/2013/3-068">this</a>,
+<a href="https://docs.microsoft.com/en-us/windows-hardware/test/wpt/optimizing-performance-and-responsiveness">this</a>, and <a href="https://docs.microsoft.com/en-us/windows-hardware/test/wpt/memory-footprint-optimization">this</a>, so rather than write a below average tutorial, I'll defer to those fine resources.
+Just know that Event Tracing for Windows (ETW), the underlying technology, provides a low overhead, full system view of
+performance.</p>
+<h2 id="what-are-performance-marks-and-measures-">What are performance marks and measures?</h2>
+<p><code>performance.mark()</code> and <code>performance.measure()</code> are both part of the <a href="https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API">User Timing spec</a>. It's
+<a href="http://caniuse.com/#feat=user-timing">well supported</a>, with only mobile Safari and Opera Mini lacking support, and excellent polyfills like Nolan Lawson's
+excellent <a href="https://github.com/nolanlawson/marky">Marky</a> are available.</p>
+<p>These APIs allow a web developer to add "points of interest", such as when a component renders, or when background events
+start and stop, to the <a href="https://msdn.microsoft.com/en-us/library/dn255009(v=vs.85).aspx">UI responsiveness tool</a> in your browser's developer tools. You can also collect
+your users' marks using your site analytics to better understand how your components behave in the real-world, but we'll save
+that for another post.</p>
+<h2 id="viewing-edge-s-marks-in-wpa">Viewing Edge's marks in WPA</h2>
+<p>Capturing marks from Edge couldn't be simpler, just:</p>
+<ol>
+<li>Ensure you <a href="https://blogs.windows.com/msedgedev/2016/05/11/top-down-analysis-wpt">record your trace</a> using the <strong>Edge Browser</strong> scenario</li>
+<li>Run your scenario which uses the <code>performance.mark()</code> API</li>
+<li>Save your trace</li>
+</ol>
+<p>That's really it!</p>
+<p>To view the marks, load up the trace and add the <strong>Generic Events</strong> graph, which is under the <strong>System Activity</strong> section.
+Each mark will be an event under the <strong>Microsoft-IE</strong> provider, and the <strong>Mshtml_MsPerformance_Mark</strong> Task Name. The name
+your app supplied for the event is available in <strong>Name</strong> field, which is also <strong>Field 1</strong> (ETW providers can label the
+event's payload fields).</p>
+<p><img src="/img/wpa-marks/edge-marks.png" alt="Viewing Edge performance marks in WPA"></p>
+<h2 id="viewing-chrome-s-marks-in-wpa">Viewing Chrome's marks in WPA</h2>
+<p>There's a bit more effort involved in getting Chrome to emit ETW events, but thanks to Bruce Dawson (who's
+<a href="https://randomascii.wordpress.com/">blog</a> you should definitely be reading!) and the <a href="https://github.com/google/UIforETW">UIforETW</a> project, we have all the information
+we need.</p>
+<h3 id="registering-chrome-s-etw-provider">Registering Chrome's ETW provider</h3>
+<p>First we need to register Chrome's ETW provider. Registration tells the ETW system how to "subscribe" to Chrome's events
+and how to decode the binary payload into fields. To register:</p>
+<ol>
+<li>Download <code>DummyChrome.dll</code> and <code>chrome_events_win.man</code> from <a href="https://github.com/google/UIforETW/blob/master/bin/">https://github.com/google/UIforETW/blob/master/bin/</a></li>
+<li>Unregister and reregister (so that any changes take effect) Chrome's ETW event provider and manifests using <code>wevtutil</code> from an <em>elevated</em> command prompt</li>
+</ol>
+<pre class="highlight"><code class="hljs cmd">wevtutil uninstall-manifest C:\full\<span class="hljs-built_in">path</span>\to\chrome_events_win.man
+wevtutil install-manifest C:\full\<span class="hljs-built_in">path</span>\to\chrome_events_win.man /resourceFilePath:C:\full\<span class="hljs-built_in">path</span>\to\DummyChrome.dll /messageFilePath:C:\full\<span class="hljs-built_in">path</span>\to\DummyChrome.dll
+</code></pre>
+<blockquote>
+<p>NOTE: Replace <code>C:\full\path\to\</code> as necessary. <code>wevtutil</code> requires an <em>absolute</em> path.</p>
+</blockquote>
+<blockquote>
+<p>NOTE: <code>wevtutil</code> may give a warning similar to <code>**** Warning: Publisher Chrome resources could not be found or are not accessible</code>. This warning is safe to ignore.</p>
+</blockquote>
+<ol start="3">
+<li>Finally, in order for Chrome to actually <em>emit</em> events, we need to tell Chrome to enable ETW tracing. That's as simple
+as passing flag <code>--trace-export-events-to-etw</code> when starting Chrome</li>
+</ol>
+<pre class="highlight"><code class="hljs cmd"><span class="hljs-keyword">call</span> "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" --trace-export-events-to-etw
+</code></pre>
+<blockquote>
+<p>NOTE: You may need to close existing instances of Chrome before passing this flag to ensure you get the correct behavior.
+NOTE: Make sure to start Chrome from a regular Command line instance and not from an Administrator Command Line. The higher priveleges used in the admin command line can at times mess with the execution of Chrome.</p>
+</blockquote>
+<h3 id="using-a-chrome-wpr-recording-profile">Using a Chrome WPR Recording Profile</h3>
+<p>Now that Chrome is all set up to emit ETW events, we need to set up WPR to subscribe to those events. The easiest way to
+do that is:</p>
+<ol>
+<li>Save this XML file as a .wprp (Windows Performance Recorder Profile) file.</li>
+</ol>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-meta">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+<span class="hljs-tag">&lt;<span class="hljs-name">WindowsPerformanceRecorder</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"1.0"</span> <span class="hljs-attr">Author</span>=<span class="hljs-string">"Matt Kotsenas"</span> <span class="hljs-attr">Copyright</span>=<span class="hljs-string">"Microsoft Corporation"</span> <span class="hljs-attr">Company</span>=<span class="hljs-string">"Microsoft Corporation"</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Profiles</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">EventCollector</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"EventCollector_ChromeTraceSession"</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"ChromeTraceSession"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">BufferSize</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"1024"</span> /&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">Buffers</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"400"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">EventCollector</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">EventProvider</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"EventProvider_Chrome"</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"D2D578D9-2936-45B6-A09f-30E32715F42D"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">Keywords</span>&gt;</span>
+        <span class="hljs-comment">&lt;!-- 0xA0000000000000A0 exports all Chrome tracing events that are enabled by default. See https://codereview.chromium.org/1176243016 for more info --&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">Keyword</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"0xA0000000000000A0"</span> /&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-name">Keywords</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">EventProvider</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">Profile</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"ChromeTracing.Verbose.File"</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"ChromeTracing"</span> <span class="hljs-attr">Description</span>=<span class="hljs-string">"Chrome tracing"</span> <span class="hljs-attr">LoggingMode</span>=<span class="hljs-string">"File"</span> <span class="hljs-attr">DetailLevel</span>=<span class="hljs-string">"Verbose"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">ProblemCategories</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">ProblemCategory</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"Custom"</span>/&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-name">ProblemCategories</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">Collectors</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">EventCollectorId</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"EventCollector_ChromeTraceSession"</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">EventProviders</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">EventProviderId</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"EventProvider_Chrome"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">EventProviders</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">EventCollectorId</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-name">Collectors</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">Profile</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">Profile</span> <span class="hljs-attr">Id</span>=<span class="hljs-string">"ChromeTracing.Verbose.Memory"</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"ChromeTracing"</span> <span class="hljs-attr">Description</span>=<span class="hljs-string">"Chrome tracing"</span> <span class="hljs-attr">LoggingMode</span>=<span class="hljs-string">"Memory"</span> <span class="hljs-attr">DetailLevel</span>=<span class="hljs-string">"Verbose"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">ProblemCategories</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">ProblemCategory</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"Custom"</span>/&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-name">ProblemCategories</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">Collectors</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">EventCollectorId</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"EventCollector_ChromeTraceSession"</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-name">EventProviders</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-name">EventProviderId</span> <span class="hljs-attr">Value</span>=<span class="hljs-string">"EventProvider_Chrome"</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-name">EventProviders</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-name">EventCollectorId</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-name">Collectors</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">Profile</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">Profiles</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">WindowsPerformanceRecorder</span>&gt;</span>
+</code></pre>
+<ol start="2">
+<li>Add the profile to WPR by clicking "Add profiles..." and selecting the file</li>
+<li>Start the trace!</li>
+</ol>
+<h3 id="viewing-the-marks">Viewing the marks</h3>
+<p>Just like with Edge, Chrome emits an event for each mark, which can be found in the <strong>Generic Events</strong> table. Unlike Edge, Chrome
+uses only a single provider, (<strong>Chrome</strong>) and event type (a generic "info" event). You can find your app's marks by searching
+in the <strong>Name</strong> field (also <strong>Field 1</strong>).</p>
+<p><img src="/img/wpa-marks/chrome-marks.png" alt="Viewing Chrome performance marks in WPA"></p>
+<h2 id="filtering-to-marks">Filtering to marks</h2>
+<p>Also a quick tip, you can easily filter all your ETW graphs to just include the time between two marks by selcting the marks,
+then in a graph right-clicking in the highlighted range and selecting "Filter to Selected Time(s)". This feature is really
+useful to focus in on a specific part of your app.</p>
+<p><img src="/img/wpa-marks/filter-to-marks.png" alt="Filtering graphs to a time range in WPA"></p>
+<p>And that's that! You can now pinpoint your web app's scenario in both Edge and Chrome, and use the full power of WPA
+to drill into the nitty gritty details. Stay tuned for future articles, where I'll discuss how to automate finding
+marks in ETLs, and how to export ETW data matching a measure to support performance monitoring / continous integration
+scenarios.</p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Using%20the%20Windows%20Performance%20Toolkit%20to%20analyze%20performance%20marks%20on%20Edge%20and%20Chrome&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/cover.jpg)" href="/posts/powershell-dynamicproxy-indexers.html">
+          <section class="post">
+            <h2>The curious case of PowerShell, Castle DynamicProxy and indexers</h2>
+            <p>I seem to have hit some sort of edge case between the Castle DynamicProxy object and the binding / dispatching of method calls in PowerShell.…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/wpa-regions/cover.png)" href="/posts/generate-wpa-regions-from-performance-marks.html">
+          <section class="post">
+            <h2>Generating WPA Regions of Interest from performance marks</h2>
+            <p>Automate creating WPA Regions of Interest files using PowerShell…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Profiling and asynchronous initialization to improve PowerShell startup | void where_prohibited() { ... }</title>
+    <meta name="description" content="Initialize your PowerShell profile asynchronously using idle events">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="Profiling and asynchronous initialization to improve PowerShell startup | void where_prohibited() { ... }">
+    <meta property="og:description" content="Initialize your PowerShell profile asynchronously using idle events">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/pwsh-profiling-async-startup.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/pwsh-profiling-async-startup/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Profiling and asynchronous initialization to improve PowerShell startup | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Initialize your PowerShell profile asynchronously using idle events">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/pwsh-profiling-async-startup/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/pwsh-profiling-async-startup/cover.jpeg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Profiling and asynchronous initialization to improve PowerShell startup</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2024-May-24">24 May 2024</time> 
+  <a href="/tags/powershell.html">PowerShell</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <h2 id="scenario">Scenario</h2>
+<p>As an avid terminal user, my PowerShell <a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles?view=powershell-7.4">$PROFILE</a>
+is full of customizations to make working on the terminal more enjoyable. However, each line in the profile comes at the
+cost of increased startup time.</p>
+<p>Recently my profile's startup time grew to the point that it started to interrupt my flow, so I went looking for
+ways to improve performance.</p>
+<h3 id="profiling">Profiling</h3>
+<p>The first tactic should be to improve the code in your profile. The PowerShell team has the great blog post
+"<a href="https://devblogs.microsoft.com/powershell/optimizing-your-profile/">Optimizing your $Profile</a>" which suggests some
+techniques to improve performance. It also recommends the excellent <a href="https://github.com/IISResetMe/PSProfiler">PSProfiler</a>
+tool for measuring and improving performance.</p>
+<p>In my case, my long startup times were caused by 4 lines:</p>
+<pre class="highlight"><code class="hljs powershell">Count  Line       Time Taken Statement
+-----  ----       ---------- ---------
+    <span class="hljs-number">1</span>     <span class="hljs-number">1</span>  **<span class="hljs-number">00</span>:<span class="hljs-number">00.4757793</span> oh<span class="hljs-literal">-my</span><span class="hljs-literal">-posh</span> init pwsh | <span class="hljs-built_in">Invoke-Expression</span>
+    <span class="hljs-number">1</span>     <span class="hljs-number">2</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0010184</span> <span class="hljs-variable">$env:POSH_GIT_ENABLED</span> = <span class="hljs-variable">$true</span>
+    <span class="hljs-number">0</span>     <span class="hljs-number">3</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span>
+    <span class="hljs-number">1</span>     <span class="hljs-number">4</span>  **<span class="hljs-number">00</span>:<span class="hljs-number">00.6424778</span> <span class="hljs-built_in">Import-Module</span> <span class="hljs-literal">-Name</span> Terminal<span class="hljs-literal">-Icons</span>
+    <span class="hljs-number">0</span>     <span class="hljs-number">5</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span>
+    <span class="hljs-number">1</span>     <span class="hljs-number">6</span>  **<span class="hljs-number">00</span>:<span class="hljs-number">00.2414747</span> <span class="hljs-built_in">Import-Module</span> z
+    <span class="hljs-number">0</span>     <span class="hljs-number">7</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span>
+    <span class="hljs-number">0</span>     <span class="hljs-number">8</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span> <span class="hljs-comment"># Load up everything in the scripts folder</span>
+    <span class="hljs-number">0</span>     <span class="hljs-number">9</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span> <span class="hljs-keyword">foreach</span> (<span class="hljs-variable">$scriptFile</span> <span class="hljs-keyword">in</span> (<span class="hljs-built_in">Get-ChildItem</span> <span class="hljs-literal">-Path</span> <span class="hljs-variable">$PSScriptRoot</span>\scripts <span class="hljs-literal">-Recurse</span> <span class="hljs-literal">-Include</span> *.ps1))
+    <span class="hljs-number">0</span>    <span class="hljs-number">10</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span> {
+    <span class="hljs-number">9</span>    <span class="hljs-number">11</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0736413</span>   . <span class="hljs-variable">$scriptFile</span>.FullName
+    <span class="hljs-number">0</span>    <span class="hljs-number">12</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span> }
+    <span class="hljs-number">1</span>    <span class="hljs-number">13</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0067889</span> . <span class="hljs-variable">$PSScriptRoot</span>\aliases.ps1
+    <span class="hljs-number">0</span>    <span class="hljs-number">14</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0000000</span>
+    <span class="hljs-number">1</span>    <span class="hljs-number">15</span>    <span class="hljs-number">00</span>:<span class="hljs-number">00.0007204</span> <span class="hljs-variable">$Env:PYTHONIOENCODING</span>=<span class="hljs-string">'utf-8'</span>
+    <span class="hljs-number">1</span>    <span class="hljs-number">16</span>  **<span class="hljs-number">00</span>:<span class="hljs-number">00.3904604</span> iex <span class="hljs-string">"<span class="hljs-variable">$</span>(thefuck --alias)"</span>
+</code></pre>
+<ol>
+<li><a href="https://ohmyposh.dev/">Oh My Posh</a></li>
+<li><a href="https://github.com/devblackops/Terminal-Icons">Terminal-Icons</a></li>
+<li><a href="https://github.com/badmotorfinger/z">z</a></li>
+<li><a href="https://github.com/nvbn/thefuck">thefuck</a></li>
+</ol>
+<p>In my case, these modules are pretty important to my daily workflow and I was unwilling to give them up. Instead, I went
+looking for alternatives.</p>
+<h3 id="async-background-initialization">Async / background initialization</h3>
+<p>My approach was to find a way to make the default PowerShell prompt available immediately and then swap in the fully
+loaded environment.</p>
+<p>After a few false starts (see <a href="#runspaces">Appendix: Runspaces</a>), I found that Register-EngineEvent would work for my
+purposes.</p>
+<h4 id="using-powershell-s-idle-event">Using PowerShell's Idle event</h4>
+<p><a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/register-engineevent?view=powershell-7.4">Register-EngineEvent</a>
+has the ability to schedule work for when PowerShell is idle. Given a registration like this:</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-built_in">Register-EngineEvent</span> <span class="hljs-literal">-SourceIdentifier</span> PowerShell.OnIdle <span class="hljs-literal">-MaxTriggerCount</span> <span class="hljs-number">1</span> <span class="hljs-literal">-Action</span> { <span class="hljs-variable">$Host</span>.UI.WriteLine(<span class="hljs-string">"Hello, World!"</span>) }
+</code></pre>
+<p>"Hello, World!" will be run after the PowerShell prompt goes idle.</p>
+<p><img src="/img/pwsh-profiling-async-startup/example-idle-event.gif" alt="Example of using Register-EngineEvent to write to the host"></p>
+<blockquote>
+<p>NOTE: <code>$Host.UI</code> is used in this example to force the action to use the parent's output. Using <code>echo</code> would instead
+direct the output to the event handler's job object.</p>
+</blockquote>
+<h4 id="using-modules-to-access-the-global-scope">Using modules to access the global scope</h4>
+<p>One complication of the event handler is that it uses
+<a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_jobs?view=powershell-7.4">jobs</a>
+to run the action in the background, and jobs use a new
+<a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_scopes?view=powershell-7.4">scope</a>.
+Thus, by default, any code run in the idle event <em>won't</em> be available to the prompt.</p>
+<p>There are multiple ways to access the global scope in PowerShell, but the one I found to be the simplest and easiest
+is to use modules.</p>
+<p>Modules support loading into the
+<a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/import-module?view=powershell-7.4#-global">global scope</a>.
+Adding the <code>-Global</code> parameter to <code>Import-Module</code> ensures that the module is available in the prompt.</p>
+<p>For code that isn't already in a module, the <code>New-Module</code> cmdlet can be used to make a module on-the-fly. For example,
+this loads <code>thefuck</code> (which creates a function) into the global namespace:</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-built_in">New-Module</span> <span class="hljs-literal">-ScriptBlock</span> { iex <span class="hljs-string">"<span class="hljs-variable">$</span>(thefuck --alias)"</span> } | <span class="hljs-built_in">Import-Module</span> <span class="hljs-literal">-Global</span>
+</code></pre>
+<h4 id="putting-it-all-together">Putting it all together</h4>
+<p>The last step is to wire the pieces together in <code>$PROFILE</code>.</p>
+<p>PowerShell will use the default prompt until the profile is loaded, so consider writing a simple prompt that signals
+that the profile is still loading:</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">prompt</span></span> {
+  <span class="hljs-comment"># We will override this prompt, however because it is loading async we want to communicate that the real prompt is still loading.</span>
+  <span class="hljs-string">"[async init]: PS <span class="hljs-variable">$</span>(<span class="hljs-variable">$executionContext</span>.SessionState.Path.CurrentLocation)<span class="hljs-variable">$</span>('&gt;' * (<span class="hljs-variable">$nestedPromptLevel</span> + 1)) "</span>;
+}
+</code></pre>
+<p>Next, break your profile into "chunks". One chunk will be loaded per idle callback. I chose a chunk per tool to keep
+things simple.</p>
+<p>Last, we need a queue to track our chunk work, and a bit of cleanup afterwards.</p>
+<p>Here's an example of loading those same tools asynchronously:</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-comment"># Create a queue of modules to load</span>
+[<span class="hljs-type">System.Collections.Queue</span>]<span class="hljs-variable">$__initQueue</span> = <span class="hljs-selector-tag">@</span>(
+  {
+    oh<span class="hljs-literal">-my</span><span class="hljs-literal">-posh</span> init pwsh | <span class="hljs-built_in">Invoke-Expression</span>
+    <span class="hljs-variable">$Env:POSH_GIT_ENABLED</span> = <span class="hljs-variable">$true</span>
+  },
+  {
+    <span class="hljs-built_in">Import-Module</span> <span class="hljs-literal">-Name</span> Terminal<span class="hljs-literal">-Icons</span> <span class="hljs-literal">-Global</span>
+  },
+  {
+    <span class="hljs-built_in">Import-Module</span> <span class="hljs-literal">-Name</span> z <span class="hljs-literal">-Global</span>
+  },
+  {
+    <span class="hljs-variable">$Env:PYTHONIOENCODING</span>=<span class="hljs-string">'utf-8'</span>
+    <span class="hljs-built_in">New-Module</span> <span class="hljs-literal">-Name</span> thefuck <span class="hljs-literal">-ScriptBlock</span> { iex <span class="hljs-string">"<span class="hljs-variable">$</span>(thefuck --alias)"</span> } | <span class="hljs-built_in">Import-Module</span> <span class="hljs-literal">-Global</span>
+  }
+)
+
+<span class="hljs-comment"># Register our idle callback; use `-SupportEvent` to hide the registration from the user</span>
+<span class="hljs-built_in">Register-EngineEvent</span> <span class="hljs-literal">-SourceIdentifier</span> PowerShell.OnIdle <span class="hljs-literal">-SupportEvent</span> <span class="hljs-literal">-Action</span> {
+    <span class="hljs-keyword">if</span> (<span class="hljs-variable">$__initQueue</span>.Count <span class="hljs-operator">-gt</span> <span class="hljs-number">0</span>) {
+      &amp; <span class="hljs-variable">$__initQueue</span>.Dequeue()
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-comment"># NOTE: Use `-Force` when unregistering because we used `-SupportEvent` when registering</span>
+      <span class="hljs-built_in">Unregister-Event</span> <span class="hljs-literal">-SubscriptionId</span> <span class="hljs-variable">$EventSubscriber</span>.SubscriptionId <span class="hljs-literal">-Force</span>
+
+      <span class="hljs-comment"># Remove our queue variable to avoid polluting the environment</span>
+      <span class="hljs-built_in">Remove-Variable</span> <span class="hljs-literal">-Name</span> <span class="hljs-string">'__initQueue'</span> <span class="hljs-literal">-Scope</span> Global <span class="hljs-literal">-Force</span>
+
+      <span class="hljs-comment"># Re-render the prompt so we get pretty colors ASAP!</span>
+      [<span class="hljs-type">Microsoft.PowerShell.PSConsoleReadLine</span>]::InvokePrompt()
+    }
+}
+</code></pre>
+<p>And here's PowerShell being interactive instantly with the pretty prompt rendering once loaded.</p>
+<p><img src="/img/pwsh-profiling-async-startup/example-async.gif" alt="Example running an interactive shell that loads in the background"></p>
+<p>Hope this makes your day a bit more productive! 🧑‍💻</p>
+<h3 id="appendix">Appendix</h3>
+<h4 id="avoiding-conflicts-with-psreadline">Avoiding conflicts with PSReadline</h4>
+<p><a href="https://github.com/PowerShell/PSReadLine">PSReadline</a> supports highlighting a part of the prompt to signal syntax errors
+before pressing enter. Powerline-esque tools like oh-my-posh generally turn this feature off, as it can conflict with
+their own rendering.</p>
+<p>Because we're moving initialization out of the startup code path, you may want to disable this feature yourself:</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-comment"># Disable the "make the prompt red during parse error" because it conflicts with oh-my-posh</span>
+<span class="hljs-built_in">Set-PSReadLineOption</span> <span class="hljs-literal">-PromptText</span> <span class="hljs-string">''</span>
+</code></pre>
+<h3 id="runspaces">Runspaces</h3>
+<p>Initially, I assumed that somehow
+<a href="https://learn.microsoft.com/en-us/powershell/scripting/developer/hosting/creating-runspaces?view=powershell-7.4">runspaces</a>
+would be involved.</p>
+<p>Searching lead me to the following two posts:</p>
+<ul>
+<li><a href="https://gist.github.com/instance-id/1b20852728cc34a70e0ba93527a41c34">https://gist.github.com/instance-id/1b20852728cc34a70e0ba93527a41c34</a></li>
+<li><a href="https://fsackur.github.io/2023/11/20/Deferred-profile-loading-for-better-performance/">https://fsackur.github.io/2023/11/20/Deferred-profile-loading-for-better-performance/</a></li>
+</ul>
+<p>Both examples used a similar approach:</p>
+<ol>
+<li>Start up a child runspace</li>
+<li>Attach a state / context object</li>
+<li>Run $PROFILE in the runspace asynchronously</li>
+<li>Check for completion and marshall the loaded state into the parent runspace</li>
+</ol>
+<p>Both examples <em>mostly</em> worked, but were flaky or fragile. I'd occasionally experience a crash on startup, or some modules
+would capture state from the child runspace and wouldn't work correctly in the parent runspace.</p>
+<p>Nonetheless, I'm very grateful for both examples as they helped me understand PowerShell internals better and also
+clarified the async loading user experience. </p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Profiling%20and%20asynchronous%20initialization%20to%20improve%20PowerShell%20startup&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/msbuild-targets-with-vertical-slices/cover.jpg)" href="/posts/msbuild-targets-with-vertical-slices.html">
+          <section class="post">
+            <h2>Simplify MSBuild Directory.Build.props and .targets files with vertical slices</h2>
+            <p>Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="/posts/traversal-project-best-practices.html">
+          <section class="post">
+            <h2>MSBuild Traversal project best practices</h2>
+            <p>Best practices for using MSBuild traversal projects…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Simplify MSBuild Directory.Build.props and .targets files with vertical slices | void where_prohibited() { ... }</title>
+    <meta name="description" content="Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="Simplify MSBuild Directory.Build.props and .targets files with vertical slices | void where_prohibited() { ... }">
+    <meta property="og:description" content="Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/msbuild-targets-with-vertical-slices.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/msbuild-targets-with-vertical-slices/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Simplify MSBuild Directory.Build.props and .targets files with vertical slices | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/msbuild-targets-with-vertical-slices/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/msbuild-targets-with-vertical-slices/cover.jpg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Simplify MSBuild Directory.Build.props and .targets files with vertical slices</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2023-September-14">14 September 2023</time> 
+  <a href="/tags/.net.html">.net</a>, 
+
+  <a href="/tags/msbuild.html">msbuild</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <h2 id="background">Background</h2>
+<p><code>Directory.Build.props</code> and <code>Directory.Build.targets</code> are two files that allow you to set default MSBuild items,
+properties, and targets for all projects under a given directory. Think <code>.editorconfig</code> but for MSBuild. Common use
+cases for these files are things like:</p>
+<ul>
+<li>Setting default .NET properties such as target framework version, C# language version, and reference type nullability</li>
+<li>Setting sharing package metadata like author, repository URL, version, and license across several packages</li>
+<li>Adding common analyzers and source generators to all projects</li>
+</ul>
+<p>Check out <a href="https://garywoodfine.com/what-is-this-directory-build-props-file-all-about/">Gary Woodfine's blog</a> and the official <a href="https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory?view=vs-2022">Microsoft docs</a>
+if you'd like to learn more about Directory.Build.props/targets. Read the <a href="https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-your-build?view=vs-2022">Customizing MSBuild docs</a>
+to learn more about .props and .targets files more generally.</p>
+<h3 id="overriding-props-and-targets-files">Overriding .props and .targets files</h3>
+<blockquote>
+<p>NOTE: For brevity, from this point on I'll use "Directory.Build.props" to refer to both the .props and .targets files</p>
+</blockquote>
+<p>Directory.Build.props supports overrides by placing another file "closer" to the code. As an example, a
+Directory.Build.props placed in the <code>/tests</code> directory can override default settings placed in the root directory. That
+mechanism works great for code organized like this:</p>
+<pre class="highlight"><code class="hljs gherkin">MyRepo
+|<span class="hljs-string">-- Directory.Build.props
+</span>|<span class="hljs-string">-- src
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Directory.Build.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- App1
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- App2
+</span>|
+|<span class="hljs-string">-- test
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Directory.Build.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- App1.Tests
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- App2.Tests
+</span></code></pre><p>However, it doesn't work great for code organized like this:</p>
+<pre class="highlight"><code class="hljs gherkin">MyRepo
+|<span class="hljs-string">-- Directory.Build.props
+</span>|<span class="hljs-string">-- App1
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- src
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- test
+</span>|
+|<span class="hljs-string">-- App2
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- src
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- test
+</span></code></pre><p>because there's no common root that all projects share (besides the root itself). If your code is organized this way, a
+common workaround is to use the root .props file and <a href="https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-conditions?view=vs-2022">MSBuild conditions</a> to apply the appropriate
+properties to a given project. </p>
+<p>For example, let's say you want all test projects to automatically reference <a href="https://fluentassertions.com/">FluentAssertions</a>. You
+can add this to your <code>Directory.Build.props</code>:</p>
+<blockquote>
+<p>NOTE: Choosing between .props and .targets can be a tricky decision. See
+<a href="https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-your-build?view=vs-2022#choose-between-adding-properties-to-a-props-or-targets-file">Choose between adding properties to a .props or .targets file</a> for more information.</p>
+</blockquote>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(IsTestProject)' == 'true'"</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"FluentAssertions"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"6.12.0"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p>In this example, we use the .NET well-known property of <code>IsTestProject</code> to conditionally include our package reference
+into all test projects.</p>
+<h2 id="accumulation-of-cruft">Accumulation of cruft</h2>
+<p>If left unchecked, Directory.Build.props tends to accumulate a lot of cruft: workarounds for bugs, fixes for edge cases,
+customizations for dependencies no longer in use, etc. Additionally, because code is often split across the .props
+and .targets files, it can be difficult to understand <em>why</em> some sections exist and how they interact with the other
+sections.</p>
+<p>To illustrate my point, here's a sample setup for a side project that packages a NuGet CLI tool and MSBuild task. The
+specifics of these files are less important than the general pattern they outline, so don't worry about any one section
+too much. I'm going to show three files: <code>Directory.Build.props</code> and <code>Directory.Build.targets</code>, which we've discussed at
+length, and add in <code>Directory.Package.props</code>, which is used by NuGet's
+<a href="https://devblogs.microsoft.com/nuget/introducing-central-package-management/">Central Package Management</a> feature.</p>
+<p><strong>Directory.Build.props</strong></p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">RepoRoot</span>&gt;</span>$(MSBuildThisFileDirectory)<span class="hljs-tag">&lt;/<span class="hljs-name">RepoRoot</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-comment">&lt;!-- Default IsShipping to true --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">IsShipping</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(IsShipping)' == ''"</span>&gt;</span>true<span class="hljs-tag">&lt;/<span class="hljs-name">IsShipping</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-comment">&lt;!-- https://github.com/dotnet/reproducible-builds --&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"DotNet.ReproducibleBuilds"</span> <span class="hljs-attr">PrivateAssets</span>=<span class="hljs-string">"All"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Sdk</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"DotNet.ReproducibleBuilds.Isolated"</span> /&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-comment">&lt;!--
+      Defining and using artifacts path manually in preparation for .NET 8's artifacts output format.
+      See https://github.com/dotnet/docs/issues/36446
+    --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">ArtifactsPath</span>&gt;</span>$(RepoRoot)/artifacts<span class="hljs-tag">&lt;/<span class="hljs-name">ArtifactsPath</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-comment">&lt;!-- Polyfill --&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(UsePolyfill)' == 'true'"</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Polyfill"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">IncludeAssets</span>&gt;</span>runtime; build; native; contentfiles; analyzers; buildtransitive<span class="hljs-tag">&lt;/<span class="hljs-name">IncludeAssets</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"System.Memory"</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"$(TargetFrameworkIdentifier) == '.NETStandard' or $(TargetFrameworkIdentifier) == '.NETFramework' or $(TargetFramework.StartsWith('netcoreapp2'))"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">PackageReference</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"System.Threading.Tasks.Extensions"</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"$(TargetFramework) == 'netstandard2.0' or $(TargetFramework) == 'netcoreapp2.0' or $(TargetFrameworkIdentifier) == '.NETFramework'"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">PackageReference</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(IsTestProject)' == 'true'"</span>&gt;</span>
+    <span class="hljs-comment">&lt;!-- Add xunit to test projects --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"xunit"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"xunit.runner.visualstudio"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">IncludeAssets</span>&gt;</span>runtime; build; native; contentfiles; analyzers; buildtransitive<span class="hljs-tag">&lt;/<span class="hljs-name">IncludeAssets</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">PackageReference</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Microsoft.NET.Test.Sdk"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"coverlet.collector"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">IncludeAssets</span>&gt;</span>runtime; build; native; contentfiles; analyzers; buildtransitive<span class="hljs-tag">&lt;/<span class="hljs-name">IncludeAssets</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">PackageReference</span>&gt;</span>
+
+    <span class="hljs-comment">&lt;!--
+      Add global usings for test projects.
+      (see https://devblogs.microsoft.com/dotnet/welcome-to-csharp-10/#combining-using-features)
+    --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">Using</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Xunit"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">Using</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Xunit.Abstractions"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(IsTestProject)' == 'true'"</span>&gt;</span>
+    <span class="hljs-comment">&lt;!-- Add FluentAssertions to test projects and add global using --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"FluentAssertions"</span> /&gt;</span>
+
+    <span class="hljs-tag">&lt;<span class="hljs-name">Using</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"FluentAssertions"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p><strong>Directory.Build.targets</strong></p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-comment">&lt;!-- Polyfill --&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">LangVersion</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(UsePolyfill)' == 'true'"</span>&gt;</span>latest<span class="hljs-tag">&lt;/<span class="hljs-name">LangVersion</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-comment">&lt;!-- Test projects can't also be shipping projects --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">IsShipping</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(IsTestProject)' == true"</span>&gt;</span>false<span class="hljs-tag">&lt;/<span class="hljs-name">IsShipping</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">Target</span> <span class="hljs-attr">Name</span>=<span class="hljs-string">"MapToAbsoluteFilePaths"</span> <span class="hljs-attr">BeforeTargets</span>=<span class="hljs-string">"CoreCompile"</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(DesignTimeBuild)' != 'true'"</span>&gt;</span>
+    <span class="hljs-comment">&lt;!--
+      Work around .editorconfig evaluation bugs in command line builds. See https://github.com/dotnet/roslyn/issues/43371
+    --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">_AbsoluteCompile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"@(Compile-&gt;'%(FullPath)')"</span> /&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Remove</span>=<span class="hljs-string">"@(Compile)"</span> /&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">Compile</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"@(_AbsoluteCompile)"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">Target</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-comment">&lt;!-- Force warnings as errors for shipping projects --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">TreatWarningsAsErrors</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(IsShipping)' =='true'"</span>&gt;</span>true<span class="hljs-tag">&lt;/<span class="hljs-name">TreatWarningsAsErrors</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p><strong>Directory.Package.props</strong></p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">ManagePackageVersionsCentrally</span>&gt;</span>true<span class="hljs-tag">&lt;/<span class="hljs-name">ManagePackageVersionsCentrally</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span>&gt;</span>
+    <span class="hljs-comment">&lt;!-- CLI tools --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"CliWrap"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"3.6.4"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Microsoft.Extensions.DependencyInjection"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"7.0.0"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Spectre.Console"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"0.47.0"</span> /&gt;</span>
+
+    <span class="hljs-comment">&lt;!-- MSBuild task --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Microsoft.Build.Framework"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"17.7.2"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Microsoft.Build.Utilities.Core"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"17.7.2"</span> /&gt;</span>
+
+    <span class="hljs-comment">&lt;!-- Polyfill + dependencies --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Polyfill"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"1.27.1"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"System.Memory"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"4.5.5"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"System.Threading.Tasks.Extensions"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"4.5.4"</span> /&gt;</span>
+
+    <span class="hljs-comment">&lt;!-- Reproducible builds + dependencies --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"DotNet.ReproducibleBuilds"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"1.2.4"</span> /&gt;</span>
+
+    <span class="hljs-comment">&lt;!-- xUnit + dependencies --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Microsoft.NET.Test.Sdk"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"17.7.2"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"xunit"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"2.5.0"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"xunit.runner.visualstudio"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"2.5.0"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"coverlet.collector"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"6.0.0"</span> /&gt;</span>
+
+    <span class="hljs-comment">&lt;!-- Test helpers --&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageVersion</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"FluentAssertions"</span> <span class="hljs-attr">Version</span>=<span class="hljs-string">"6.12.0"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p>Skimming through this code, I hope a few patterns emerge:</p>
+<ol>
+<li>It's not clear where one "feature" ends and another begins; comments are required to delineate sections</li>
+<li>There are several workarounds and (hopefully) temporary additions</li>
+<li>A "feature" is spread across multiple files; for instance our <code>IsShipping</code> property appears in both .props and
+.targets files, while our Polyfill and Reproducible builds features are in all three files</li>
+<li>"Features" are interleaved; without a lot of discipline, it's easy to end up in a situation where a feature like
+<code>IsShipping</code> is smeared across a file in multiple places and intermingled with other features</li>
+</ol>
+<h2 id="organizing-your-files-in-vertical-slices-features">Organizing your files in vertical slices / features</h2>
+<p>With that context in mind, how should you go about organizing your features into Directory.Build.props (and related)
+files?</p>
+<p>One way to cleanly separate our concerns is to organize our code around features or
+<a href="https://www.jimmybogard.com/vertical-slice-architecture/">vertical slices</a>. Rather than rely on comments to delineate sections and signal intent,
+physically group related functionality into directories. A hierarchy such as this reduces clutter and makes it easier
+to understand how each feature works.</p>
+<p>Using the above example, we can create an <code>eng/targets</code> directory and compartmentalize each feature into its own
+subdirectory along with a corresponding <code>.props</code> and <code>.targets</code> file. The code would now be organized like this:</p>
+<pre class="highlight"><code class="hljs gherkin">MyRepo
+|<span class="hljs-string">-- Directory.Build.props
+</span>|<span class="hljs-string">-- Directory.Build.targets
+</span>|<span class="hljs-string">-- Directory.Package.props
+</span>|<span class="hljs-string">-- eng
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- targets
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Artifacts
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Artifacts.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Artifacts.targets
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|
+|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Polyfill
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Polyfill.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Polyfill.targets
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|
+|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- ReproducibleBuilds
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- ReproducibleBuilds.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- ReproducibleBuilds.targets
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|
+|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Shipping
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Shipping.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- Shipping.targets
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|
+|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- TestProjects
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- TestProjects.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- TestProjects.targets
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|
+|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- WorkaroundEditorConfigLinks
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- WorkaroundEditorConfigLinks.props
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- WorkaroundEditorConfigLinks.targets
+</span>|
+|<span class="hljs-string">-- App1
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- src
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- test
+</span>|
+|<span class="hljs-string">-- App2
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- src
+</span>|<span class="hljs-string">   </span>|<span class="hljs-string">-- test
+</span></code></pre><p>Feel free to use a directory other than <code>/eng/targets</code> if you like. <code>/build/targets</code> and <code>/build/props</code> are other
+common choices. It's also up to you to define the granularity of a feature.</p>
+<p>Your root files now contain no functionality. Instead they only import the features like this:</p>
+<p><strong>Directory.Build.props</strong></p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">RepoRoot</span>&gt;</span>$(MSBuildThisFileDirectory)<span class="hljs-tag">&lt;/<span class="hljs-name">RepoRoot</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/Artifacts/Artifacts.props"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/Polyfill/Polyfill.props"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/ReproducibleBuilds/ReproducibleBuilds.props"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/Shipping/Shipping.props"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/TestProjects/TestProjects.props"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/WorkaroundEditorConfigLinks/WorkaroundEditorConfigLinks.props"</span> /&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p><strong>Directory.Build.targets</strong></p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/Artifacts/Artifacts.targets"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/Polyfill/Polyfill.targets"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/ReproducibleBuilds/ReproducibleBuilds.targets"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/Shipping/Shipping.targets"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/TestProjects/TestProjects.targets"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">Import</span> <span class="hljs-attr">Project</span>=<span class="hljs-string">"eng/targets/WorkaroundEditorConfigLinks/WorkaroundEditorConfigLinks.targets"</span> /&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p>From here it's much easier to understand which features are being included. Each feature, no longer cluttered amongst the
+others, is able to easily signal its intent. Comments can be used to explain <em>why</em> rather than as a separator.</p>
+<p>Refactoring each feature would make this post long and boring, so I'll focus on the <code>Polyfill</code> directory as an example:</p>
+<p><strong>Polyfill.props</strong></p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">ItemGroup</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(UsePolyfill)' == 'true'"</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"Polyfill"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">IncludeAssets</span>&gt;</span>runtime; build; native; contentfiles; analyzers; buildtransitive<span class="hljs-tag">&lt;/<span class="hljs-name">IncludeAssets</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"System.Memory"</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"$(TargetFrameworkIdentifier) == '.NETStandard' or $(TargetFrameworkIdentifier) == '.NETFramework' or $(TargetFramework.StartsWith('netcoreapp2'))"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">PackageReference</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">PackageReference</span> <span class="hljs-attr">Include</span>=<span class="hljs-string">"System.Threading.Tasks.Extensions"</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"$(TargetFramework) == 'netstandard2.0' or $(TargetFramework) == 'netcoreapp2.0' or $(TargetFrameworkIdentifier) == '.NETFramework'"</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-name">PrivateAssets</span>&gt;</span>all<span class="hljs-tag">&lt;/<span class="hljs-name">PrivateAssets</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">PackageReference</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">ItemGroup</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p><strong>Polyfill.targets</strong></p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">LangVersion</span> <span class="hljs-attr">Condition</span>=<span class="hljs-string">"'$(UsePolyfill)' == 'true'"</span>&gt;</span>latest<span class="hljs-tag">&lt;/<span class="hljs-name">LangVersion</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">Project</span>&gt;</span>
+</code></pre>
+<p>Organizing your properties this way has several benefits:</p>
+<ol>
+<li>Each feature is specified in one place and free of unrelated details</li>
+<li>Your package versions can also be managed in the props file, keeping dependencies near the functionality. Note that
+this pattern works even when you're using Central Package Management. As an added bonus, Dependabot understands the
+<code>&lt;Import&gt;</code> chain and updates dependencies like you'd expect (I haven't used Renovate, please let me know if that tool
+also works / has problems)</li>
+<li><em>Removing</em> a feature, such as our .editorconfig workaround, is as simple as deleting the folder and corresponding
+imports. By grouping all parts of the workaround together, we've reduced the chance that some pieces are incompletely
+removed and as a result prevented a major source of cruft</li>
+<li>Sharing between projects is much easier; we've reduced the temptation to copy /paste an ever-growing .props file from
+project to project and avoided another common source of cruft accumulation</li>
+</ol>
+<h2 id="wrapping-up">Wrapping up</h2>
+<p>Directory.Build.props and NuGet Central Package Management are two great tools to simplify maintenance of .NET projects,
+<em>especially</em> large projects and monorepos. However, their usefulness also makes them prime candidates for dumping grounds.
+Using vertical slices / features as an organization principle brings some sanity back to working with MSBuild.</p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Simplify%20MSBuild%20Directory.Build.props%20and%20.targets%20files%20with%20vertical%20slices&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/implementing-ioptionsfactory-to-create-options-instances.png)" href="/posts/implementing-ioptionsfactory-to-create-options-instances.html">
+          <section class="post">
+            <h2>Implementing IOptionsFactory&lt;T&gt; to create custom options instances</h2>
+            <p>Recently, I was writing a .NET console app to integrate with a third-party library and had an opportunity to use the IOptions pattern. However, the settings object didn't have a public, parameterless constructor. Here's how I used IOptionsFactory to support these types of options classes...…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/pwsh-profiling-async-startup/cover.jpeg)" href="/posts/pwsh-profiling-async-startup.html">
+          <section class="post">
+            <h2>Profiling and asynchronous initialization to improve PowerShell startup</h2>
+            <p>Initialize your PowerShell profile asynchronously using idle events…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

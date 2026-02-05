@@ -1,0 +1,260 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Implementing IOptionsFactory&lt;T&gt; to create custom options instances | void where_prohibited() { ... }</title>
+    <meta name="description" content="Recently, I was writing a .NET console app to integrate with a third-party library and had an opportunity to use the IOptions pattern. However, the settings object didn't have a public, parameterless constructor. Here's how I used IOptionsFactory to support these types of options classes...">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="Implementing IOptionsFactory&lt;T&gt; to create custom options instances | void where_prohibited() { ... }">
+    <meta property="og:description" content="Recently, I was writing a .NET console app to integrate with a third-party library and had an opportunity to use the IOptions pattern. However, the settings object didn't have a public, parameterless constructor. Here's how I used IOptionsFactory to support these types of options classes...">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/implementing-ioptionsfactory-to-create-options-instances.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/implementing-ioptionsfactory-to-create-options-instances-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Implementing IOptionsFactory&lt;T&gt; to create custom options instances | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Recently, I was writing a .NET console app to integrate with a third-party library and had an opportunity to use the IOptions pattern. However, the settings object didn't have a public, parameterless constructor. Here's how I used IOptionsFactory to support these types of options classes...">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/implementing-ioptionsfactory-to-create-options-instances-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/implementing-ioptionsfactory-to-create-options-instances.png)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Implementing IOptionsFactory&lt;T&gt; to create custom options instances</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2023-June-15">15 June 2023</time> 
+  <a href="/tags/.net.html">.net</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <h2 id="backstory">Backstory</h2>
+<p>Recently, I was writing a .NET console app to integrate with a third-party library. The library
+had a configuration object, let's call it <code>LibSettings</code>, that controlled various options of the library.</p>
+<p>LibSettings is a perfect candidate for the <a href="https://learn.microsoft.com/en-us/dotnet/core/extensions/options">IOptions pattern</a> that's prevalent in both .NET and
+ASP.NET Core. However, there was one big problem. The <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options?view=aspnetcore-7.0#bind-hierarchical-configuration">Options docs</a> say that options classes:</p>
+<blockquote>
+<p>Must be non-abstract with a public parameterless constructor.</p>
+</blockquote>
+<p>and the library author didn't follow this rule (to be fair, the library predates the IOptions pattern).
+Instead, the library uses the factory method pattern to create the settings object like this:</p>
+<pre class="highlight"><code class="hljs csharp">LibSettings.Create()
+</code></pre>
+<p>I was stuck; without a parameterless constructor, I couldn't use the options pattern, but since <code>LibSettings</code>
+is owned by a third-party library, I'm not able to change it.</p>
+<p>However, it turns out the options pattern is more flexible that that.</p>
+<h2 id="writing-a-custom-ioptionsfactory">Writing a custom IOptionsFactory</h2>
+<p>It <em>used</em> to be the case that all options classes needed to satisfy the <code>new()</code> type constraint, but that
+was relaxed back in 2019 with <a href="https://github.com/dotnet/extensions/pull/2169/files">this PR</a>. That change also showcases a supported
+method for creating options instances: implementing <code>IOptionsFactory&lt;T&gt;</code>. What's more, that PR provided a
+virtual method and base class so that our implementation only needs to implement a single method.</p>
+<p>With a class like this:</p>
+<pre class="highlight"><code class="hljs undefined">internal class LibSettingsOptionsFactory : OptionsFactory&lt;LibSettings&gt;
+{
+   public LibSettingsOptionsFactory(
+    IEnumerable&lt;IConfigureOptions&lt;LibSettings&gt;&gt; setups,
+    IEnumerable&lt;IPostConfigureOptions&lt;LibSettings&gt;&gt; postConfigures)
+        : this(setups, postConfigures, validations: Array.Empty&lt;IValidateOptions&lt;LibSettings&gt;&gt;())
+    {
+    }
+
+    public LibSettingsOptionsFactory(
+        IEnumerable&lt;IConfigureOptions&lt;LibSettings&gt;&gt; setups,
+        IEnumerable&lt;IPostConfigureOptions&lt;LibSettings&gt;&gt; postConfigures,
+        IEnumerable&lt;IValidateOptions&lt;LibSettings&gt;&gt; validations)
+        : base(setups, postConfigures, validations)
+    {
+    }
+
+    protected override LibSettings CreateInstance(string name)
+    {
+        // Here's the whole implementation!
+        return LibSettings.Create();
+    }
+}
+</code></pre>
+<p>and a corresponding extension method to simplify registration like this:</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ServiceCollectionExtensions</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> OptionsBuilder&lt;LibSettings&gt; <span class="hljs-title">AddLibSettings</span>(<span class="hljs-params"><span class="hljs-keyword">this</span> IServiceCollection services</span>)</span>
+    {
+        <span class="hljs-keyword">return</span> services.AddLibSettings(Options.DefaultName);
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> OptionsBuilder&lt;LibSettings&gt; <span class="hljs-title">AddLibSettings</span>(<span class="hljs-params"><span class="hljs-keyword">this</span> IServiceCollection services, <span class="hljs-keyword">string</span> name</span>)</span>
+    {
+        <span class="hljs-comment">// Use TryAdd* so that this code respects any user overrides</span>
+        services.TryAddTransient&lt;IOptionsFactory&lt;LibSettings&gt;, LibSettingsOptionsFactory&gt;();
+        <span class="hljs-keyword">return</span> services.AddOptions&lt;LibSettings&gt;(name);
+    }
+}
+</code></pre>
+<p>I've implemented the IOptions pattern for a class without a parameterless constructor! Note that with
+this little bit of code, LibSettings is now available as <code>IOptions&lt;LibSettings&gt;</code>,
+<code>IOptionsMonitor&lt;LibSettings&gt;</code>, <code>IOptionsSnapshot&lt;LibSettings&gt;</code>, and is available via named instances as
+well. Your settings can also hot-reload configuration changes if you use <code>IConfigureOptions&lt;T&gt;</code> as described
+in <a href="https://andrewlock.net/the-dangers-and-gotchas-of-using-scoped-services-when-configuring-options-in-asp-net-core/">Andrew Lock's post</a>.</p>
+<p>Hopefully you can use this trick to make old or special libraries easier to consume from modern .NET code!</p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Implementing%20IOptionsFactory%3CT%3E%20to%20create%20custom%20options%20instances&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/azure-setupcomplete2.jpg)" href="/posts/azure-setupcomplete2.html">
+          <section class="post">
+            <h2>Running post setup commands on Azure VMs with SetupComplete2</h2>
+            <p>Trying to enable the Administrator account on a custom VM image for Azure lead down a rabbit hole…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/msbuild-targets-with-vertical-slices/cover.jpg)" href="/posts/msbuild-targets-with-vertical-slices.html">
+          <section class="post">
+            <h2>Simplify MSBuild Directory.Build.props and .targets files with vertical slices</h2>
+            <p>Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

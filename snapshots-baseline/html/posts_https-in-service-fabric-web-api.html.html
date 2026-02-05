@@ -1,0 +1,500 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>HTTP &amp; HTTPS in Service Fabric Web API | void where_prohibited() { ... }</title>
+    <meta name="description" content="Updating the boilerplate code in a Service Fabric Web API to support HTTP and HTTPS endpoints simultaneously">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="HTTP &amp; HTTPS in Service Fabric Web API | void where_prohibited() { ... }">
+    <meta property="og:description" content="Updating the boilerplate code in a Service Fabric Web API to support HTTP and HTTPS endpoints simultaneously">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/https-in-service-fabric-web-api.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/cover.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="HTTP &amp; HTTPS in Service Fabric Web API | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Updating the boilerplate code in a Service Fabric Web API to support HTTP and HTTPS endpoints simultaneously">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/cover.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/cover.jpg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">HTTP &amp; HTTPS in Service Fabric Web API</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2016-April-27">27 April 2016</time> 
+  <a href="/tags/azure.html">azure</a>, 
+
+  <a href="/tags/service-fabric.html">service fabric</a>, 
+
+  <a href="/tags/.net.html">.net</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <h2 id="prerequisites">Prerequisites</h2>
+<p>Before we start, here are the prerequisites for this article. These instructions were written and tested against the following versions of the Service Fabric API, though the code and techniques likely apply to other versions as well.</p>
+<ol>
+<li>Service Fabric SDK 2.0.135 and Runtime 5.0.135 installed from <a href="https://azure.microsoft.com/en-us/documentation/articles/service-fabric-get-started/">here</a></li>
+<li>A Web API service based on <a href="https://azure.microsoft.com/en-us/documentation/articles/service-fabric-reliable-services-communication-webapi/">OWIN self-hosting</a>, which you can create by adding a new Web API service template from Visual Studio</li>
+</ol>
+<h2 id="getting-started">Getting Started</h2>
+<p>If you're creating your first Web API microservice in Service Fabric, you <a href="https://snyk.io/blog/10-reasons-to-use-https/">probably</a> want to add HTTPS support pretty early on. In my not-so-humble experience getting the boilerplate <code>ValuesController</code> 
+in the new project accessible over HTTPS took a lot longer than I expected, so here's the approach I took. Hopefully this advice will ease the pain for you and also make your code more flexible in the future.</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">ValuesController</span> : <span class="hljs-title">ApiController</span>
+{
+    <span class="hljs-comment">// GET api/values</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> IEnumerable&lt;<span class="hljs-keyword">string</span>&gt; <span class="hljs-title">Get</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-keyword">string</span>[] { <span class="hljs-string">"value1"</span>, <span class="hljs-string">"value2"</span> };
+    }
+
+    <span class="hljs-comment">// GET api/values/5</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">string</span> <span class="hljs-title">Get</span>(<span class="hljs-params"><span class="hljs-keyword">int</span> id</span>)</span>
+    {
+        <span class="hljs-keyword">return</span> <span class="hljs-string">"value"</span>;
+    }
+
+    <span class="hljs-comment">// POST api/values</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Post</span>(<span class="hljs-params">[FromBody]<span class="hljs-keyword">string</span> <span class="hljs-keyword">value</span></span>)</span>
+    {
+    }
+
+    <span class="hljs-comment">// PUT api/values/5</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Put</span>(<span class="hljs-params"><span class="hljs-keyword">int</span> id, [FromBody]<span class="hljs-keyword">string</span> <span class="hljs-keyword">value</span></span>)</span>
+    {
+    }
+
+    <span class="hljs-comment">// DELETE api/values/5</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Delete</span>(<span class="hljs-params"><span class="hljs-keyword">int</span> id</span>)</span>
+    {
+    }
+}
+</code></pre>
+<p><em>The 'Hello World' controller for new Web API projects</em></p>
+<h3 id="step-1-add-an-https-endpoint-to-the-service-and-application-manifests">Step 1: Add an HTTPS endpoint to the Service and Application manifests</h3>
+<h5 id="make-sure-you-have-a-certificate-in-your-service-fabric-cluster">Make sure you have a certificate in your Service Fabric cluster</h5>
+<p>If you followed the <a href="https://azure.microsoft.com/en-us/documentation/articles/service-fabric-cluster-security/">Secure a Service Fabric cluster docs</a> then you already have the management certificate that you can reuse for this purpose. If your cluster is insecure, then go back and fix that first!</p>
+<h5 id="add-the-certificate-to-the-localmachine-my-store-on-your-dev-machine-for-debugging">Add the certificate to the LocalMachine\My store on your dev machine for debugging</h5>
+<p>According to <a href="https://azure.microsoft.com/en-us/documentation/articles/service-fabric-cluster-security/">the docs</a> the certificate should be added to <code>CurrentUser\My</code> and <code>CurrentUser\TrustedPeople</code>, however I also had to add the certificate to <code>LocalMachine\My</code> in order to debug on the local cluster. This is because the Service Fabric local cluster runs as <strong>NETWORK SERVICE</strong> and not as your user account. The PowerShell command to import the certificate is</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-built_in">Import-PfxCertificate</span> <span class="hljs-literal">-Exportable</span> <span class="hljs-literal">-CertStoreLocation</span> Cert:\LocalMachine\My <span class="hljs-literal">-FilePath</span> C:\path\to\cert.pfx <span class="hljs-literal">-Password</span> (<span class="hljs-built_in">Read-Host</span> <span class="hljs-literal">-AsSecureString</span> <span class="hljs-literal">-Prompt</span> <span class="hljs-string">"Enter Certificate Password"</span>)
+</code></pre>
+<blockquote>
+<p>NOTE: I think this isn't part of the MSDN setup because it's possible your cluster won't ever open HTTPS ports (e.g. uses only queues, binary protocols, etc.).
+Thus I'm not sure where this should go in the docs. If you find a good place for it, let me know!</p>
+</blockquote>
+<h5 id="update-servicemanifest-xml-and-applicationmanifest-xml">Update ServiceManifest.xml and ApplicationManifest.xml</h5>
+<p><a href="https://azure.microsoft.com/en-us/documentation/articles/service-fabric-service-manifest-resources/">Follow the instructions</a> on updating your <code>ServiceManifest.xml</code> and <code>ApplicationManifest.xml</code>. This tells the Service Fabric cluster that you intend to open an HTTPS port and to ensure the SSL certificate is available. After you're done your manifests' diffs should look similar to this</p>
+<pre class="highlight"><code class="hljs diff">diff --git a/SampleWebApi/PackageRoot/ServiceManifest.xml b/SampleWebApi/PackageRoot/ServiceManifest.xml
+index b6d1453..4fce186 100644
+<span class="hljs-comment">--- a/SampleWebApi/PackageRoot/ServiceManifest.xml</span>
+<span class="hljs-comment">+++ b/SampleWebApi/PackageRoot/ServiceManifest.xml</span>
+<span class="hljs-meta">@@ -29,6 +29,7 @@</span>
+            listen. Please note that if your service is partitioned, this port is shared with
+            replicas of different partitions that are placed in your code. --&gt;
+             &lt;Endpoint Protocol="http" Name="ServiceEndpoint" Type="Input" Port="8521" /&gt;
+<span class="hljs-addition">+            &lt;Endpoint Protocol="https" Name="ServiceEndpointHttps" Type="Input" Port="443" /&gt;</span>
+         &lt;/Endpoints&gt;
+     &lt;/Resources&gt;
+ &lt;/ServiceManifest&gt;
+\ No newline at end of file
+diff --git a/SampleServiceFabric/ApplicationPackageRoot/ApplicationManifest.xml b/SampleServiceFabric/ApplicationPackageRoot/ApplicationManifest.xml
+index 145b554..2ab00c2 100644
+<span class="hljs-comment">--- a/SampleServiceFabric/ApplicationPackageRoot/ApplicationManifest.xml</span>
+<span class="hljs-comment">+++ b/SampleServiceFabric/ApplicationPackageRoot/ApplicationManifest.xml</span>
+<span class="hljs-meta">@@ -6,6 +6,9 @@</span>
+    &lt;ServiceManifestImport&gt;
+       &lt;ServiceManifestRef ServiceManifestName="SampleWebApiPkg" ServiceManifestVersion="1.0.0" /&gt;
+       &lt;ConfigOverrides /&gt;
+<span class="hljs-addition">+      &lt;Policies&gt;</span>
+<span class="hljs-addition">+         &lt;EndpointBindingPolicy EndpointRef="ServiceEndpointHttps" CertificateRef="MyCert" /&gt;</span>
+<span class="hljs-addition">+      &lt;/Policies&gt;</span>
+    &lt;/ServiceManifestImport&gt;
+    &lt;DefaultServices&gt;
+       &lt;Service Name="SampleWebApi"&gt;
+<span class="hljs-meta">@@ -14,4 +17,7 @@</span>
+          &lt;/StatelessService&gt;
+       &lt;/Service&gt;
+    &lt;/DefaultServices&gt;
+<span class="hljs-addition">+   &lt;Certificates&gt;</span>
+<span class="hljs-addition">+      &lt;EndpointCertificate X509FindValue="1234567890ABCDEFEDCBA0987654321AABBCCDDE" Name="MyCert" /&gt;</span>
+<span class="hljs-addition">+   &lt;/Certificates&gt;</span>
+ &lt;/ApplicationManifest&gt;
+\ No newline at end of file
+
+</code></pre>
+<h5 id="open-the-load-balancer-port-s-">Open the Load Balancer port(s)</h5>
+<p>Navigate to your Azure Load Balancer (it was created automatically in the same resource group as your Service Fabric cluster) and add two new <strong>Load balancing rules</strong> and <strong>Probes</strong> if they don't already exist</p>
+<theader>
+    </theader><table>
+  <tbody><tr><th>Probe / LB Rule</th>
+    <th>Name</th>
+    <th>Port</th>
+  
+  </tr></tbody><tbody>
+    <tr><td>Probe</td><td>WebApiHttp</td><td>HTTP on port 8521</td></tr>
+    <tr><td>Probe</td><td>WebApiHttps</td><td>TCP on port 443</td></tr>
+    <tr><td>LB Rule</td><td>WebApiHttp</td><td>TCP from port 80 to 8521</td></tr>
+    <tr><td>LB Rule</td><td>WebApiHttps</td><td>TCP from port 443 to 443</td></tr>
+  </tbody>
+</table>
+
+<p><img src="/img/https-in-service-fabric-web-api/load-balancer-port.png" alt="Azure Load Balancer HTTPS rule and probe" title="Azure Load Balancer HTTPS rule and probe"></p>
+<h3 id="step-2-update-owincommunicationlistener">Step 2: Update OwinCommunicationListener</h3>
+<p>Now we've got two service endpoints in our manifest. We're done, right? Unfortunately, if you look at the Diagnostic Events for your service you should see logs similar to this</p>
+<theader>
+    </theader><table>
+  <tbody><tr><th>Timestamp</th>
+    <th>Event Name</th>
+    <th>Message</th>
+  
+  </tr></tbody><tbody>
+    <tr><td>18:47:57.040</td><td>StatelessRunAsyncCompletion</td><td>RunAsync has successfully completed for a stateless service instance</td></tr>
+    <tr><td>18:47:57.032</td><td>StatelessRunAsyncInvocation</td><td>RunAsync has been invoked for a stateless service instance</td></tr>
+    <tr><td>18:47:57.008</td><td>ServiceMessage</td><td>Listening on Http://10.0.0.4:8521/</td></tr>
+    <tr><td>18:47:56.003</td><td>ServiceMessage</td><td>Starting web server on Http://+:8521/</td></tr>
+    <tr><td>18:47:55.904</td><td>ServiceTypeRegistered</td><td>Service host process 4472 register service type</td></tr>
+  </tbody>
+</table>
+
+<p>Look like the service is still only listening for on the HTTP endpoint. If you jump to <code>OwinCommunicationListener::OpenAsync()</code> you should see code that looks like this</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> Task&lt;<span class="hljs-keyword">string</span>&gt; <span class="hljs-title">OpenAsync</span>(<span class="hljs-params">CancellationToken cancellationToken</span>)</span>
+{
+    <span class="hljs-keyword">var</span> serviceEndpoint = <span class="hljs-keyword">this</span>.serviceContext.CodePackageActivationContext.GetEndpoint(<span class="hljs-keyword">this</span>.endpointName);
+    <span class="hljs-keyword">int</span> port = serviceEndpoint.Port;
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.serviceContext <span class="hljs-keyword">is</span> StatefulServiceContext)
+    {
+        StatefulServiceContext statefulServiceContext = <span class="hljs-keyword">this</span>.serviceContext <span class="hljs-keyword">as</span> StatefulServiceContext;
+        <span class="hljs-keyword">this</span>.listeningAddress = <span class="hljs-keyword">string</span>.Format(
+            CultureInfo.InvariantCulture,
+            <span class="hljs-string">"http://+:{0}/{1}{2}/{3}/{4}"</span>,
+            port,
+            <span class="hljs-keyword">string</span>.IsNullOrWhiteSpace(<span class="hljs-keyword">this</span>.appRoot)
+                ? <span class="hljs-keyword">string</span>.Empty
+                : <span class="hljs-keyword">this</span>.appRoot.TrimEnd(<span class="hljs-string">'/'</span>) + <span class="hljs-string">'/'</span>,
+            statefulServiceContext.PartitionId,
+            statefulServiceContext.ReplicaId,
+            Guid.NewGuid());
+    }
+    <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.serviceContext <span class="hljs-keyword">is</span> StatelessServiceContext)
+    {
+        <span class="hljs-keyword">this</span>.listeningAddress = <span class="hljs-keyword">string</span>.Format(
+            CultureInfo.InvariantCulture,
+            <span class="hljs-string">"http://+:{0}/{1}"</span>,
+            port,
+            <span class="hljs-keyword">string</span>.IsNullOrWhiteSpace(<span class="hljs-keyword">this</span>.appRoot)
+                ? <span class="hljs-keyword">string</span>.Empty
+                : <span class="hljs-keyword">this</span>.appRoot.TrimEnd(<span class="hljs-string">'/'</span>) + <span class="hljs-string">'/'</span>);
+    }
+    <span class="hljs-keyword">else</span>
+    {
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> InvalidOperationException();
+    }
+
+    <span class="hljs-keyword">this</span>.publishAddress = <span class="hljs-keyword">this</span>.listeningAddress.Replace(<span class="hljs-string">"+"</span>, FabricRuntime.GetNodeContext().IPAddressOrFQDN);
+
+    <span class="hljs-keyword">try</span>
+    {
+        <span class="hljs-keyword">this</span>.eventSource.ServiceMessage(<span class="hljs-keyword">this</span>.serviceContext, <span class="hljs-string">"Starting web server on "</span> + <span class="hljs-keyword">this</span>.listeningAddress);
+        <span class="hljs-keyword">this</span>.webApp = WebApp.Start(<span class="hljs-keyword">this</span>.listeningAddress, appBuilder =&gt; <span class="hljs-keyword">this</span>.startup.Invoke(appBuilder));
+        <span class="hljs-keyword">this</span>.eventSource.ServiceMessage(<span class="hljs-keyword">this</span>.serviceContext, <span class="hljs-string">"Listening on "</span> + <span class="hljs-keyword">this</span>.publishAddress);
+        <span class="hljs-keyword">return</span> Task.FromResult(<span class="hljs-keyword">this</span>.publishAddress);
+    }
+    <span class="hljs-keyword">catch</span> (Exception ex)
+    {
+        <span class="hljs-keyword">this</span>.eventSource.ServiceMessage(<span class="hljs-keyword">this</span>.serviceContext, <span class="hljs-string">"Web server failed to open. "</span> + ex.ToString());
+        <span class="hljs-keyword">this</span>.StopWebServer();
+        <span class="hljs-keyword">throw</span>;
+    }
+}
+</code></pre>
+<p>Interestingly, the <code>this.listeningAddress</code> has "http" hardcoded! We can update this code to pull the protocol from the endpoint definition in the manifest, and while we're at it, let's add some additional logging which will come in handy later. The diff should look like this</p>
+<pre class="highlight"><code class="hljs diff">diff --git a/SampleWebApi/OwinCommunicationListener.cs b/SampleWebApi/OwinCommunicationListener.cs
+index 9b5d2ad..f849da4 100644
+<span class="hljs-comment">--- a/SampleWebApi/OwinCommunicationListener.cs</span>
+<span class="hljs-comment">+++ b/SampleWebApi/OwinCommunicationListener.cs</span>
+@@ -59,16 +59,22 @@ namespace SampleWebApi
+
+         public Task&lt;string&gt; OpenAsync(CancellationToken cancellationToken)
+         {
+<span class="hljs-addition">+            this.eventSource.ServiceMessage(this.serviceContext, "Calling OpenAsync on endpoint {0}", this.endpointName);</span>
+<span class="hljs-addition">+</span>
+             var serviceEndpoint = this.serviceContext.CodePackageActivationContext.GetEndpoint(this.endpointName);
+<span class="hljs-addition">+            var protocol = serviceEndpoint.Protocol;</span>
+             int port = serviceEndpoint.Port;
+
+<span class="hljs-addition">+            this.eventSource.ServiceMessage(this.serviceContext, "Found endpoint with protocol '{0}' port '{1}'", protocol, port);</span>
+<span class="hljs-addition">+</span>
+             if (this.serviceContext is StatefulServiceContext)
+             {
+                 StatefulServiceContext statefulServiceContext = this.serviceContext as StatefulServiceContext;
+
+                 this.listeningAddress = string.Format(
+                     CultureInfo.InvariantCulture,
+<span class="hljs-deletion">-                    "http://+:{0}/{1}{2}/{3}/{4}",</span>
+<span class="hljs-addition">+                    "{0}://+:{1}/{2}{3}/{4}/{5}",</span>
+<span class="hljs-addition">+                    protocol,</span>
+                     port,
+                     string.IsNullOrWhiteSpace(this.appRoot)
+                         ? string.Empty
+@@ -81,7 +87,8 @@ namespace SampleWebApi
+             {
+                 this.listeningAddress = string.Format(
+                     CultureInfo.InvariantCulture,
+<span class="hljs-deletion">-                    "http://+:{0}/{1}",</span>
+<span class="hljs-addition">+                    "{0}://+:{1}/{2}",</span>
+<span class="hljs-addition">+                    protocol,</span>
+                     port,
+                     string.IsNullOrWhiteSpace(this.appRoot)
+                         ? string.Empty
+@@ -106,7 +113,7 @@ namespace SampleWebApi
+             }
+             catch (Exception ex)
+             {
+<span class="hljs-deletion">-                this.eventSource.ServiceMessage(this.serviceContext, "Web server failed to open. " + ex.ToString());</span>
+<span class="hljs-addition">+                this.eventSource.ServiceMessage(this.serviceContext, "Web server for endpoint {0} failed to open. {1}", this.endpointName, ex.ToString());</span>
+
+                 this.StopWebServer();
+
+@@ -116,7 +123,7 @@ namespace SampleWebApi
+
+         public Task CloseAsync(CancellationToken cancellationToken)
+         {
+<span class="hljs-deletion">-            this.eventSource.ServiceMessage(this.serviceContext, "Closing web server");</span>
+<span class="hljs-addition">+            this.eventSource.ServiceMessage(this.serviceContext, "Closing web server for endpoint {0}", this.endpointName);</span>
+
+             this.StopWebServer();
+
+@@ -125,7 +132,7 @@ namespace SampleWebApi
+
+         public void Abort()
+         {
+<span class="hljs-deletion">-            this.eventSource.ServiceMessage(this.serviceContext, "Aborting web server");</span>
+<span class="hljs-addition">+            this.eventSource.ServiceMessage(this.serviceContext, "Aborting web server for endpoint {0}", this.endpointName);</span>
+
+             this.StopWebServer();
+         }
+</code></pre>
+<h3 id="step-3-update-createserviceinstancelisteners-">Step 3: Update CreateServiceInstanceListeners()</h3>
+<p>OK, now we're done, right? Not quite. If you debug your service you'll again see that the <code>OwinCommunicationListener</code> is only attempting to listen on the <strong>ServiceEndpoint</strong>, not on our new <strong>ServiceEndpointHttps</strong>. After much fruitless debugging I stumbled upon the code in <code>SampleWebApi</code> (or whatever your <code>StatelessService</code> is called). Take a look at <code>CreateServiceInstanceListeners()</code></p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;summary&gt;</span></span>
+<span class="hljs-comment"><span class="hljs-doctag">///</span> Optional override to create listeners (like tcp, http) for this service instance.</span>
+<span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;/summary&gt;</span></span>
+<span class="hljs-comment"><span class="hljs-doctag">///</span> <span class="hljs-doctag">&lt;returns&gt;</span>The collection of listeners.<span class="hljs-doctag">&lt;/returns&gt;</span></span>
+<span class="hljs-function"><span class="hljs-keyword">protected</span> <span class="hljs-keyword">override</span> IEnumerable&lt;ServiceInstanceListener&gt; <span class="hljs-title">CreateServiceInstanceListeners</span>(<span class="hljs-params"></span>)</span>
+{
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span>[]
+    {
+        <span class="hljs-keyword">new</span> ServiceInstanceListener(serviceContext =&gt; <span class="hljs-keyword">new</span> OwinCommunicationListener(Startup.ConfigureApp, serviceContext, ServiceEventSource.Current, <span class="hljs-string">"ServiceEndpoint"</span>))
+    };
+}
+</code></pre>
+<p>Again with the hardcoding! This time we're assuming there's an endpoint in <code>ServiceManifest.xml</code> named "ServiceEndpoint". Let's fix this up again so that we create a listener for each endpoint</p>
+<pre class="highlight"><code class="hljs diff">diff --git a/SampleWebApi/SampleWebApi.cs b/SampleWebApi/SampleWebApi.cs
+index 18137a6..55a7866 100644
+<span class="hljs-comment">--- a/SampleWebApi/SampleWebApi.cs</span>
+<span class="hljs-comment">+++ b/SampleWebApi/SampleWebApi.cs</span>
+<span class="hljs-meta">@@ -1,5 +1,8 @@</span>
+<span class="hljs-deletion">-using System.Collections.Generic;</span>
+<span class="hljs-addition">+using System;</span>
+<span class="hljs-addition">+using System.Collections.Generic;</span>
+ using System.Fabric;
+<span class="hljs-addition">+using System.Fabric.Description;</span>
+<span class="hljs-addition">+using System.Linq;</span>
+ using Microsoft.ServiceFabric.Services.Communication.Runtime;
+ using Microsoft.ServiceFabric.Services.Runtime;
+
+@@ -20,10 +23,12 @@ namespace SampleWebApi
+         /// &lt;returns&gt;The collection of listeners.&lt;/returns&gt;
+         protected override IEnumerable&lt;ServiceInstanceListener&gt; CreateServiceInstanceListeners()
+         {
+<span class="hljs-deletion">-            return new[]</span>
+<span class="hljs-deletion">-            {</span>
+<span class="hljs-deletion">-                new ServiceInstanceListener(serviceContext =&gt; new OwinCommunicationListener(Startup.ConfigureApp, serviceContext, ServiceEventSource.Current, "ServiceEndpoint"))</span>
+<span class="hljs-deletion">-            };</span>
+<span class="hljs-addition">+            var endpoints = Context.CodePackageActivationContext.GetEndpoints()</span>
+<span class="hljs-addition">+                                   .Where(endpoint =&gt; endpoint.Protocol == EndpointProtocol.Http || endpoint.Protocol == EndpointProtocol.Https)</span>
+<span class="hljs-addition">+                                   .Select(endpoint =&gt; endpoint.Name);</span>
+<span class="hljs-addition">+</span>
+<span class="hljs-addition">+            return endpoints.Select(endpoint =&gt; new ServiceInstanceListener(</span>
+<span class="hljs-addition">+                serviceContext =&gt; new OwinCommunicationListener(Startup.ConfigureApp, serviceContext, ServiceEventSource.Current, endpoint), endpoint));</span>
+         }
+     }
+ }
+</code></pre>
+<p>This creates an endpoint for each HTTP / HTTPS endpoint found in the manifest. Additionally we name the <code>ServiceInstanceListener</code> the name of the endpoint since by default it has a blank name, and each listener must have a unique name.</p>
+<h2 id="wrap-up">Wrap Up</h2>
+<p>Phew! That should do it. Your Web API service should now be available over both HTTP and HTTPS for both local debugging and in the Service Fabric cluster.</p>
+<p>I'm new to Service Fabric myself, so it's possible I've done something boneheaded in the steps. If so, feel free to reach out to me at <a href="https://twitter.com/MattKotsenas">@MattKotsenas</a>, or send a PR with fixes!</p>
+<h2 id="pull-requests">Pull Requests</h2>
+<p>Just for funsies, here are the Pull Requests opened while developing this article</p>
+<ul>
+<li><a href="https://github.com/Azure/azure-content/pull/6405">[PR 6405]</a> Fix typos in Import-PfxCertificate calls in service-fabric-cluster-security</li>
+<li><a href="https://github.com/Azure/azure-content/pull/6415">[PR 6415]</a> Update OwinCommunicationListener to support HTTP or HTTPS endpoints</li>
+<li><a href="https://github.com/Azure/azure-content/pull/6416">[PR 6416]</a> Log endpoint name in OwinCommunicationListener</li>
+<li><a href="https://github.com/Azure/azure-content/pull/6417">[PR 6417]</a> Remove hardcoded endpoint names in CreateServiceInstanceListeners()</li>
+</ul>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=HTTP%20%26%20HTTPS%20in%20Service%20Fabric%20Web%20API&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/cover.jpg)" href="/posts/running-docpad-on-azure-in-2015.html">
+          <section class="post">
+            <h2>Running docpad on Azure in 2015</h2>
+            <p>I really needed to freshen up the site. It was created hastily and really didn't follow best practices...…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/cover.jpg)" href="/posts/powershell-dynamicproxy-indexers.html">
+          <section class="post">
+            <h2>The curious case of PowerShell, Castle DynamicProxy and indexers</h2>
+            <p>I seem to have hit some sort of edge case between the Castle DynamicProxy object and the binding / dispatching of method calls in PowerShell.…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

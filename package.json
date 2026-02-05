@@ -26,6 +26,7 @@
     "build": "npm run generate && npm run validate"
   },
   "devDependencies": {
+    "playwright": "^1.58.1",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5"
   }

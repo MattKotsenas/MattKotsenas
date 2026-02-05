@@ -1,0 +1,321 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Combining cron expressions in Azure WebJobs TimerTriggers | void where_prohibited() { ... }</title>
+    <meta name="description" content="Azure supports using cron expressions to trigger WebJobs, but each job can have only a single cron schedule. Learn how to use the TimerSchedule class to create custom schedules and combine cron expressions">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="Combining cron expressions in Azure WebJobs TimerTriggers | void where_prohibited() { ... }">
+    <meta property="og:description" content="Azure supports using cron expressions to trigger WebJobs, but each job can have only a single cron schedule. Learn how to use the TimerSchedule class to create custom schedules and combine cron expressions">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/combining-cronschedules-in-webjobs.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/combining-cronschedules-in-webjobs-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Combining cron expressions in Azure WebJobs TimerTriggers | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Azure supports using cron expressions to trigger WebJobs, but each job can have only a single cron schedule. Learn how to use the TimerSchedule class to create custom schedules and combine cron expressions">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/combining-cronschedules-in-webjobs-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/combining-cronschedules-in-webjobs.png)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Combining cron expressions in Azure WebJobs TimerTriggers</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2017-August-09">09 August 2017</time> 
+  <a href="/tags/azure.html">azure</a>, 
+
+  <a href="/tags/webjobs.html">webjobs</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <p>Azure WebJobs support the concept of triggers, which let your job do work in response to a HTTP request, a blob or service bus message, or on a timer.
+Specifically, the <code>TimerTrigger</code> attribute allows you to specify a cron expression as a trigger for your WebJob.
+Rather than re-invent the wheel, I'll defer to the <a href="https://github.com/Azure/azure-webjobs-sdk-extensions/blob/master/README.md#timertrigger">README</a> as a great resource for understanding using timers in your WebJob.</p>
+<h2 id="the-problem">The Problem</h2>
+<p>The TimerTrigger attribute is easy to use and super handy, but it's a bit limited in one important way: it can only handle a single cron expression.
+Combining cron expressions can be very useful in situations where a job needs to run frequently sometimes (for example, during business hours), but infrequently at other times.</p>
+<p>The simplest way to accomplish this is just to create multiple jobs that execute the same code, which might look something like this:</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-comment">// Every 15 minutes, between 06:00 AM and 08:59 PM</span>
+<span class="hljs-keyword">private</span> <span class="hljs-keyword">const</span> <span class="hljs-keyword">string</span> PeakHours = <span class="hljs-string">"0 */15 6-20 * * *"</span>;
+
+<span class="hljs-comment">// Every hour from 12:00 AM to 06:00 AM and 09:00 PM to 12:00 AM</span>
+<span class="hljs-keyword">private</span> <span class="hljs-keyword">const</span> <span class="hljs-keyword">string</span> NonPeakHours = <span class="hljs-string">"0 0 0-5,21-23 * * *"</span>;
+
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">CleanupPeakHours</span>(<span class="hljs-params">[TimerTrigger(PeakHours</span>)] TimerInfo timer)</span>
+{
+    DoCleanup();
+}
+
+<span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">CleanupNonPeakHours</span>(<span class="hljs-params">[TimerTrigger(NonPeakHours</span>)] TimerInfo timer)</span>
+{
+    DoCleanup();
+}
+</code></pre>
+<p>But this means that we technically have <em>two</em> WebJobs, and hence two sets of logs, and this solution just generally doesn't scale very well if you have lots of jobs or lots of cron expressions.</p>
+<h2 id="writing-a-custom-timerschedule">Writing a custom TimerSchedule</h2>
+<p>The WebJobs SDK provides a [TimerSchedule][github-timerschedule] abstract class, which provides the building blocks we'll need to build a custom scheduler that supports multiple cron expressions, as well as reuse across jobs.
+The extensions package provides a few implementations of <code>TimerSchedule</code>: <code>CronSchedule</code> and <code>ConstantSchedule</code>, which are designed to be used directly, as well as <code>DailySchedule</code> and <code>WeeklySchedule</code>, which are designed for extension.
+Example are available <a href="https://github.com/Azure/azure-webjobs-sdk-extensions/blob/master/src/ExtensionsSample/Samples/TimerSamples.cs">here</a>.</p>
+<p>In our two-job solution, the <code>TimerTrigger</code> takes our cron expression and hands it off to <code>TimerSchedule</code> to parse it into an object and calculate the next occurrence of the schedule.</p>
+<p>To inherit from <code>TimerSchedule</code>, we just need to implement <code>GetNextOccurrence()</code>:</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CombinedCronSchedule</span> : <span class="hljs-title">TimerSchedule</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">override</span> DateTime <span class="hljs-title">GetNextOccurrence</span>(<span class="hljs-params">DateTime now</span>)</span>
+    {
+        <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> NotImplementedException();
+    }
+}
+</code></pre>
+<p>In order to implement <code>GetNextOccurrence</code>, we need:</p>
+<ol>
+<li>A collection of cron expressions</li>
+<li>For each expression, get the next occurrence of that expression</li>
+<li>Pick the correct expression from the available list</li>
+</ol>
+<p>which could look something like this:</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CombinedCronSchedule</span> : <span class="hljs-title">TimerSchedule</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IReadOnlyCollection&lt;CronSchedule&gt; _schedules;
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">CombinedCronSchedule</span>(<span class="hljs-params"><span class="hljs-keyword">params</span> <span class="hljs-keyword">string</span>[] expressions</span>)</span>
+    {
+        _schedules = expressions.Select(s =&gt; <span class="hljs-keyword">new</span> CronSchedule(s)).ToList();
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">override</span> DateTime <span class="hljs-title">GetNextOccurrence</span>(<span class="hljs-params">DateTime now</span>)</span>
+    {
+        <span class="hljs-keyword">return</span> _schedules.Select(s =&gt; s.GetNextOccurrence(now)).Min();
+    }
+}
+</code></pre>
+<p>You can see that we delegate most of the work to <code>CronSchedule</code>.</p>
+<p>That meets our needs, but from looking at the other implementations of <code>TimerSchedule</code>, we can make a few more minor tweaks to make debugging and extensibility easier.
+Namely, we should override<code>ToString()</code>, and we should make the occurrence selector a parameter, instead of hardcoding it to be <code>Math.Min()</code>. The full solution then looks like this:</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">using</span> System;
+<span class="hljs-keyword">using</span> System.Collections.Generic;
+<span class="hljs-keyword">using</span> System.Linq;
+<span class="hljs-keyword">using</span> Microsoft.Azure.WebJobs.Extensions.Timers;
+
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">CombinedCronSchedule</span> : <span class="hljs-title">TimerSchedule</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> Func&lt;IEnumerable&lt;DateTime&gt;, DateTime&gt; _nextOccurenceSelector;
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">readonly</span> IReadOnlyCollection&lt;CronSchedule&gt; _schedules;
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">CombinedCronSchedule</span>(<span class="hljs-params"><span class="hljs-keyword">params</span> <span class="hljs-keyword">string</span>[] expressions</span>) : <span class="hljs-title">this</span>(<span class="hljs-params">dates =&gt; dates.Min(</span>), expressions)</span>
+    {
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">CombinedCronSchedule</span>(<span class="hljs-params">Func&lt;IEnumerable&lt;DateTime&gt;, DateTime&gt; nextOccurenceSelector, <span class="hljs-keyword">params</span> <span class="hljs-keyword">string</span>[] expressions</span>)</span>
+    {
+        _nextOccurenceSelector = nextOccurenceSelector;
+        _schedules = expressions.Select(s =&gt; <span class="hljs-keyword">new</span> CronSchedule(s)).ToList();
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">override</span> DateTime <span class="hljs-title">GetNextOccurrence</span>(<span class="hljs-params">DateTime now</span>)</span>
+    {
+        <span class="hljs-keyword">return</span> _nextOccurenceSelector(_schedules.Select(s =&gt; s.GetNextOccurrence(now)));
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">override</span> <span class="hljs-keyword">string</span> <span class="hljs-title">ToString</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-keyword">var</span> schedules = <span class="hljs-keyword">string</span>.Join(<span class="hljs-string">", "</span>, _schedules.Select(s =&gt; s.ToString()));
+        <span class="hljs-keyword">return</span> <span class="hljs-string">$"Schedules: <span class="hljs-subst">{schedules}</span>"</span>;
+    }
+}
+</code></pre>
+<p>So that's all we need to <em>support</em> combining cron expressions, but now how do we <em>use</em> it as our WebJob trigger?
+The simplest way is to create a class that represents our new schedule:</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">PeakNonPeakSchedule</span> : <span class="hljs-title">CombinedCronSchedule</span>
+{
+    <span class="hljs-comment">// Every 15 minutes, between 06:00 AM and 08:59 PM</span>
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">const</span> <span class="hljs-keyword">string</span> PeakHours = <span class="hljs-string">"0 */15 6-20 * * *"</span>;
+
+    <span class="hljs-comment">// Every hour from 12:00 AM to 06:00 AM and 09:00 PM to 12:00 AM</span>
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">const</span> <span class="hljs-keyword">string</span> NonPeakHours = <span class="hljs-string">"0 0 0-5,21-23 * * *"</span>;
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-title">PeakNonPeakSchedule</span>(<span class="hljs-params"></span>) : <span class="hljs-title">base</span>(<span class="hljs-params">PeakHours, NonPeak</span>)</span>
+    {
+    }
+}
+</code></pre>
+<p>(which can be reused for multiple jobs) and then to reference that schedule from the <code>TimerTrigger</code> attribute like this:</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Cleanup</span>(<span class="hljs-params">[TimerTrigger(<span class="hljs-keyword">typeof</span>(PeakNonPeakSchedule</span>))] TimerInfo timer)</span>
+{
+    DoCleanup();
+}
+
+<span class="hljs-comment">// No second job needed!</span>
+</code></pre>
+<h2 id="caveats">Caveats</h2>
+<p>Ideally, we could omit the <code>PeakNonPeakSchedule</code> class entirely and pass our expressions directly to <code>CombinedCronSchedule</code>, but two things prevent that:</p>
+<ol>
+<li><code>TimerTrigger</code> is an attribute, so its parameters must be compile-time constants, which means you can only pass a <em>type</em>, and that type requires a public, parameterless constructor</li>
+<li><code>TimerTrigger</code> is sealed, preventing us from creating our own attribute that uses <code>CombinedCronSchedule</code></li>
+</ol>
+<p>If anyone has suggestions on how to make the <code>CombinedCronSchedule</code> even easier to use, please let me know and I'll update the post.</p>
+<p>A big thanks to <a href="https://twitter.com/petesopinions">@petesopinions</a> for all his investigation and coming up with this solution!</p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Combining%20cron%20expressions%20in%20Azure%20WebJobs%20TimerTriggers&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/wpa-regions/cover.png)" href="/posts/generate-wpa-regions-from-performance-marks.html">
+          <section class="post">
+            <h2>Generating WPA Regions of Interest from performance marks</h2>
+            <p>Automate creating WPA Regions of Interest files using PowerShell…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/squamish-2017/squamish-start.jpg)" href="/posts/squamish-2017-race-report.html">
+          <section class="post">
+            <h2>A 2017 Squamish 50/50 race report</h2>
+            <p>Team RunRun has a tradition of writing race reports, both as an opportunity for reflection, and to share lessons learned with other runners. I decided to write a longer-than-usual report because in planning for this race I felt there wasn't a lot of information about the Squamish races available.…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

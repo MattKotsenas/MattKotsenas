@@ -1,0 +1,408 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>The curious case of PowerShell, Castle DynamicProxy and indexers | void where_prohibited() { ... }</title>
+    <meta name="description" content="I seem to have hit some sort of edge case between the Castle DynamicProxy object and the binding / dispatching of method calls in PowerShell.">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="The curious case of PowerShell, Castle DynamicProxy and indexers | void where_prohibited() { ... }">
+    <meta property="og:description" content="I seem to have hit some sort of edge case between the Castle DynamicProxy object and the binding / dispatching of method calls in PowerShell.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/powershell-dynamicproxy-indexers.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/cover.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The curious case of PowerShell, Castle DynamicProxy and indexers | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="I seem to have hit some sort of edge case between the Castle DynamicProxy object and the binding / dispatching of method calls in PowerShell.">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/cover.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/cover.jpg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">The curious case of PowerShell, Castle DynamicProxy and indexers</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2016-July-19">19 July 2016</time> 
+  <a href="/tags/powershell.html">powershell</a>, 
+
+  <a href="/tags/.net.html">.net</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <blockquote>
+<p>UPDATE: This issue is now <a href="https://windowsserver.uservoice.com/forums/301869-powershell/suggestions/15425352--bug-castle-s-dynamicproxy-breaks-property-indexe?tracking_code=29201113a860fa7a2196756b8e488001">tracked in uservoice</a>. If it's affecting you, please upvote!</p>
+</blockquote>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>As I usually like to do, here's the prerequisites for the article. Instructions and techniques likely apply to other versions, but if you're having problems replicating my results, ensure your environment matches.</p>
+<ol>
+<li>PowerShell 5 (comes with Windows 10)</li>
+<li><a href="http://www.castleproject.org/projects/dynamicproxy/">Castle DynamicProxy</a> version 3.3.3 in your current working directory</li>
+</ol>
+<h2 id="the-problem">The Problem</h2>
+<p>I seem to have hit some sort of edge case between the Castle Project's <a href="http://www.castleproject.org/projects/dynamicproxy/">DynamicProxy</a> object and the binding / dispatching of method calls in PowerShell. When an object with an <a href="https://msdn.microsoft.com/en-us/library/6x16t2tx.aspx">indexer</a> is proxied, that object's indexer is no longer available in PowerShell, however, the underlying <code>get_Item()</code> method is still available.</p>
+<h2 id="the-setup">The Setup</h2>
+<p>Here's a simple scenario to showcase the issue. First we need an interface that has an indexer in it, along with a simple class that implements that interface</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">MyInterface</span>
+{
+    <span class="hljs-keyword">double</span> <span class="hljs-keyword">this</span>[<span class="hljs-keyword">int</span> i] { <span class="hljs-keyword">get</span>; }
+}
+
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyClass</span> : <span class="hljs-title">MyInterface</span>
+{
+    <span class="hljs-keyword">private</span> <span class="hljs-keyword">double</span>[] _array = <span class="hljs-keyword">new</span> [] { <span class="hljs-number">1.1</span>, <span class="hljs-number">2.2</span> };
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">double</span> <span class="hljs-keyword">this</span>[<span class="hljs-keyword">int</span> i]
+    {
+        <span class="hljs-keyword">get</span>
+        {
+            <span class="hljs-keyword">return</span> _array[i];
+        }
+    }
+}
+</code></pre>
+<p>This is the object we ultimately care about and want to expose to the world. Next we need a DyanmicProxy <code>IInterceptor</code> to proxy the object</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyProxy</span> : <span class="hljs-title">IInterceptor</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Intercept</span>(<span class="hljs-params">IInvocation invocation</span>)</span>
+    {
+        invocation.Proceed();
+    }
+}
+</code></pre>
+<p>This proxy does nothing but forward the call along, but it's enough to trigger the behavior. Lastly, for convenience, we create a factory to create the objects for us</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyFactory</span>
+{
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MyInterface <span class="hljs-title">GetViaInterface</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> MyClass();
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MyInterface <span class="hljs-title">GetViaProxy</span>(<span class="hljs-params"></span>)</span>
+    {
+        <span class="hljs-keyword">var</span> generator = <span class="hljs-keyword">new</span> ProxyGenerator();
+        <span class="hljs-keyword">return</span> (MyInterface)generator.CreateInterfaceProxyWithTarget(<span class="hljs-keyword">typeof</span>(MyInterface), <span class="hljs-keyword">new</span> MyClass(), <span class="hljs-keyword">new</span> MyProxy());
+    }
+}
+</code></pre>
+<p>So now we can bring it all together with a small PowerShell script that does the following</p>
+<ol>
+<li>Loads our classes into the AppDomain </li>
+<li>Creates an instance of <code>MyClass</code> three different ways<ol>
+<li>Directly via <code>New-Object</code></li>
+<li>As an instance of <code>MyInterface</code> via the factory</li>
+<li>As an instance of <code>MyInterface</code> wrapped with a proxy via the factory</li>
+</ol>
+</li>
+<li>Outputs the result of calling <code>$obj[1]</code> and <code>$obj.get_Item(1)</code> for each instance</li>
+</ol>
+<p>Here's the script:</p>
+<pre class="highlight"><code class="hljs powershell"><span class="hljs-variable">$assemblies</span> = (
+    <span class="hljs-string">"Castle.Core, Version=3.3.0.0, Culture=neutral, PublicKeyToken=407dd0808d44fbdc"</span>
+)
+
+<span class="hljs-variable">$source</span> = <span class="hljs-string">@"
+using System;
+using Castle.DynamicProxy;
+
+namespace Sample
+{
+    public interface MyInterface
+    {
+        double this[int i] { get; }
+    }
+
+    public class MyClass : MyInterface
+    {
+        private double[] _array = new [] { 1.1, 2.2 };
+
+        public double this[int i]
+        {
+            get
+            {
+                return _array[i];
+            }
+        }
+    }
+
+    public class MyProxy : IInterceptor
+    {
+        public void Intercept(IInvocation invocation)
+        {
+            invocation.Proceed();
+        }
+    }   
+
+    public static class MyFactory
+    {
+        public static MyInterface GetViaInterface()
+        {
+            return new MyClass();
+        }
+
+        public static MyInterface GetViaProxy()
+        {
+            var generator = new ProxyGenerator();
+            return (MyInterface)generator.CreateInterfaceProxyWithTarget(typeof(MyInterface), new MyClass(), new MyProxy());
+        }
+    }
+}
+"@</span>
+
+<span class="hljs-built_in">Add-Type</span> <span class="hljs-literal">-Path</span> <span class="hljs-string">"<span class="hljs-variable">$pwd</span>\Castle.Core.dll"</span>
+<span class="hljs-built_in">Add-type</span> <span class="hljs-literal">-ReferencedAssemblies</span> <span class="hljs-variable">$assemblies</span> <span class="hljs-literal">-TypeDefinition</span> <span class="hljs-variable">$source</span> <span class="hljs-literal">-Language</span> CSharp
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">print</span></span>
+{
+    <span class="hljs-keyword">param</span>(<span class="hljs-variable">$Text</span>, <span class="hljs-variable">$Obj</span>)
+
+    <span class="hljs-variable">$direct</span> = <span class="hljs-variable">$Obj</span>[<span class="hljs-number">1</span>]
+    <span class="hljs-variable">$item</span> = <span class="hljs-variable">$Obj</span>.get_Item(<span class="hljs-number">1</span>)
+
+    echo <span class="hljs-string">"<span class="hljs-variable">$Text</span> --&gt; `$Obj[1] = <span class="hljs-variable">$direct</span> `t `$Obj.get_Item(1) = <span class="hljs-variable">$item</span>"</span>
+}
+
+print <span class="hljs-string">"Direct construction"</span> (<span class="hljs-built_in">New-Object</span> Sample.MyClass)
+print <span class="hljs-string">"      Via interface"</span> ([<span class="hljs-type">Sample.MyFactory</span>]::GetViaInterface())
+print <span class="hljs-string">"          Via proxy"</span> ([<span class="hljs-type">Sample.MyFactory</span>]::GetViaProxy())
+
+</code></pre>
+<p>which results in the following output</p>
+<pre class="highlight"><code class="hljs routeros">Direct construction --&gt; <span class="hljs-variable">$Obj</span>[1] = 2.2    <span class="hljs-variable">$Obj</span>.get_Item(1) = 2.2
+      Via<span class="hljs-built_in"> interface </span>--&gt; <span class="hljs-variable">$Obj</span>[1] = 2.2    <span class="hljs-variable">$Obj</span>.get_Item(1) = 2.2
+          Via<span class="hljs-built_in"> proxy </span>--&gt; <span class="hljs-variable">$Obj</span>[1] =        <span class="hljs-variable">$Obj</span>.get_Item(1) = 2.2
+</code></pre><p>Note that in the proxy case using the indexer directly gives no result, but using the underlying <code>get_Item()</code> method (which is how the indexer is actually implemented) works fine.</p>
+<p>Here's the same sample setup in a C# console app</p>
+<pre class="highlight"><code class="hljs csharp"><span class="hljs-keyword">using</span> System;
+<span class="hljs-keyword">using</span> Castle.DynamicProxy;
+
+<span class="hljs-keyword">namespace</span> <span class="hljs-title">Sample</span>
+{
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">interface</span> <span class="hljs-title">MyInterface</span>
+    {
+        <span class="hljs-keyword">double</span> <span class="hljs-keyword">this</span>[<span class="hljs-keyword">int</span> i] { <span class="hljs-keyword">get</span>; }
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyClass</span> : <span class="hljs-title">MyInterface</span>
+    {
+        <span class="hljs-keyword">private</span> <span class="hljs-keyword">double</span>[] _array = <span class="hljs-keyword">new</span>[] { <span class="hljs-number">1.1</span>, <span class="hljs-number">2.2</span> };
+
+        <span class="hljs-keyword">public</span> <span class="hljs-keyword">double</span> <span class="hljs-keyword">this</span>[<span class="hljs-keyword">int</span> i]
+        {
+            <span class="hljs-keyword">get</span>
+            {
+                <span class="hljs-keyword">return</span> _array[i];
+            }
+        }
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyProxy</span> : <span class="hljs-title">IInterceptor</span>
+    {
+        <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Intercept</span>(<span class="hljs-params">IInvocation invocation</span>)</span>
+        {
+            invocation.Proceed();
+        }
+    }
+
+    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">class</span> <span class="hljs-title">MyFactory</span>
+    {
+        <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MyInterface <span class="hljs-title">GetViaInterface</span>(<span class="hljs-params"></span>)</span>
+        {
+            <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> MyClass();
+        }
+        <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> MyInterface <span class="hljs-title">GetViaProxy</span>(<span class="hljs-params"></span>)</span>
+        {
+            <span class="hljs-keyword">var</span> generator = <span class="hljs-keyword">new</span> ProxyGenerator();
+            <span class="hljs-keyword">return</span> (MyInterface)generator.CreateInterfaceProxyWithTarget(<span class="hljs-keyword">typeof</span>(MyInterface), <span class="hljs-keyword">new</span> MyClass(), <span class="hljs-keyword">new</span> MyProxy());
+        }
+    }
+
+    <span class="hljs-keyword">public</span>  <span class="hljs-keyword">class</span> <span class="hljs-title">Program</span>
+    {
+        <span class="hljs-function"><span class="hljs-keyword">private</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Print</span>(<span class="hljs-params"><span class="hljs-keyword">string</span> text, <span class="hljs-keyword">dynamic</span> obj</span>)</span>
+        {
+            <span class="hljs-keyword">var</span> direct = obj[<span class="hljs-number">1</span>];
+            <span class="hljs-keyword">var</span> item = obj.get_Item(<span class="hljs-number">1</span>);
+
+            Console.WriteLine(<span class="hljs-keyword">string</span>.Format(<span class="hljs-string">"{0} --&gt; obj[1] = {1} \t obj.Item(1) = {2}"</span>, text, direct, item));
+        }
+
+        <span class="hljs-function"><span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title">Main</span>(<span class="hljs-params"><span class="hljs-keyword">string</span>[] args</span>)</span>
+        {
+            Print(<span class="hljs-string">"Direct construction"</span>, <span class="hljs-keyword">new</span> MyClass());
+            Print(<span class="hljs-string">"      Via interface"</span>, MyFactory.GetViaInterface());
+            Print(<span class="hljs-string">"          Via proxy"</span>, MyFactory.GetViaProxy());
+            Console.ReadKey();
+        }
+    }
+}
+</code></pre>
+<p>and the corresponding output</p>
+<pre class="highlight"><code class="hljs routeros">Direct construction --&gt; obj[1] = 2.2     obj.Item(1) = 2.2
+      Via<span class="hljs-built_in"> interface </span>--&gt; obj[1] = 2.2     obj.Item(1) = 2.2
+          Via<span class="hljs-built_in"> proxy </span>--&gt; obj[1] = 2.2     obj.Item(1) = 2.2
+</code></pre><p>In this case the indexer works as expected. Both samples try to run the same code, and the C# app uses the <code>dynamic</code> keyword to get the same late-binding used by PowerShell, but obviously something's different.</p>
+<h2 id="wrap-up">Wrap Up</h2>
+<p>Of course as a workaround you can use <code>get_Item()</code> for now, but I'm hopeful for a <a href="https://windowsserver.uservoice.com/forums/301869-powershell/suggestions/15425352--bug-castle-s-dynamicproxy-breaks-property-indexe?tracking_code=29201113a860fa7a2196756b8e488001">fix</a>. Of course it's always possible my setup is incorrect and I have a bug, so if that's the case please let me know at <a href="https://twitter.com/MattKotsenas">@MattKotsenas</a>, or send a PR with fixes!</p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=The%20curious%20case%20of%20PowerShell%2C%20Castle%20DynamicProxy%20and%20indexers&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/cover.jpg)" href="/posts/https-in-service-fabric-web-api.html">
+          <section class="post">
+            <h2>HTTP &amp; HTTPS in Service Fabric Web API</h2>
+            <p>Updating the boilerplate code in a Service Fabric Web API to support HTTP and HTTPS endpoints simultaneously…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/wpa-marks/filter-to-marks.png)" href="/posts/using-wpa-to-analyze-performance-marks.html">
+          <section class="post">
+            <h2>Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome</h2>
+            <p>Learn how to use the Windows Performance Toolkit to drill into web app scenarios using performance.mark…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>

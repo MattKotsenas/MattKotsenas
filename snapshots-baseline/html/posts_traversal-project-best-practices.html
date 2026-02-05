@@ -1,0 +1,309 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>MSBuild Traversal project best practices | void where_prohibited() { ... }</title>
+    <meta name="description" content="Best practices for using MSBuild traversal projects">
+    <meta name="HandheldFriendly" content="True">
+    <!-- Open Graph meta tags for link previews -->
+    <meta property="og:title" content="MSBuild Traversal project best practices | void where_prohibited() { ... }">
+    <meta property="og:description" content="Best practices for using MSBuild traversal projects">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://matt.kotsenas.com/posts/traversal-project-best-practices.html">
+    <meta property="og:image" content="https://matt.kotsenas.com/img/traversal-project-best-practices/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MSBuild Traversal project best practices | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="Best practices for using MSBuild traversal projects">
+    <meta name="twitter:image" content="https://matt.kotsenas.com/img/traversal-project-best-practices/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css"><link rel="stylesheet" href="/css/hljs.css"><link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400"><link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    <!-- BEGIN: Google tag (gtag.js) -->
+    <script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    <!-- END: Google tag -->
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/">Home</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/about">About</a>
+        </li>
+      
+        <li class="nav-any" role="presentation">
+          <a href="/photos">Photos</a>
+        </li>
+      
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+    <div class="site-wrapper">
+
+      <header class="main-header post-head" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    
+      <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+    
+  </nav>
+</header>
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">MSBuild Traversal project best practices</h1>
+      <section class="post-meta">
+        
+        <time class="post-date" datetime="2025-March-07">07 March 2025</time> 
+  <a href="/tags/.net.html">.net</a>, 
+
+  <a href="/tags/msbuild.html">msbuild</a>
+
+      </section>
+    </header>
+    
+    <section class="post-content">
+      <blockquote>
+<p>[!NOTE]
+This post assumes you're already familiar with the
+<a href="https://github.com/microsoft/MSBuildSdks/blob/main/src/Traversal/README.md">Microsoft.Build.Traversal</a>
+SDK, a.k.a <code>dirs.proj</code> files.</p>
+</blockquote>
+<p>Whether you're new to traversal projects or an experienced user, you may
+encounter some common pitfalls. This post covers frequently asked questions and
+best practices to help you avoid them.</p>
+<h2 id="problem-multiple-sdk-versions">Problem: Multiple SDK versions</h2>
+<p>The easiest way to use a traversal project is like this, where the version of
+the project SDK is listed as part of the <code>Sdk</code> property:</p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">Project</span> <span class="hljs-attr">Sdk</span>=<span class="hljs-string">"Microsoft.Build.Traversal/4.1.82"</span>&gt;</span>
+</code></pre>
+<p>If you have a large project, over time it's likely that someone will
+introduce a new version of the Traversal SDK without updating the others.
+MSBuild however only allows a single SDK version during a build. Trying to mix
+versions results in this warning:</p>
+<pre class="highlight"><code class="hljs livecodeserver">MSB4240: Multiple versions <span class="hljs-keyword">of</span> <span class="hljs-keyword">the</span> same SDK <span class="hljs-string">'Microsoft.Build.Traversal'</span> cannot be
+specified. The previously resolved SDK <span class="hljs-built_in">version</span> <span class="hljs-string">'value'</span> <span class="hljs-built_in">from</span> location <span class="hljs-string">'value'</span>
+will be used <span class="hljs-keyword">and</span> <span class="hljs-keyword">the</span> <span class="hljs-built_in">version</span> <span class="hljs-string">'value'</span> will be ignored.
+</code></pre><p>To complicate matters, this warning may appear or disappear depending on which
+projects are included in the build.</p>
+<p>To sidestep this entire issue and force a consistent SDK version across your
+codebase, instead specify the SDK version in your <code>global.json</code> file like this:</p>
+<pre class="highlight"><code class="hljs json">{
+  <span class="hljs-attr">"msbuild-sdks"</span>: {
+    <span class="hljs-attr">"Microsoft.Build.Traversal"</span>: <span class="hljs-string">"4.1.82"</span>
+  }
+}
+</code></pre>
+<h2 id="problem-visual-studio-sln-files">Problem: Visual Studio / .sln files</h2>
+<p>Traversal projects offer a few advantages over <code>.sln</code> files (including the new
+<code>.slnx</code> format).</p>
+<p>First, traversal projects can reference other traversal projects. In large
+codebases, this is incredibly useful because it means each component can
+structure their code as they like while also making it easy to build multiple
+components by maintaining a single meta-project.</p>
+<p>Second, with traversal files there's no duplication between projects and
+solutions. With .sln and .slnx files, adding or removing a project reference
+requires <em>also</em> updating the sln file. Traversal projects, by their nature, use
+project references as the source of truth and thus cannot get out-of-sync.</p>
+<p>If you adopt traversal projects, you should stop tracking sln files in your
+version control system by adding an entry to your <code>.gitignore</code> like this:</p>
+<pre class="highlight"><code class="hljs diff"><span class="hljs-addition">+# Ignore sln files in favor of Traversal projects</span>
+<span class="hljs-addition">+*.sln</span>
+<span class="hljs-addition">+*.slnx</span>
+</code></pre>
+<p>and delete them from source control with a script like this:</p>
+<pre class="highlight"><code class="hljs bash">git ls-files <span class="hljs-string">"*.sln"</span> <span class="hljs-string">"**/*.sln"</span> | xargs git rm
+</code></pre>
+<p>If your workflow relies on .sln files, such as for Visual Studio users,
+consider using a tool like <a href="https://microsoft.github.io/slngen/">SlnGen</a> to
+generate .sln files on-the-fly.</p>
+<h2 id="problem-msb1008-only-one-project-can-be-specified">Problem: MSB1008: Only one project can be specified</h2>
+<p>If you follow the approach above (using traversal projects to organize your
+build while generating .sln files on the fly for editing) you may end up with
+many untracked and stale .sln files littered around your codebase. This can lead
+to errors when you run commands like <code>dotnet build</code> such as this:</p>
+<pre class="highlight"><code class="hljs armasm"><span class="hljs-symbol">MSB1008</span>: Only one project can <span class="hljs-keyword">be </span>specified
+</code></pre><p>because the dotnet command finds both a <code>.proj</code> and <code>.sln</code> file in the same
+directory.</p>
+<p>To avoid the need to constantly disambiguate between projects, you can instruct
+MSBuild to ignore certain extensions using the <code>-ignoreProjectExtensions</code>
+command-line switch
+(<a href="https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-command-line-reference?view=vs-2022">docs</a>).
+Better yet, create and check in a <code>Directory.Build.rsp</code> file that includes this
+switch:</p>
+<pre class="highlight"><code class="hljs css"># <span class="hljs-selector-tag">Since</span> <span class="hljs-selector-tag">we</span> <span class="hljs-selector-tag">use</span> <span class="hljs-selector-tag">traversal</span> <span class="hljs-selector-tag">projects</span> (<span class="hljs-selector-tag">dirs</span><span class="hljs-selector-class">.proj</span>), <span class="hljs-selector-tag">ignore</span> <span class="hljs-selector-tag">any</span> <span class="hljs-selector-tag">stale</span> <span class="hljs-selector-class">.sln</span> <span class="hljs-selector-tag">files</span>.
+# <span class="hljs-selector-tag">These</span> <span class="hljs-selector-tag">are</span> <span class="hljs-selector-tag">generated</span>, <span class="hljs-selector-class">.gitignored</span>, <span class="hljs-selector-tag">and</span> <span class="hljs-selector-tag">may</span> <span class="hljs-selector-tag">cause</span> <span class="hljs-selector-tag">confusion</span>.
+<span class="hljs-selector-tag">-ignoreProjectExtensions</span><span class="hljs-selector-pseudo">:.sln</span>,<span class="hljs-selector-class">.slnx</span>
+</code></pre><p>to ensure that all command line builds inherit this option by default
+(<a href="https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-response-files?view=vs-2022">docs</a>).</p>
+<p>Note that previously, <code>*.rsp</code> files were excluded by the dotnet .gitignore
+template, so be sure that you aren't ignoring this file. This has been
+<a href="https://github.com/dotnet/sdk/pull/42401">fixed</a> for .NET 10.</p>
+<h2 id="problem-every-visual-studio-window-is-now-named-dirs">Problem: Every Visual Studio window is now named "dirs"</h2>
+<p>Visual Studio uses the file name as the window name. When using traversal
+projects, this means every VS instance ends up named "dirs", which isn't helpful.</p>
+<p>To set a meaningful solution name, define <code>SlnGenProjectName</code> in your dirs.proj
+file:</p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">SlnGenProjectName</span>&gt;</span>MyCoolProject<span class="hljs-tag">&lt;/<span class="hljs-name">SlnGenProjectName</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+</code></pre>
+<p>You can also customize other options, such as mirroring the folder structure in
+the solution file. See
+<a href="https://microsoft.github.io/slngen/#configuring-slngen">Configuring SlnGen</a>
+for the full list of options.</p>
+<p>If you have multiple dirs.proj files, managing solution names manually can be
+tedious. Instead, set default properties globally in a Directory.Build.props
+file:</p>
+<pre class="highlight"><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">PropertyGroup</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">SlnGenFolders</span>&gt;</span>true<span class="hljs-tag">&lt;/<span class="hljs-name">SlnGenFolders</span>&gt;</span>
+  <span class="hljs-tag">&lt;<span class="hljs-name">SlnGenProjectName</span>&gt;</span>$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName($(MSBuildProjectFullPath)))))
+  <span class="hljs-tag">&lt;/<span class="hljs-name">SlnGenProjectName</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">PropertyGroup</span>&gt;</span>
+</code></pre>
+<p>This ensures:</p>
+<ul>
+<li>Folder structure is reflected in .sln files by default</li>
+<li>The solution name defaults to the parent folder name, avoiding the "dirs"
+issue automatically.</li>
+</ul>
+<p>This approach keeps things consistent without needing to set SlnGenProjectName
+manually in every project file.</p>
+<h2 id="wrapping-up">Wrapping up</h2>
+<p>MSBuild traversal projects can improve maintainability, reduce duplication, and
+streamline large codebases. However, they come with unique challenges,
+especially in larger teams accustomed to <code>.sln</code> files. While moving away from
+traditional solution files requires some adjustment, the long-term benefits in
+automation and flexibility make it worthwhile. Have additional tips or insights?
+Reach out to me and I'll update this post to include the best practices from the
+community!</p>
+
+    </section>
+    
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="">Matt Kotsenas</a></h4>
+
+        
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=MSBuild%20Traversal%20project%20best%20practices&amp;url=" onclick="window.open(this.href + window.location.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=" onclick="window.open(this.href + window.location.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+    
+  
+    
+      
+        <a class="read-next-story" style="background-image: url(/img/pwsh-profiling-async-startup/cover.jpeg)" href="/posts/pwsh-profiling-async-startup.html">
+          <section class="post">
+            <h2>Profiling and asynchronous initialization to improve PowerShell startup</h2>
+            <p>Initialize your PowerShell profile asynchronously using idle events…</p>
+          </section>
+        </a>
+      
+      
+        <a class="read-next-story prev" style="background-image: url(/img/the-control-paradox/cover.jpg)" href="/posts/the-control-paradox.html">
+          <section class="post">
+            <h2>The Control Paradox</h2>
+            <p>Your agent orchestrator probably gives you less control than you think.…</p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script defer="defer" src="//code.jquery.com/jquery-2.1.4.min.js"></script><script defer="defer" src="/js/jquery.fitvids.js"></script><script defer="defer" src="/js/index.js"></script>
+  
+</body></html>
