@@ -93,6 +93,9 @@ frequently the agent fails or gives up.
 
 ## Persistent task tracking
 
+The core problem with the Narrow Context Pattern is that context evaporates between steps—the agent can't reason about
+what it did or why.
+
 So what's the alternative? Let the agent run wild? Full autonomy, hope for the best?
 
 No. That way lies what some have affectionately called "agent chaos at scale". Pure autonomy can work—if you have senior
@@ -160,8 +163,8 @@ Here's a framework for thinking about it:
 - **Decision authority over approach**: If there are multiple ways to accomplish a task, let the agent choose
 - **Recovery and adaptation**: When things go wrong, the agent should be first responder
 - **Context accumulation**: History of decisions, not just history of outputs
-- **Sandbox ownership**: Let the agent own everything inside the sandbox—filesystem, local git operations, build and
-    test, design and work breakdown, retry and marking tasks blocked
+- **Sandbox execution**: Let the agent own execution _within_ the sandbox—filesystem, local git operations, build and
+    test, design and work breakdown, retry loops, and flagging tasks as blocked
 
 Avoid stripping ambient state by driving the agent externally step-by-step, or hiding what tasks remain. The agent
 needs that visibility to reason effectively.
