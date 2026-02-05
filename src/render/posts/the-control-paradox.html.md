@@ -71,7 +71,7 @@ This is important because it changes how you reach for the tool. Before you run 
 of success. If that probability is low, you don't bother. The cliff limits usefulness before you even start.
 
 Pipeline orchestrators hit this cliff hard. Not because they're poorly built. Often they're beautifully engineered, with
-retries and caching and telemetry. Nevertheless they fail because their fundamental model doesn't scale to genuine
+retries and caching and telemetry. But they fail anyway, because their fundamental model doesn't scale to genuine
 novelty.
 
 Consider: you've built a migration pipeline that handles 90% of cases elegantly. The remaining 10% are edge cases. So
@@ -101,20 +101,11 @@ have senior engineers who can vibe-code their way through the wreckage. It doesn
 rigorous engineering.
 
 The answer is an emerging pattern that others have arrived at independently: **let the agent decompose its own work, but
-persist that decomposition outside the context window**. [Beads][beads-github] encodes tasks as a dependency-aware DAG
-of issues, stored in Git-backed JSON. The agent can easily query "what's ready to work on". The
-[Ralph Loop][ralph-technique] takes a complementary approach: spawn a fresh agent instance per iteration, with state
-persisted to filesystem and git. Each agent reads the current state, does a unit of work, updates the state, and
-terminates. No context rot. No compounding errors from long conversations.
-
-What these patterns share:
-- **Agent owns work breakdown**: The agent decomposes goals into tasks, not externally imposed by an orchestrator
-- **Persistent tracking outside context**: Task state lives on outside chat history
-- **Goal visibility**: The agent can always see the overall objective and remaining work, giving it a trajectory
-- **Explore, then preserve**: The agent can fork, experiment, and backtrack where only the chosen path is persisted.
-    This works better than simple context compaction. I saw repeatedly that agents that could explore and backtrack
-    produced better diffs than agents with a single longer exploration that experienced compaction. Whether this is
-    about preserved optionality or something deeper about how models reason, I don't know.
+persist that decomposition outside the context window**. Tools such as [Trekker][trekker] create a simple SQLite db of
+issues with a CLI interface. The agent can easily query "what's ready to work on". The [Ralph Loop][ralph-technique]
+takes a complementary approach: spawn a fresh agent instance per iteration, with state persisted to filesystem and git.
+Each agent reads the current state, does a unit of work, updates the state, and terminates. No context rot. No
+compounding errors from long conversations.
 
 ## Isn't this where we started?
 
@@ -126,7 +117,16 @@ with. Both involve discrete units of work. Both persist state externally. But th
 - **Persistent Task Tracking**: The agent maintains visibility into the overall goal while working on specific tasks. It
     focuses because it *chooses* to, with the full campaign in view.
 
-Same practical effect (focus on immediate work), completely different reasoning dynamics.
+Same practical effect (focus on immediate work), completely different reasoning dynamics. What makes persistent task
+tracking work:
+
+- **Agent owns work breakdown**: The agent decomposes goals into tasks, not externally imposed by an orchestrator
+- **Persistent tracking outside context**: Task state lives on outside chat history
+- **Goal visibility**: The agent can always see the overall objective and remaining work, giving it a trajectory
+- **Explore, then preserve**: The agent can fork, experiment, and backtrack where only the chosen path is persisted.
+    This works better than simple context compaction. I saw repeatedly that agents that could explore and backtrack
+    produced better diffs than agents with a single, longer exploration that experienced compaction. Whether this is
+    about preserved optionality or something deeper about how models reason, I don't know.
 
 We discovered this need through trial and error. Before adopting persistent task tracking, the agent would wander
 aimlessly and make "careless mistakes" like cloning repos to different locations between iterations, losing track of its
@@ -197,7 +197,7 @@ irreversible effect—not in the exploratory work that precedes it.
 Some things we learned the hard way.
 
 ### On Focus
--  Agents get "bored" with parallelism—their word, not mine. Give them too many concurrent tasks and they start cutting
+- Agents get "bored" with parallelism—their word, not mine. Give them too many concurrent tasks and they start cutting
     corners. Sequential focus keeps the work coherent.
 - External task tracking (visible to the agent) is remarkably effective. It provides a vector to reason against that
     prevents drift.
@@ -245,21 +245,19 @@ But this framing carries hidden costs:
 - The complexity cliff looms as edge cases accumulate
 
 Ceding control to the agent offers an alternative: give agents goal visibility and a vector to reason against while
-keeping deterministic control over irreversible effects. Focus through purpose, not through blindness. I don't know
-exactly where the line belongs. But I'm convinced it's closer to the agent-native end than most people think.
+keeping deterministic control over irreversible effects. Focus through purpose, not through blindness.
 
 The control paradox: sometimes you get more control by giving it away.
 
 ## What Now
 
-### For practioners
+### For practitioners
 
 **Start with sandboxing.** Think about isolation early as it can be painful to retrofit. Use the built-in extension
 points where possible. `PreToolUse` hooks can prevent side effects without the pain of full containerization.
 
-**Adopt persistent task tracking.** Don't reinvent this. Tools like [Trekker][trekker-github] exist. Pick one or build
-something similar, but get task state out of the chat history and into something durable. This is how you avoid the
-complexity cliff.
+**Adopt persistent task tracking.** Don't reinvent this. Tools like Trekker exist. Pick one or build something similar,
+but get task state out of the chat history and into something durable. This is how you avoid the complexity cliff.
 
 **Resist the urge to parallelize everything.** Serial focus beats parallel chaos. Your agent will thank you (or at least
 stop skipping steps).
@@ -292,8 +290,7 @@ Make it easy for agents to know what's done, what's pending, and what's blocked.
 thing. Allow it to persist across sessions.
 
 [iron-man-vs-ultron]: https://queue.acm.org/detail.cfm?id=2841313
-[beads-github]: https://github.com/steveyegge/beads
 [ralph-technique]: https://www.humanlayer.dev/blog/brief-history-of-ralph
 [kanban-board]: /img/the-control-paradox/kanban.png
-[trekker-github]: https://omercan.io/trekker/
+[trekker]: https://omercan.io/trekker/
 [how-to-build-a-plugin]: https://code.claude.com/docs/en/plugins
