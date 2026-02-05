@@ -71,7 +71,7 @@ This is important because it changes how you reach for the tool. Before you run 
 of success. If that probability is low, you don't bother. The cliff limits usefulness before you even start.
 
 Pipeline orchestrators hit this cliff hard. Not because they're poorly built. Often they're beautifully engineered, with
-retries and caching and telemetry. Nonetheless they fail because their fundamental model doesn't scale to genuine
+retries and caching and telemetry. Nevertheless they fail because their fundamental model doesn't scale to genuine
 novelty.
 
 Consider: you've built a migration pipeline that handles 90% of cases elegantly. The remaining 10% are edge cases. So
@@ -197,9 +197,8 @@ irreversible effect—not in the exploratory work that precedes it.
 Some things we learned the hard way.
 
 ### On Focus
-- Agents get "bored" with parallelism. I'm not anthropomorphizing here. When I asked an agent why it skipped steps
-    during parallel work that was its own rationale. Give them too many concurrent tasks and they start cutting corners.
-    Sequential focus works better than you'd think for keeping the work coherent.
+-  Agents get "bored" with parallelism—their word, not mine. Give them too many concurrent tasks and they start cutting
+    corners. Sequential focus keeps the work coherent.
 - External task tracking (visible to the agent) is remarkably effective. It provides a vector to reason against that
     prevents drift.
 - The narrow context pattern achieves focus by restriction. Persistent task tracking achieves focus by goal-visibility.
@@ -253,7 +252,7 @@ The control paradox: sometimes you get more control by giving it away.
 
 ## What Now
 
-### If you're authoring agent orchestrators / workflows / big refactoring campaigns
+### For practioners
 
 **Start with sandboxing.** Think about isolation early as it can be painful to retrofit. Use the built-in extension
 points where possible. `PreToolUse` hooks can prevent side effects without the pain of full containerization.
@@ -278,7 +277,7 @@ poorly-conceived campaign can teach your users that the tool produces slop. Make
 work in any context. The prompt provides the policy or decision framework for how to leverage the skill in a particular
 context.
 
-### If you work at Anthropic or GitHub (or on another agent tool)
+### For toolmakers
 
 **Allow hooks to mutate, not just observe.** Claude Code generally gets this right. `PreToolUse` should be able to
 rewrite commands. `UserPromptSubmit` should be able to inject context. For example, it should be possible with a hook
