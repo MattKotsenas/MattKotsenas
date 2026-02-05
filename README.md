@@ -1,13 +1,26 @@
 # MattKotsenas
 
-Personal website for [matt.kotsenas.com](http://matt.kotsenas.com). The site is generated using DocPad](https://docpad.bevry.me/) and uses the [Casper](https://github.com/TryGhost/Casper) theme.
+Personal website for [matt.kotsenas.com](https://matt.kotsenas.com). The site is generated using [Hugo](https://gohugo.io/) and uses a theme based on [Casper](https://github.com/TryGhost/Casper).
 
-## Building locally / testing
+## Building locally
 
-```powershell
-docker build -f .\build\Dockerfile -t mattkotsenas/site:latest .
-docker run --rm -it -p 3000:80 mattkotsenas/site:latest
-start http://localhost:3000
+```bash
+# Build the Hugo Docker image
+docker build -t mattkotsenas/blog -f build/Dockerfile .
+
+# Generate the site
+docker run --rm -v ${PWD}:/src mattkotsenas/blog hugo --minify
+
+# Output is in the out/ directory
+```
+
+## Development server
+
+```bash
+# Start dev server with live reload
+docker run --rm -v ${PWD}:/src -p 1313:1313 mattkotsenas/blog hugo server --bind 0.0.0.0
+
+# Open http://localhost:1313
 ```
 
 ## Credits
