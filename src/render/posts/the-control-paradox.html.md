@@ -143,130 +143,156 @@ When you hit the complexity cliff—and you will—Iron Man can fly. Ultron just
 
 ![Agent kanban board][kanban-board]
 
-## Where to Draw the Line
+## Where to draw "The Line"
 
-I don't know exactly where the line should be drawn between agent autonomy and deterministic control. Nobody does yet. But I'm increasingly convinced it's **closer to the agent-native end than most engineers assume**.
+I don't know exactly where the line should be drawn between agent autonomy and deterministic control. I don't think
+anybody does yet. But I'm increasingly convinced it's **closer to the agent-native end than most engineers assume**.
 
 Here's a framework for thinking about it:
 
-### Give to the Agent:
-- **Goal visibility**: The agent should always know *why* it's doing what it's doing
+### Give to the Agent
+
+- **Goal visibility**: The agent should always know _why_ it's doing what it's doing
 - **Decision authority over approach**: If there are multiple ways to accomplish a task, let the agent choose
 - **Recovery and adaptation**: When things go wrong, the agent should be first responder
 - **Context accumulation**: History of decisions, not just history of outputs
 
-**DO**: Let the agent own everything inside the sandbox—filesystem, local git operations, build, test, approach decisions, own work breakdown, retry logic, marking tasks blocked.
+- **DO**: Let the agent own everything inside the sandbox
+    - filesystem
+    - local git operations
+    - build and test
+    - design and work breakdown
+    - retry and marking tasks blocked
+- **DON'T**: Strip ambient state by driving the agent externally step-by-step
+- **DON'T**: Hide what tasks remain or what's been done; the agent needs that visibility
 
-**DON'T**: Strip ambient state by driving the agent externally step-by-step.
+### Keep in deterministic control
 
-**DON'T**: Hide what tasks remain or what's been done. The agent needs that visibility.
-
-### Keep in Deterministic Control:
 - **Irreversible external effects**: Opening PRs, merging code, modifying production systems
 - **Concurrency boundaries**: Which repos are being worked on, lease management, preventing conflicts
-- **Audit trail**: What happened, when, and what state resulted (but not *how* the agent reasoned)
+- **Audit trail**: What happened, when, what state resulted, and full reasoning and tool call logs
 - **Resource limits**: Timeouts, token budgets, iteration caps
 
-**DO**: Use a harness as a safety net for side effects—a broker for push/PR, a policy layer for campaign-level mutations (add/remove repos, abandon tasks, halt campaign), meta-recovery (retry with different model), and resource enforcement.
-
-**DON'T**: Let the agent mutate campaign scope. It can mark tasks blocked; only the harness can abandon them. The agent proposes, the harness disposes.
+- **DO**: Provide a safety net for operations with side effects
+    - a broker / hook for force-push or PR creation
+    - meta-recovery (retry with different model)
+    - resource enforcement
+- **DON'T**: Let the agent mutate campaign scope. It can mark tasks blocked; only the harness can abandon them. The
+    agent proposes, the harness disposes.
 
 ### The Risk Framing That Changes Everything
 
-Here's what makes agent orchestration fundamentally different from the ops automation that Limoncelli was writing about: **before opening a PR, mistakes are cheap**.
+Here's what makes agent orchestration fundamentally different from the ops automation that Limoncelli was writing about:
+**before opening a PR, mistakes are cheap**.
 
-We're not doing ops work. Nothing is unrecoverable. If the agent clones a repo wrong, clone again. If it generates bad code, regenerate. If it goes down a blind alley, backtrack.
-
-The entire pre-PR phase is a sandbox. We can afford way more agent autonomy than our ops-trained instincts suggest. The place to be rigorous is at the gate—the moment of irreversible effect—not in the exploratory work that precedes it.
+We're not doing ops work. Nothing is unrecoverable. If the agent clones a repo wrong, clone again. If it generates bad
+code, regenerate. If it goes down a blind alley, backtrack. The entire pre-PR phase is a sandbox. We can afford way more
+agent autonomy than our ops-trained instincts suggest. The place to be rigorous is at the gate—the moment of
+irreversible effect—not in the exploratory work that precedes it.
 
 ## Lessons Learned
 
-Some things we learned the hard way:
+Some things we learned the hard way.
 
 ### On Focus
-- Agents get "bored" with parallelism. I'm not anthropomorphizing here—when we asked an agent why it skipped steps during parallel work, that was its own rationale. Give them too many concurrent tasks and they start cutting corners. Sequential focus works better than you'd think for keeping the work coherent.
-- External task tracking (visible to the agent) is remarkably effective. It provides a vector to reason against that prevents drift.
-- The narrow context pattern achieves focus by restriction. Persistent task tracking achieves focus by goal-visibility. The latter produces better decisions.
+- Agents get "bored" with parallelism. I'm not anthropomorphizing here. When I asked an agent why it skipped steps
+    during parallel work that was its own rationale. Give them too many concurrent tasks and they start cutting corners.
+    Sequential focus works better than you'd think for keeping the work coherent.
+- External task tracking (visible to the agent) is remarkably effective. It provides a vector to reason against that
+    prevents drift.
+- The narrow context pattern achieves focus by restriction. Persistent task tracking achieves focus by goal-visibility.
+    The latter produces better decisions.
 
 ### On Collaboration
-- A campaign ledger—a persistent record of what's been done and what's pending—enables collaboration in ways stateless pipelines cannot.
-- When a human can see agent state and resume from where it left off, the whole system becomes more robust. Failures become pauses, not restarts.
-- Claude Code / Copilot plugins are underrated for collaboration. They let teams share capabilities across workflows, enable reuse between engineers, and—critically—bridge the gap between "works on my machine" and "works at campaign scale." That bridge shrinks the complexity cliff: if you can test a plugin locally on one repo, you can trust it across hundreds.
+- A ledger or persistent record of what's been done and what's pending enables collaboration in ways stateless pipelines
+    cannot.
+- When a human can see agent state and resume from where it left off, the whole system becomes more robust. Failures
+    become pauses, not restarts.
+- Claude Code / Copilot [plugins][how-to-build-a-plugin] are underrated for collaboration. They let teams share
+    capabilities across workflows, enable reuse between engineers, and—critically—bridge the gap between "works on my
+    machine" and "works at scale." That bridge shrinks the complexity cliff; you can test a plugin locally on one repo
+    and gradually scale up.
 
 ### On Debugging
-- Debug logs make agent behavior auditable. But there's a difference between auditable (what happened) and interpretable (why it happened).
-- LLM-as-judge patterns are useful for evaluating outcomes. Have a separate agent analyze the work, reflecting the original prompt back to assess alignment.
-- When the agent fails consistently, feeding it debug logs and asking "what went wrong" produces surprisingly useful meta-analysis.
+- Debug logs make agent behavior auditable. But there's a difference between auditable (what happened) and interpretable
+    (why it happened).
+- LLM-as-judge patterns are useful for evaluating outcomes. Have a separate agent analyze the work, reflecting on the
+    original prompt and the diff to assess alignment.
+- When the agent fails consistently, feed it its own debug logs and ask "what went wrong" to produce surprisingly useful
+    meta-analysis (but don't trust it blindly)
 
 ### On Nondeterminism
-- We used to worry a lot about agent nondeterminism. What we discovered is that it matters less than we thought for exploratory work, and matters enormously for reproducible testing. The solution isn't making agents deterministic—it's accepting nondeterminism for execution while maintaining deterministic test harnesses.
-- An LLM pretending to be a state machine is fine, as long as you don't *need* it to be a state machine.
+- We used to worry a lot about agent nondeterminism. What we discovered is that it matters less than we thought for
+    coding work, and matters enormously for testing. The solution isn't making agents deterministic, it's accepting
+    nondeterminism for execution and relying on robust, automated testing.
+- An LLM pretending to be a state machine is _not_ a state machine. Do not confuse it for one.
 
 ### On Cost
-- The economics have shifted. At ~$0.08/iteration for meaningful work, the cost of agent orchestration is noise compared to developer time.
-- The real cost isn't tokens—it's iteration time when things go wrong. Narrow context makes iteration expensive by destroying recoverability.
+- The economics have shifted. At ~$0.08/iteration for meaningful work, the cost of agent orchestration is noise compared
+    to developer time. I suspect this will change in the future, but for now it's true.
+- The real cost isn't tokens, it's iteration time when things go wrong. Focus on improving iteration times.
 
-## The Position
+## Coming full circle
 
-Most engineers building agent orchestrators default to deterministic control because that's how we've always built automation. We extend our mental models from CI pipelines and workflow engines. This isn't distrust of AI—it's the natural path of least cognitive resistance.
+Most engineers orchestrating agents default to deterministic control because that's how we've always built automation.
+We extend our mental models from CI pipelines and workflow engines. This isn't distrust of AI but rather the path of
+least resistance.
 
-But the Narrow Context Pattern carries hidden costs:
+But this framing carries hidden costs:
 - Agents make locally reasonable but globally suboptimal decisions
 - Recovery from failure means restart, not resume
 - The complexity cliff looms as edge cases accumulate
-- We build Ultron thinking we're building Iron Man
 
-Persistent task tracking offers an alternative: give agents goal visibility and a vector to reason against while keeping deterministic control over irreversible effects. Focus through purpose, not through blindness.
-
-I don't know exactly where the line belongs. But I'm convinced it's closer to the agent-native end than most people think.
+Ceeding control to the agent offers an alternative: give agents goal visibility and a vector to reason against while
+keeping deterministic control over irreversible effects. Focus through purpose, not through blindness. I don't know
+exactly where the line belongs. But I'm convinced it's closer to the agent-native end than most people think.
 
 The control paradox: sometimes you get more control by giving it away.
 
 ## What Now
 
-### If you're authoring campaigns
+### If you're authoring agent orchestrators / workflows / big refactoring campaigns
 
-**Start with sandboxing.** Think about isolation early—it's painful to retrofit. Use the built-in extension points where possible. PreToolUse hooks can prevent side effects without the pain of full containerization.
+**Start with sandboxing.** Think about isolation early as it can be painful to retrofit. Use the built-in extension
+points where possible. `PreToolUse` hooks can prevent side effects without the pain of full containerization.
 
-**Adopt persistent task tracking.** Don't reinvent this. Beads and Ralph Loop exist. Pick one or build something similar, but get task state out of the chat history and into something durable. This is how you get resume instead of restart.
+**Adopt persistent task tracking.** Don't reinvent this. Tools like [Trekker][trekker-github] exist. Pick one or build
+something similar, but get task state out of the chat history and into something durable. This is how you avoid the
+complexity cliff.
 
-**Resist the urge to parallelize everything.** Serial focus beats parallel chaos. Your agent will thank you (or at least stop skipping steps).
+**Resist the urge to parallelize everything.** Serial focus beats parallel chaos. Your agent will thank you (or at least
+stop skipping steps).
 
-**Remember: pre-PR mistakes are cheap.** Don't over-engineer the exploratory phase. Save your rigor for the gates—the moments of irreversible effect.
+**Remember: pre-PR mistakes are cheap.** Don't over-engineer the exploratory phase. Save your rigor for the test loop.
 
-**Use LLM-as-judge for evaluation.** When campaigns finish (or fail), have a separate agent analyze the work. Feed it the original prompt and ask "did this accomplish the goal?" The meta-analysis is surprisingly useful.
+**Use LLM-as-judge for evaluation.** When work finishes (or fails), have a separate agent step in to judge. Feed it the
+original prompt and diff and ask "did this accomplish the goal?"
 
-**Separate tool brand from campaign brand.** If you're running campaigns for many engineers, one poorly-conceived campaign can teach your users that your tool produces slop. Make sure they know the difference between "this campaign was bad" and "this tool is bad."
+**Separate tool brand from campaign brand.** If you're running refactoring campaigns for many engineers, one
+poorly-conceived campaign can teach your users that the tool produces slop. Make sure they know the difference between
+"this campaign was bad" and "this tool is bad."
 
-### If you're building plugins or skills
+**Think about composability.** Create packages with vertical skills. Skills explain _how_ to do something and should
+work in any context. The prompt provides the policy or decision framework for how to leverage the skill in a particular
+context.
 
-**Design for testability in isolation.** A plugin tested locally on one repo should work across hundreds. That's the whole point—bridging the complexity cliff between your machine and campaign scale.
+### If you work at Anthropic or GitHub (or on another agent tool)
 
-**Think about composability.** Skills that work well together multiply value. Skills that fight each other multiply debugging time.
+**Allow hooks to mutate, not just observe.** Claude Code generally gets this right. `PreToolUse` should be able to
+rewrite commands. `UserPromptSubmit` should be able to inject context. For example, it should be possible with a hook
+to add `--reference-if-able` to git clone commands to use a local cache automatically.
 
-**Document the contract.** What does your plugin expect? What does it produce? Other engineers (and agents) will thank you.
+**Consider a "hermetic mode."** Large scale refactors need to isolate themselves from machine state like user
+instructions and other configuration. It should be possible to create a "profile" that specifies the installed
+instructions, tools, skills, etc. Anything not listed should be disabled for the session.
 
-### If you're building agent tooling
-
-**Allow hooks to mutate, not just observe.** Claude Code gets this right—PreToolUse can rewrite commands, UserPromptSubmit can inject context. Example: automatically adding `--reference-if-able` to git clone commands to use a local cache. Copilot and others should match this capability.
-
-**Allow hooks on incoming and outgoing messages.** Full prompt/response interception enables guardrails, context injection, and policy enforcement without forking the agent.
-
-**Consider a "hermetic mode."** A profile that specifies: these custom instructions, these tools, these plugins—and *only* these. Everything listed is automatically installed. Everything not listed is automatically removed (from both repo and user locations). Reproducibility matters for campaigns.
-
-**Expose task state as a first-class primitive.** Not chat history—actual structured task state. Make it easy for agents to know what's done, what's pending, and what's blocked. Make it easy for humans to see the same thing.
-
-**Make goal visibility easy to maintain.** When context compacts or the agent spawns fresh, the overall objective shouldn't evaporate. This is the difference between Iron Man and Ultron.
-
----
-
-## References
-
-- Limoncelli, Thomas A. "Automation Should Be Like Iron Man, Not Ultron." *ACM Queue*, October 2015.
-- Yegge, Steve. "Beads: A Git-Friendly Issue Tracker for AI Coding Agents." GitHub, 2025.
-- snarktank. "Ralph: An Autonomous AI Agent Loop." GitHub, 2025.
+**Expose task state as a first-class primitive.** The current todowrite tools are inadequate for proper supervision.
+Make it easy for agents to know what's done, what's pending, and what's blocked. Make it easy for humans to see the same
+thing. Allow it to persist across sessions.
 
 [iron-man-vs-ultron]: https://queue.acm.org/detail.cfm?id=2841313
 [beads-github]: https://github.com/steveyegge/beads
 [ralph-technique]: https://www.humanlayer.dev/blog/brief-history-of-ralph
 [kanban-board]: /img/the-control-paradox/kanban.png
+[trekker-github]: https://omercan.io/trekker/
+[how-to-build-a-plugin]: https://code.claude.com/docs/en/plugins
