@@ -1,0 +1,8 @@
+<header class="main-header post-head" style="background-image: url({{ with .Params.cover }}{{ . }}{{ else }}{{ .Site.Params.cover }}{{ end }})">
+  <nav class="main-nav overlay clearfix">
+    {{ with .Site.Params.logo }}
+    <a class="blog-logo" href="/"><img src="{{ . }}" alt="{{ $.Site.Title }}" /></a>
+    {{ end }}
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>

@@ -1,0 +1,345 @@
+<!DOCTYPE html><html lang="en"><head><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant="" defer=""></script>
+    <meta charset="utf-8">
+    <title>Profiling and asynchronous initialization to improve PowerShell startup | void where_prohibited() { ... }</title>
+    <meta name="description" content="A personal website for Matt Kotsenas">
+    <meta name="HandheldFriendly" content="True">
+    
+    <meta property="og:title" content="Profiling and asynchronous initialization to improve PowerShell startup | void where_prohibited() { ... }">
+    <meta property="og:description" content="A personal website for Matt Kotsenas">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="http://localhost:1313/posts/pwsh-profiling-async-startup/">
+    <meta property="og:image" content="http://localhost:1313/img/pwsh-profiling-async-startup/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Profiling and asynchronous initialization to improve PowerShell startup | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="A personal website for Matt Kotsenas">
+    <meta name="twitter:image" content="http://localhost:1313/img/pwsh-profiling-async-startup/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css">
+    <link rel="stylesheet" href="/css/hljs.css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400">
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      <li class="nav-any" role="presentation">
+        <a href="/">Home</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/about">About</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/photos">Photos</a>
+      </li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+    <div class="site-wrapper">
+
+      
+<header class="main-header post-head" style="background-image: url(/img/pwsh-profiling-async-startup/cover.jpeg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>
+
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Profiling and asynchronous initialization to improve PowerShell startup</h1>
+      <section class="post-meta">
+        <time class="post-date" datetime="2024-May-24">24 May 2024</time>
+        
+        <a href="/tags/powershell/">PowerShell</a>
+        
+      </section>
+    </header>
+
+    <section class="post-content">
+      <h2 id="scenario">Scenario</h2>
+<p>As an avid terminal user, my PowerShell <a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles?view=powershell-7.4">$PROFILE</a>
+is full of customizations to make working on the terminal more enjoyable. However, each line in the profile comes at the
+cost of increased startup time.</p>
+<p>Recently my profile’s startup time grew to the point that it started to interrupt my flow, so I went looking for
+ways to improve performance.</p>
+<h3 id="profiling">Profiling</h3>
+<p>The first tactic should be to improve the code in your profile. The PowerShell team has the great blog post
+“<a href="https://devblogs.microsoft.com/powershell/optimizing-your-profile/">Optimizing your $Profile</a>” which suggests some
+techniques to improve performance. It also recommends the excellent <a href="https://github.com/IISResetMe/PSProfiler">PSProfiler</a>
+tool for measuring and improving performance.</p>
+<p>In my case, my long startup times were caused by 4 lines:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span>Count  Line       Time Taken Statement
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">-----</span>  <span style="color:#1f2328">----</span>       <span style="color:#1f2328">----------</span> <span style="color:#1f2328">---------</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">1</span>     <span style="color:#0550ae">1</span>  <span style="color:#1f2328">**</span><span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.4757793</span> <span style="color:#6639ba">oh-my</span>-posh init pwsh <span style="color:#1f2328">|</span> <span style="color:#6639ba">Invoke-Expression</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">1</span>     <span style="color:#0550ae">2</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0010184</span> <span style="color:#953800">$env:POSH_GIT_ENABLED</span> <span style="color:#1f2328">=</span> $true
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>     <span style="color:#0550ae">3</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">1</span>     <span style="color:#0550ae">4</span>  <span style="color:#1f2328">**</span><span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.6424778</span> <span style="color:#6639ba">Import-Module</span> -Name <span style="color:#6639ba">Terminal-Icons</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>     <span style="color:#0550ae">5</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">1</span>     <span style="color:#0550ae">6</span>  <span style="color:#1f2328">**</span><span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.2414747</span> <span style="color:#6639ba">Import-Module</span> z
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>     <span style="color:#0550ae">7</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>     <span style="color:#0550ae">8</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span> <span style="color:#57606a"># Load up everything in the scripts folder</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>     <span style="color:#0550ae">9</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span> <span style="color:#cf222e">foreach</span> <span style="color:#1f2328">(</span><span style="color:#953800">$scriptFile</span> <span style="color:#cf222e">in</span> <span style="color:#1f2328">(</span><span style="color:#6639ba">Get-ChildItem</span> -Path <span style="color:#953800">$PSScriptRoot</span><span style="color:#1f2328">\</span>scripts -Recurse -Include <span style="color:#1f2328">*.</span>ps1<span style="color:#1f2328">))</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>    <span style="color:#0550ae">10</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span> <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">9</span>    <span style="color:#0550ae">11</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0736413</span>   <span style="color:#1f2328">.</span> <span style="color:#953800">$scriptFile</span><span style="color:#1f2328">.</span>FullName
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>    <span style="color:#0550ae">12</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span> <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">1</span>    <span style="color:#0550ae">13</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0067889</span> <span style="color:#1f2328">.</span> <span style="color:#953800">$PSScriptRoot</span><span style="color:#1f2328">\</span>aliases<span style="color:#1f2328">.</span>ps1
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">0</span>    <span style="color:#0550ae">14</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0000000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">1</span>    <span style="color:#0550ae">15</span>    <span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.0007204</span> <span style="color:#953800">$Env:PYTHONIOENCODING</span><span style="color:#1f2328">=</span><span style="color:#0a3069">'utf-8'</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">1</span>    <span style="color:#0550ae">16</span>  <span style="color:#1f2328">**</span><span style="color:#0550ae">00</span><span style="color:#f6f8fa;background-color:#82071e">:</span><span style="color:#0550ae">00.3904604</span> <span style="color:#6639ba">iex </span><span style="color:#0a3069">"</span><span style="color:#1f2328">$(</span>thefuck <span style="color:#1f2328">-</span>-alias<span style="color:#1f2328">)</span><span style="color:#0a3069">"</span>
+</span></span></code></pre></div><ol>
+<li><a href="https://ohmyposh.dev/">Oh My Posh</a></li>
+<li><a href="https://github.com/devblackops/Terminal-Icons">Terminal-Icons</a></li>
+<li><a href="https://github.com/badmotorfinger/z">z</a></li>
+<li><a href="https://github.com/nvbn/thefuck">thefuck</a></li>
+</ol>
+<p>In my case, these modules are pretty important to my daily workflow and I was unwilling to give them up. Instead, I went
+looking for alternatives.</p>
+<h3 id="async--background-initialization">Async / background initialization</h3>
+<p>My approach was to find a way to make the default PowerShell prompt available immediately and then swap in the fully
+loaded environment.</p>
+<p>After a few false starts (see <a href="#runspaces">Appendix: Runspaces</a>), I found that Register-EngineEvent would work for my
+purposes.</p>
+<h4 id="using-powershells-idle-event">Using PowerShell’s Idle event</h4>
+<p><a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/register-engineevent?view=powershell-7.4">Register-EngineEvent</a>
+has the ability to schedule work for when PowerShell is idle. Given a registration like this:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span><span style="color:#6639ba">Register-EngineEvent</span> -SourceIdentifier PowerShell<span style="color:#1f2328">.</span>OnIdle -MaxTriggerCount <span style="color:#0550ae">1</span> -Action <span style="color:#1f2328">{</span> <span style="color:#953800">$Host</span><span style="color:#1f2328">.</span>UI<span style="color:#1f2328">.</span>WriteLine<span style="color:#1f2328">(</span><span style="color:#0a3069">"Hello, World!"</span><span style="color:#1f2328">)</span> <span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>“Hello, World!” will be run after the PowerShell prompt goes idle.</p>
+<p><img src="/img/pwsh-profiling-async-startup/example-idle-event.gif" alt="Example of using Register-EngineEvent to write to the host"></p>
+<blockquote>
+<p>NOTE: <code>$Host.UI</code> is used in this example to force the action to use the parent’s output. Using <code>echo</code> would instead
+direct the output to the event handler’s job object.</p></blockquote>
+<h4 id="using-modules-to-access-the-global-scope">Using modules to access the global scope</h4>
+<p>One complication of the event handler is that it uses
+<a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_jobs?view=powershell-7.4">jobs</a>
+to run the action in the background, and jobs use a new
+<a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_scopes?view=powershell-7.4">scope</a>.
+Thus, by default, any code run in the idle event <em>won’t</em> be available to the prompt.</p>
+<p>There are multiple ways to access the global scope in PowerShell, but the one I found to be the simplest and easiest
+is to use modules.</p>
+<p>Modules support loading into the
+<a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/import-module?view=powershell-7.4#-global">global scope</a>.
+Adding the <code>-Global</code> parameter to <code>Import-Module</code> ensures that the module is available in the prompt.</p>
+<p>For code that isn’t already in a module, the <code>New-Module</code> cmdlet can be used to make a module on-the-fly. For example,
+this loads <code>thefuck</code> (which creates a function) into the global namespace:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span><span style="color:#6639ba">New-Module</span> -ScriptBlock <span style="color:#1f2328">{</span> <span style="color:#6639ba">iex </span><span style="color:#0a3069">"</span><span style="color:#1f2328">$(</span>thefuck <span style="color:#1f2328">-</span>-alias<span style="color:#1f2328">)</span><span style="color:#0a3069">"</span> <span style="color:#1f2328">}</span> <span style="color:#1f2328">|</span> <span style="color:#6639ba">Import-Module</span> -Global
+</span></span></code></pre></div><h4 id="putting-it-all-together">Putting it all together</h4>
+<p>The last step is to wire the pieces together in <code>$PROFILE</code>.</p>
+<p>PowerShell will use the default prompt until the profile is loaded, so consider writing a simple prompt that signals
+that the profile is still loading:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span><span style="color:#cf222e">function</span><span style="color:#fff"> </span><span style="color:#6639ba">prompt</span> <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#57606a"># We will override this prompt, however because it is loading async we want to communicate that the real prompt is still loading.</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#0a3069">"[async init]: PS </span><span style="color:#1f2328">$(</span><span style="color:#953800">$executionContext</span><span style="color:#1f2328">.</span>SessionState<span style="color:#1f2328">.</span>Path<span style="color:#1f2328">.</span>CurrentLocation<span style="color:#1f2328">)$(</span><span style="color:#0a3069">'&gt;'</span> <span style="color:#1f2328">*</span> <span style="color:#1f2328">(</span><span style="color:#953800">$nestedPromptLevel</span> <span style="color:#1f2328">+</span> <span style="color:#0550ae">1</span><span style="color:#1f2328">))</span><span style="color:#0a3069"> "</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>Next, break your profile into “chunks”. One chunk will be loaded per idle callback. I chose a chunk per tool to keep
+things simple.</p>
+<p>Last, we need a queue to track our chunk work, and a bit of cleanup afterwards.</p>
+<p>Here’s an example of loading those same tools asynchronously:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span><span style="color:#57606a"># Create a queue of modules to load</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">[</span><span style="color:#0550ae">System.Collections.Queue</span><span style="color:#1f2328">]</span><span style="color:#953800">$__initQueue</span> <span style="color:#1f2328">=</span> @<span style="color:#1f2328">(</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6639ba">oh-my</span>-posh init pwsh <span style="color:#1f2328">|</span> <span style="color:#6639ba">Invoke-Expression</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#953800">$Env:POSH_GIT_ENABLED</span> <span style="color:#1f2328">=</span> $true
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">},</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6639ba">Import-Module</span> -Name <span style="color:#6639ba">Terminal-Icons</span> -Global
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">},</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6639ba">Import-Module</span> -Name z -Global
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">},</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#953800">$Env:PYTHONIOENCODING</span><span style="color:#1f2328">=</span><span style="color:#0a3069">'utf-8'</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6639ba">New-Module</span> -Name thefuck -ScriptBlock <span style="color:#1f2328">{</span> <span style="color:#6639ba">iex </span><span style="color:#0a3069">"</span><span style="color:#1f2328">$(</span>thefuck <span style="color:#1f2328">-</span>-alias<span style="color:#1f2328">)</span><span style="color:#0a3069">"</span> <span style="color:#1f2328">}</span> <span style="color:#1f2328">|</span> <span style="color:#6639ba">Import-Module</span> -Global
+</span></span><span style="display:flex;"><span>  <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a"># Register our idle callback; use `-SupportEvent` to hide the registration from the user</span>
+</span></span><span style="display:flex;"><span><span style="color:#6639ba">Register-EngineEvent</span> -SourceIdentifier PowerShell<span style="color:#1f2328">.</span>OnIdle -SupportEvent -Action <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">if</span> <span style="color:#1f2328">(</span><span style="color:#953800">$__initQueue</span><span style="color:#1f2328">.</span>Count <span style="color:#0550ae">-gt</span> <span style="color:#0550ae">0</span><span style="color:#1f2328">)</span> <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#1f2328">&amp;</span> <span style="color:#953800">$__initQueue</span><span style="color:#1f2328">.</span>Dequeue<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span> <span style="color:#cf222e">else</span> <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#57606a"># NOTE: Use `-Force` when unregistering because we used `-SupportEvent` when registering</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#6639ba">Unregister-Event</span> -SubscriptionId <span style="color:#953800">$EventSubscriber</span><span style="color:#1f2328">.</span>SubscriptionId -Force
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#57606a"># Remove our queue variable to avoid polluting the environment</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#6639ba">Remove-Variable</span> -Name <span style="color:#0a3069">'__initQueue'</span> -Scope Global -Force
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#57606a"># Re-render the prompt so we get pretty colors ASAP!</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#1f2328">[</span><span style="color:#0550ae">Microsoft.PowerShell.PSConsoleReadLine</span><span style="color:#1f2328">]::</span>InvokePrompt<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>And here’s PowerShell being interactive instantly with the pretty prompt rendering once loaded.</p>
+<p><img src="/img/pwsh-profiling-async-startup/example-async.gif" alt="Example running an interactive shell that loads in the background"></p>
+<p>Hope this makes your day a bit more productive! 🧑‍💻</p>
+<h3 id="appendix">Appendix</h3>
+<h4 id="avoiding-conflicts-with-psreadline">Avoiding conflicts with PSReadline</h4>
+<p><a href="https://github.com/PowerShell/PSReadLine">PSReadline</a> supports highlighting a part of the prompt to signal syntax errors
+before pressing enter. Powerline-esque tools like oh-my-posh generally turn this feature off, as it can conflict with
+their own rendering.</p>
+<p>Because we’re moving initialization out of the startup code path, you may want to disable this feature yourself:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span><span style="color:#57606a"># Disable the "make the prompt red during parse error" because it conflicts with oh-my-posh</span>
+</span></span><span style="display:flex;"><span><span style="color:#6639ba">Set-PSReadLineOption</span> -PromptText <span style="color:#0a3069">''</span>
+</span></span></code></pre></div><h3 id="runspaces">Runspaces</h3>
+<p>Initially, I assumed that somehow
+<a href="https://learn.microsoft.com/en-us/powershell/scripting/developer/hosting/creating-runspaces?view=powershell-7.4">runspaces</a>
+would be involved.</p>
+<p>Searching lead me to the following two posts:</p>
+<ul>
+<li><a href="https://gist.github.com/instance-id/1b20852728cc34a70e0ba93527a41c34">https://gist.github.com/instance-id/1b20852728cc34a70e0ba93527a41c34</a></li>
+<li><a href="https://fsackur.github.io/2023/11/20/Deferred-profile-loading-for-better-performance/">https://fsackur.github.io/2023/11/20/Deferred-profile-loading-for-better-performance/</a></li>
+</ul>
+<p>Both examples used a similar approach:</p>
+<ol>
+<li>Start up a child runspace</li>
+<li>Attach a state / context object</li>
+<li>Run $PROFILE in the runspace asynchronously</li>
+<li>Check for completion and marshall the loaded state into the parent runspace</li>
+</ol>
+<p>Both examples <em>mostly</em> worked, but were flaky or fragile. I’d occasionally experience a crash on startup, or some modules
+would capture state from the child runspace and wouldn’t work correctly in the parent runspace.</p>
+<p>Nonetheless, I’m very grateful for both examples as they helped me understand PowerShell internals better and also
+clarified the async loading user experience.</p>
+
+    </section>
+
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="/" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="/">Matt Kotsenas</a></h4>
+
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Profiling+and+asynchronous+initialization+to+improve+PowerShell+startup&amp;url=http%3a%2f%2flocalhost%3a1313%2fposts%2fpwsh-profiling-async-startup%2f" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fposts%2fpwsh-profiling-async-startup%2f" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+  
+    
+  
+    
+  
+    
+      
+        
+        <a class="read-next-story" style="background-image: url(/img/msbuild-targets-with-vertical-slices/cover.jpg)" href="http://localhost:1313/posts/msbuild-targets-with-vertical-slices/">
+          <section class="post">
+            <h2>Simplify MSBuild Directory.Build.props and .targets files with vertical slices</h2>
+            <p></p><h2 id="background">Background</h2>
+<p><code>Directory.Build.props</code> and <code>Directory.Build.targets</code> are two files that allow you to set …</p>…<p></p>
+          </section>
+        </a>
+      
+      
+        
+        <a class="read-next-story prev" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">
+          </a><section class="post"><a class="read-next-story prev" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">
+            <h2>MSBuild Traversal project best practices</h2>
+            <p></p></a><blockquote><a class="read-next-story prev" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">
+</a><p><a class="read-next-story prev" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">[!NOTE]
+This post assumes you’re already familiar with the
+</a><a href="https://github.com/microsoft/MSBuildSdks/blob/main/src/Traversal/README.md">Microsoft.Build.Traversal</a>
+SDK, …</p></blockquote>…<p></p>
+          </section>
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="/js/jquery.fitvids.js"></script>
+    <script src="/js/index.js"></script>
+  
+
+</body></html>

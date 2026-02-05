@@ -1,0 +1,43 @@
+baseURL = 'https://matt.kotsenas.com/'
+languageCode = 'en-us'
+title = "void where_prohibited() { ... }"
+
+# Output to 'out/' to match DocPad
+publishDir = 'out'
+
+# Clean URLs (no .html extension)
+uglyURLs = false
+
+[params]
+  tagline = 'Programmer. Runner. Trying my best.'
+  description = 'A personal website for Matt Kotsenas'
+  logo = '/img/home.png'
+  cover = '/img/cover.jpg'
+  author = 'Matt Kotsenas'
+  authorImg = 'https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55'
+  authorLocation = 'Seattle, WA'
+
+[taxonomies]
+  tag = 'tags'
+
+[permalinks]
+  posts = '/posts/:slug/'
+
+[pagination]
+  pagerSize = 5
+  path = ''
+
+# RSS feed at /rss.xml
+[outputFormats.RSS]
+  baseName = 'rss'
+
+[outputs]
+  home = ['HTML', 'RSS']
+
+[markup]
+  [markup.highlight]
+    style = 'github'
+    lineNos = false
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true

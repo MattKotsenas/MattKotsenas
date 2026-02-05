@@ -1,0 +1,292 @@
+<!DOCTYPE html><html lang="en"><head><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant="" defer=""></script>
+    <meta charset="utf-8">
+    <title>Generating WPA Regions of Interest from performance marks | void where_prohibited() { ... }</title>
+    <meta name="description" content="A personal website for Matt Kotsenas">
+    <meta name="HandheldFriendly" content="True">
+    
+    <meta property="og:title" content="Generating WPA Regions of Interest from performance marks | void where_prohibited() { ... }">
+    <meta property="og:description" content="A personal website for Matt Kotsenas">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="http://localhost:1313/posts/generate-wpa-regions-from-performance-marks/">
+    <meta property="og:image" content="http://localhost:1313/img/wpa-regions/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Generating WPA Regions of Interest from performance marks | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="A personal website for Matt Kotsenas">
+    <meta name="twitter:image" content="http://localhost:1313/img/wpa-regions/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css">
+    <link rel="stylesheet" href="/css/hljs.css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400">
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      <li class="nav-any" role="presentation">
+        <a href="/">Home</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/about">About</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/photos">Photos</a>
+      </li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+    <div class="site-wrapper">
+
+      
+<header class="main-header post-head" style="background-image: url(/img/wpa-regions/cover.png)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>
+
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Generating WPA Regions of Interest from performance marks</h1>
+      <section class="post-meta">
+        <time class="post-date" datetime="2017-July-26">26 July 2017</time>
+        
+        <a href="/tags/performance/">performance</a>, <a href="/tags/chrome/">chrome</a>, <a href="/tags/edge/">edge</a>, <a href="/tags/wpa/">wpa</a>
+        
+      </section>
+    </header>
+
+    <section class="post-content">
+      <p>In a <a href="/posts/using-wpa-to-analyze-performance-marks">recent post</a>, I showed how to view <code>performance.mark()</code>s in WPA. This post is a small follow-on on how to
+simplify and automate that process to make performance analysis easier.</p>
+<h2 id="regions-of-interest">Regions of Interest</h2>
+<p>Regions of Interest is a native <a href="https://msdn.microsoft.com/en-us/library/dn450838.aspx">WPA concept</a> that provides the capability of visualizing and zooming to an
+interesting part of a trace easily.</p>
+<h2 id="using-regions-with-performancemark">Using Regions with performance.mark</h2>
+<p>Now that we know how to get <code>performance.mark()</code> to emit ETW events, we can write a Regions of Interest file to automatically
+pull those events into a graph. It isn’t too difficult to <a href="https://msdn.microsoft.com/en-us/library/dn450840.aspx">write your own</a> regions file, here’s a sample
+one for Edge that assumes we’re looking for two measures, one called “Widget Load” with marks named <code>widgetload-start</code> and
+<code>widgetload-end</code>, and the other named “Flyout Animation” and marked by <code>animation.flyout.begin</code> and <code>animation.flyout.end</code>:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-xml" data-lang="xml"><span style="display:flex;"><span><span style="color:#57606a">&lt;?xml version="1.0" encoding="utf-8" standalone="yes"?&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#0550ae">&lt;InstrumentationManifest&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#0550ae">&lt;Instrumentation&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">&lt;Regions&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#0550ae">&lt;RegionRoot</span> <span style="color:#1f2328">Guid=</span><span style="color:#0a3069">"{aac4e926-e56e-4fd8-bd18-e0af3656558a}"</span> <span style="color:#1f2328">Name=</span><span style="color:#0a3069">"My App Scenarios"</span><span style="color:#0550ae">&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#0550ae">&lt;Region</span> <span style="color:#1f2328">Guid=</span><span style="color:#0a3069">"{fac57cdb-bc3d-41b9-9d12-fa755a39be94}"</span> <span style="color:#1f2328">Name=</span><span style="color:#0a3069">"Widget Load"</span><span style="color:#0550ae">&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;Match&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;Event</span> <span style="color:#1f2328">TID=</span><span style="color:#0a3069">"true"</span> <span style="color:#1f2328">PID=</span><span style="color:#0a3069">"true"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;/Match&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;Start&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;Event</span> <span style="color:#1f2328">Provider=</span><span style="color:#0a3069">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span style="color:#1f2328">Id=</span><span style="color:#0a3069">"211"</span> <span style="color:#1f2328">Version=</span><span style="color:#0a3069">"0"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;PayloadIdentifier</span> <span style="color:#1f2328">FieldName=</span><span style="color:#0a3069">"Name"</span> <span style="color:#1f2328">FieldValue=</span><span style="color:#0a3069">"WidgetLoad-Start"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;/Start&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;Stop&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;Event</span> <span style="color:#1f2328">Provider=</span><span style="color:#0a3069">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span style="color:#1f2328">Id=</span><span style="color:#0a3069">"211"</span> <span style="color:#1f2328">Version=</span><span style="color:#0a3069">"0"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;PayloadIdentifier</span> <span style="color:#1f2328">FieldName=</span><span style="color:#0a3069">"Name"</span> <span style="color:#1f2328">FieldValue=</span><span style="color:#0a3069">"WidgetLoad-End"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;/Stop&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#0550ae">&lt;/Region&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#0550ae">&lt;Region</span> <span style="color:#1f2328">Guid=</span><span style="color:#0a3069">"{2c8c2da9-5930-4c78-85dd-1f9b83d462f6}"</span> <span style="color:#1f2328">Name=</span><span style="color:#0a3069">"Flyout Animation"</span><span style="color:#0550ae">&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;Match&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;Event</span> <span style="color:#1f2328">TID=</span><span style="color:#0a3069">"true"</span> <span style="color:#1f2328">PID=</span><span style="color:#0a3069">"true"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;/Match&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;Start&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;Event</span> <span style="color:#1f2328">Provider=</span><span style="color:#0a3069">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span style="color:#1f2328">Id=</span><span style="color:#0a3069">"211"</span> <span style="color:#1f2328">Version=</span><span style="color:#0a3069">"0"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;PayloadIdentifier</span> <span style="color:#1f2328">FieldName=</span><span style="color:#0a3069">"Name"</span> <span style="color:#1f2328">FieldValue=</span><span style="color:#0a3069">"animation.flyout.begin"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;/Start&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;Stop&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;Event</span> <span style="color:#1f2328">Provider=</span><span style="color:#0a3069">"{9e3b3947-ca5d-4614-91a2-7b624e0e7244}"</span> <span style="color:#1f2328">Id=</span><span style="color:#0a3069">"211"</span> <span style="color:#1f2328">Version=</span><span style="color:#0a3069">"0"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#0550ae">&lt;PayloadIdentifier</span> <span style="color:#1f2328">FieldName=</span><span style="color:#0a3069">"Name"</span> <span style="color:#1f2328">FieldValue=</span><span style="color:#0a3069">"animation.flyout.end"</span> <span style="color:#0550ae">/&gt;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#0550ae">&lt;/Stop&gt;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#0550ae">&lt;/Region&gt;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#0550ae">&lt;/RegionRoot&gt;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#0550ae">&lt;/Regions&gt;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#0550ae">&lt;/Instrumentation&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#0550ae">&lt;/InstrumentationManifest&gt;</span>
+</span></span></code></pre></div><p>The format is pretty straightforward, but why do all that copy / pasting and GUID creation? We easily can <em>generate</em> these
+files for both Chrome and Edge!</p>
+<h2 id="auto-generating-regions-files">Auto-generating Regions files</h2>
+<p>I’ve created a simple PowerShell script called <code>New-RegionsXml.ps1</code> and put it up on <a href="https://github.com/MattKotsenas/WPA-Regions-Generator">GitHub</a>. To create
+a Regions of Interest file for both Chrome and Edge, just supply a collection of objects with <code>Name</code>, <code>Start</code>, and <code>Stop</code>,
+properties. Here’s the same example as before:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span>PS<span style="color:#1f2328">&gt;</span> <span style="color:#953800">$measures</span> <span style="color:#1f2328">=</span> @<span style="color:#1f2328">(</span>
+</span></span><span style="display:flex;"><span>        @<span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            Name <span style="color:#1f2328">=</span> <span style="color:#0a3069">"Widget Load"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#6639ba">Start </span><span style="color:#1f2328">=</span> <span style="color:#0a3069">"WidgetLoad-Start"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>            Stop <span style="color:#1f2328">=</span> <span style="color:#0a3069">"WidgetLoad-End"</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">},</span>
+</span></span><span style="display:flex;"><span>        @<span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            Name <span style="color:#1f2328">=</span> <span style="color:#0a3069">"Flyout Animation"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#6639ba">Start </span><span style="color:#1f2328">=</span> <span style="color:#0a3069">"animation.flyout.begin"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>            Stop <span style="color:#1f2328">=</span> <span style="color:#0a3069">"animation.flyout.end"</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>PS<span style="color:#1f2328">&gt;</span> <span style="color:#953800">$measures</span> <span style="color:#1f2328">|</span> <span style="color:#1f2328">.\</span><span style="color:#6639ba">New-RegionsXml</span><span style="color:#1f2328">.</span>ps1 -RootName <span style="color:#0a3069">"My App Scenarios"</span>
+</span></span></code></pre></div><blockquote>
+<p>NOTE: If you aren’t familiar with PowerShell, <code>@()</code> is the shorthand syntax for an array, and <code>@{}</code> is shorthand for a hashtable,
+much like an object literal in JavaScript.</p></blockquote>
+<p>The output will be two Regions files, one for Chrome and one for Edge, which can be <a href="https://msdn.microsoft.com/en-us/library/dn450838.aspx#Anchor_1">loaded</a> in WPA.</p>
+<p>The script supports any event provider(s), the default value of <code>-EventProviders</code>, as previously mentioned is Edge and Chrome</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span>@<span style="color:#1f2328">(</span>
+</span></span><span style="display:flex;"><span>    @<span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        Name <span style="color:#1f2328">=</span> <span style="color:#0a3069">"Edge"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        Provider <span style="color:#1f2328">=</span> <span style="color:#1f2328">[</span><span style="color:#0550ae">Guid</span><span style="color:#1f2328">]</span><span style="color:#0a3069">"9e3b3947-ca5d-4614-91a2-7b624e0e7244"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        Id <span style="color:#1f2328">=</span> <span style="color:#0550ae">211</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        Version <span style="color:#1f2328">=</span> <span style="color:#0550ae">0</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        FieldName <span style="color:#1f2328">=</span> <span style="color:#0a3069">"Name"</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">},</span>
+</span></span><span style="display:flex;"><span>    @<span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        Name <span style="color:#1f2328">=</span> <span style="color:#0a3069">"Chrome"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        Provider <span style="color:#1f2328">=</span> <span style="color:#1f2328">[</span><span style="color:#0550ae">Guid</span><span style="color:#1f2328">]</span><span style="color:#0a3069">"d2d578d9-2936-45b6-a09f-30e32715f42d"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        Id <span style="color:#1f2328">=</span> <span style="color:#0550ae">1</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        Version <span style="color:#1f2328">=</span> <span style="color:#0550ae">0</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        FieldName <span style="color:#1f2328">=</span> <span style="color:#0a3069">"Name"</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">)</span>
+</span></span></code></pre></div><p>but you can override it with anything you like.</p>
+<p>Here’s an example of of a popular benchmark that exposes each test step as a set of marks, and those marks have been turned into
+WPA regions:</p>
+<p><img src="/img/wpa-regions/edge-regions-sample.png" alt="A single mark selected with the corresponding CPU chart highlighted in that same region"></p>
+<p>Notice that by selecting a region of interest (item 1), each occurrence of that region is selected not just in the Regions chart
+(item 2), but also in the CPU Usage chart (item 3), making it super simple to zoom in and out of the trace; much easier to
+understand what’s happening now!</p>
+<p>Ideally browsers would export the User Timings directly into the ETW stream like they do in the F12 developer tools, but until
+then this script should make things a bit simpler.</p>
+
+    </section>
+
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="/" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="/">Matt Kotsenas</a></h4>
+
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Generating+WPA+Regions+of+Interest+from+performance+marks&amp;url=http%3a%2f%2flocalhost%3a1313%2fposts%2fgenerate-wpa-regions-from-performance-marks%2f" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fposts%2fgenerate-wpa-regions-from-performance-marks%2f" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+        <a class="read-next-story" style="background-image: url(/img/wpa-marks/filter-to-marks.png)" href="http://localhost:1313/posts/using-wpa-to-analyze-performance-marks/">
+          </a><section class="post"><a class="read-next-story" style="background-image: url(/img/wpa-marks/filter-to-marks.png)" href="http://localhost:1313/posts/using-wpa-to-analyze-performance-marks/">
+            <h2>Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome</h2>
+            <p></p></a><p><a class="read-next-story" style="background-image: url(/img/wpa-marks/filter-to-marks.png)" href="http://localhost:1313/posts/using-wpa-to-analyze-performance-marks/">I have a bit of a love / hate relationship with the </a><a href="https://docs.microsoft.com/en-us/windows-hardware/test/wpt/index">Windows Performance Toolkit</a>. It’s easy to …</p>…<p></p>
+          </section>
+        
+      
+      
+        
+        <a class="read-next-story prev" style="background-image: url(/img/combining-cronschedules-in-webjobs.png)" href="http://localhost:1313/posts/combining-cronschedules-in-webjobs/">
+          <section class="post">
+            <h2>Combining cron expressions in Azure WebJobs TimerTriggers</h2>
+            <p></p><p>Azure WebJobs support the concept of triggers, which let your job do work in response to a HTTP …</p>…<p></p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="/js/jquery.fitvids.js"></script>
+    <script src="/js/index.js"></script>
+  
+
+</body></html>

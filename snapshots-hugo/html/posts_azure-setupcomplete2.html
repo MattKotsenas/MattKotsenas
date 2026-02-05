@@ -1,0 +1,336 @@
+<!DOCTYPE html><html lang="en"><head><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant="" defer=""></script>
+    <meta charset="utf-8">
+    <title>Running post setup commands on Azure VMs with SetupComplete2 | void where_prohibited() { ... }</title>
+    <meta name="description" content="A personal website for Matt Kotsenas">
+    <meta name="HandheldFriendly" content="True">
+    
+    <meta property="og:title" content="Running post setup commands on Azure VMs with SetupComplete2 | void where_prohibited() { ... }">
+    <meta property="og:description" content="A personal website for Matt Kotsenas">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="http://localhost:1313/posts/azure-setupcomplete2/">
+    <meta property="og:image" content="http://localhost:1313/img/azure-setupcomplete2-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Running post setup commands on Azure VMs with SetupComplete2 | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="A personal website for Matt Kotsenas">
+    <meta name="twitter:image" content="http://localhost:1313/img/azure-setupcomplete2-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css">
+    <link rel="stylesheet" href="/css/hljs.css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400">
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      <li class="nav-any" role="presentation">
+        <a href="/">Home</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/about">About</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/photos">Photos</a>
+      </li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+    <div class="site-wrapper">
+
+      
+<header class="main-header post-head" style="background-image: url(/img/azure-setupcomplete2.jpg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>
+
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Running post setup commands on Azure VMs with SetupComplete2</h1>
+      <section class="post-meta">
+        <time class="post-date" datetime="2020-May-12">12 May 2020</time>
+        
+        <a href="/tags/azure/">azure</a>, <a href="/tags/windows/">windows</a>
+        
+      </section>
+    </header>
+
+    <section class="post-content">
+      <p>Trying to enable the Administrator account on a custom VM image for Azure lead down a rabbit hole. In the hopes of
+preventing others from wasting time – I mean, learning very important information – I’m going to attempt to add
+a bit more documentation around a set of rather obscure features, that, when used together, can be helpful when
+creating custom Windows images for use in Azure.</p>
+<h2 id="the-background">The background</h2>
+<p>This all started when I wanted to create a <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/windows/capture-image-resource">custom Windows image</a> for a set of VMs in Azure. Creating
+custom images can be useful if you want a set of VMs (or VM scale sets) with a set of pre-installed software packages,
+drivers, etc. Documentation to customize VMs usually steers developers towards <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/extensions/custom-script-windows">Custom Script Extensions</a>,
+however I have two problems with custom script extensions:</p>
+<ol>
+<li>They can be slow to deploy</li>
+<li>The customization is part of VM creation, which puts software installation in the critical path of VM startup</li>
+</ol>
+<p>Having a known-good image ready to go avoids both issues.</p>
+<h2 id="my-problem">My problem</h2>
+<p>For reasons that aren’t really important, my OS of choice for this project was Windows 10, a <em>client</em> operating system,
+and not Windows Server. Creating the custom images and starting them in Azure worked fine, but I soon discovered that
+I was unable to Remote Desktop into the VMs. <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/troubleshooting/reset-rdp">Resetting</a> the administrator password (even to the same value)
+seemed to fix the problem.</p>
+<p>After quite a bit of digging, I discovered two differences in behavior between server and client editions of Windows when using
+<a href="https://docs.microsoft.com/en-us/windows-hardware/manufacture/desktop/enable-and-disable-the-built-in-administrator-account#configuring-the-built-in-administrator-password">Sysprep</a>:</p>
+<ol>
+<li>On server, sysprep resets the Administrator password; on client it does not</li>
+<li>On server, sysprep leaves the Administrator account enabled; on client it disables it</li>
+</ol>
+<p>Knowing those two facts explains why the Azure script “EnableAdminAccount” that you can view on any Azure VM under the “Run command”
+blade in the portal looks like this:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span><span style="color:#953800">$adminAccount</span> <span style="color:#1f2328">=</span> <span style="color:#6639ba">Get-WmiObject</span> Win32_UserAccount -filter <span style="color:#0a3069">"LocalAccount=True"</span> <span style="color:#1f2328">|</span> <span style="color:#1f2328">?</span> <span style="color:#1f2328">{</span><span style="color:#953800">$_</span><span style="color:#1f2328">.</span>SID <span style="color:#0550ae">-Like</span> <span style="color:#0a3069">"S-1-5-21-*-500"</span><span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">if</span><span style="color:#1f2328">(</span><span style="color:#953800">$adminAccount</span><span style="color:#1f2328">.</span>Disabled<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#6639ba">Write-Host</span> Admin account was disabled<span style="color:#1f2328">.</span> Enabling the Admin account<span style="color:#1f2328">.</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#953800">$adminAccount</span><span style="color:#1f2328">.</span>Disabled <span style="color:#1f2328">=</span> $false
+</span></span><span style="display:flex;"><span>  <span style="color:#953800">$adminAccount</span><span style="color:#1f2328">.</span>Put<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span> <span style="color:#cf222e">else</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#6639ba">Write-Host</span> Admin account is enabled<span style="color:#1f2328">.</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>Running that command, even without changing the password, fixed my issue. Now we’re getting somewhere!</p>
+<p>SID 500 is a <a href="https://support.microsoft.com/en-us/help/243330/well-known-security-identifiers-in-windows-operating-systems">well known security identifier</a> for the built-in Administrator account. That means that this script
+works even if the Administrator account is renamed. Viewing <code>$adminAccount.Name</code> confirms that when setting a username and
+password in Azure, Azure renames the Administrator account instead of creating a new account.</p>
+<h2 id="possible-solutions">Possible solutions</h2>
+<p>Now that the problem’s understood, there are three main ways to fix the problem that I see:</p>
+<ol>
+<li>Use a custom script extension to enable the account</li>
+<li>Use <a href="https://docs.microsoft.com/en-us/dotnet/api/microsoft.azure.management.compute.models.additionalunattendcontent?view=azure-dotnet">AdditionalUnattendContent</a> to specify a <a href="https://docs.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-shell-setup-firstlogoncommands">FirstLogonCommand</a> that enables the account</li>
+<li>Use the even more obscure <a href="https://docs.microsoft.com/en-us/dynamics-nav/setupcomplete2.cmd-file-example">SetupComplete2.cmd</a> to run the enable script</li>
+</ol>
+<p>Options 1 and 2 have the drawback that the <em>user</em> of the image must deploy the image “correctly” in order to support Remote Desktop.
+If a user forgets to apply the custom script extension or supply the additional unattend content, the image will be broken. Both solutions
+put custom images a tier below Azure’s own Marketplace Images, which I didn’t like, so unsurprisingly I decided to investigate SetupComplete2.cmd.</p>
+<h3 id="setupcomplete2cmd">SetupComplete2.cmd</h3>
+<p>A name like “SetupComplete2” suggests that there’s a SetupComplete1, right? Well, you’d be correct; if Windows setup <a href="https://docs.microsoft.com/en-us/windows-hardware/manufacture/desktop/add-a-custom-script-to-windows-setup">completes successfully</a>,
+it will automatically run the file <code>%WINDIR%\Setup\Scripts\SetupComplete.cmd</code> if present. So, adding a SetupComplete.cmd that enables the
+Administrator account should fix things!</p>
+<p>Unfortunately for us, Azure can use SetupComplete.cmd as part of its own provisioning process, overwriting our file. At the time of this blog
+post, the contents of that file are this (though are probably subject to change):</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cmd" data-lang="cmd"><span style="display:flex;"><span><span style="color:#1f2328">@</span><span style="color:#cf222e">ECHO</span> OFF <span style="color:#1f2328">&amp;&amp;</span> <span style="color:#cf222e">SETLOCAL</span> <span style="color:#1f2328">&amp;&amp;</span> <span style="color:#cf222e">SETLOCAL</span> ENABLEDELAYEDEXPANSION <span style="color:#1f2328">&amp;&amp;</span> <span style="color:#cf222e">SETLOCAL</span> ENABLEEXTENSIONS
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">REM Execute this script from %WINDIR%\Setup\Scripts</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">CALL</span> <span style="color:#953800">%SystemRoot%</span>\OEM\SetupComplete.cmd
+</span></span></code></pre></div><p>Which is just a “stub” that calls off into another script in the “OEM” folder. Looking at that file:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cmd" data-lang="cmd"><span style="display:flex;"><span><span style="color:#1f2328">@</span><span style="color:#cf222e">ECHO</span> OFF <span style="color:#1f2328">&amp;&amp;</span> <span style="color:#cf222e">SETLOCAL</span> <span style="color:#1f2328">&amp;&amp;</span> <span style="color:#cf222e">SETLOCAL</span> ENABLEDELAYEDEXPANSION <span style="color:#1f2328">&amp;&amp;</span> <span style="color:#cf222e">SETLOCAL</span> ENABLEEXTENSIONS
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">ECHO</span> SetupComplete.cmd BEGIN <span style="color:#1f2328">&gt;&gt;</span> <span style="color:#953800">%windir%</span>\Panther\WaSetup.log
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">TITLE</span> SETUP COMPLETE
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">REM execute unattend script</span>
+</span></span><span style="display:flex;"><span>cscript <span style="color:#953800">%SystemRoot%</span>\OEM\Unattend.wsf //Job:setup //NoLogo //B /ConfigurationPass:oobeSystem <span style="color:#1f2328">&gt;&gt;</span> <span style="color:#953800">%windir%</span>\Panther\WaSetup.log
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">ECHO</span> SetupComplete.cmd END <span style="color:#1f2328">&gt;&gt;</span> <span style="color:#953800">%windir%</span>\Panther\WaSetup.log
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">IF</span> <span style="color:#cf222e">EXIST</span> <span style="color:#953800">%SystemRoot%</span>\OEM\SetupComplete2.cmd <span style="color:#1f2328">(</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#cf222e">ECHO</span> Execute SetupComplete2.cmd <span style="color:#1f2328">&gt;&gt;</span> <span style="color:#953800">%windir%</span>\Panther\WaSetup.log
+</span></span><span style="display:flex;"><span>	<span style="color:#cf222e">CALL</span> <span style="color:#953800">%SystemRoot%</span>\OEM\SetupComplete2.cmd
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">)</span>
+</span></span></code></pre></div><p>Lucky for us, there’s hook! Azure’s SetupComplete.cmd looks for a <code>%SystemRoot%\OEM\SetupComplete2.cmd</code> file and runs it. So, we can put our
+script in SetupComplete2.cmd and wait for the Azure provisioning process to call us. Since I like writing PowerShell a whole lot more than
+batch, here’s what I add to our <a href="https://www.packer.io/">Packer</a> script that creates our custom images:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-powershell" data-lang="powershell"><span style="display:flex;"><span><span style="color:#57606a">&lt;#
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">.</span><span style="color:#0a3069">SYNOPSIS</span><span style="color:#57606a">
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">Write a script to the target machine that OOBE will call to enable the built-in Administrator account (i.e. SID 500, regardless of its name).
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">.</span><span style="color:#0a3069">DESCRIPTION</span><span style="color:#57606a">
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">OOBE supports running a custom script after setup completes named C:\Windows\Setup\Scripts\SetupComplete.cmd (see https://docs.microsoft.com/en-us/windows-hardware/manufacture/desktop/add-a-custom-script-to-windows-setup).
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">However, Azure's provisioning process uses this script (overwriting if necessary) to bootstrap its own
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">OOBE process. Luckily, Azure's OOBE process leaves a hook for us at the end of its process by running the script
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">C:\OEM\SetupComplete2.cmd, if present.
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">This script writes a SetupComplete2.ps1 that enables the built-in Administrator account. It does so by searching for SID 500, so that the script
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">works even if the Administrator account is renamed (which Azure does). Then a SetupComplete2.cmd is written to call our PowerShell script, since
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">the hook requires the file to be named "SetupCompelete2.cmd".
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">.</span><span style="color:#0a3069">NOTES</span><span style="color:#57606a">
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">To support further downstream customization, this script looks for a C:\OEM\SetupComplete3.cmd, and if found, runs it.
+</span></span></span><span style="display:flex;"><span><span style="color:#57606a">#&gt;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#953800">$ErrorActionPreference</span> <span style="color:#1f2328">=</span> <span style="color:#0a3069">"Stop"</span>
+</span></span><span style="display:flex;"><span><span style="color:#6639ba">Set-StrictMode</span> -version Latest
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#953800">$path</span> <span style="color:#1f2328">=</span> <span style="color:#0a3069">"</span><span style="color:#1f2328">$(</span><span style="color:#953800">$Env:SystemRoot</span><span style="color:#1f2328">)</span><span style="color:#0a3069">\OEM"</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6639ba">New-Item</span> -ItemType Directory -Path <span style="color:#953800">$path</span> -Force
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a"># Use single-quote for the here-string so the text isn't interpolated</span>
+</span></span><span style="display:flex;"><span><span style="color:#0a3069">@'
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">$adminAccount = Get-WmiObject Win32_UserAccount -filter "LocalAccount=True" | ?{$_.SID -Like "S-1-5-21-*-500"}
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">if($adminAccount.Disabled)
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">{
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">    Write-Host "Admin account was disabled. Enabling the Admin account."
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">    $adminAccount.Disabled = $false
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">    $adminAccount.Put()
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">}
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">else
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">{
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">    Write-Host "Admin account is enabled."
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">}
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069"># Since we are using SetupComplete2.cmd, add a hook for future us to use SetupComplete3.cmd
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">if (Test-Path $Env:SystemRoot\OEM\SetupComplete3.cmd)
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">{
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">    &amp; $Env:SystemRoot\OEM\SetupComplete3.cmd
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">}
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">'@</span> <span style="color:#1f2328">|</span> <span style="color:#6639ba">Out-File</span> -Encoding ASCII -FilePath <span style="color:#0a3069">"</span><span style="color:#953800">$path</span><span style="color:#0a3069">\SetupComplete2.ps1"</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#0a3069">"powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File %~dp0SetupComplete2.ps1"</span> <span style="color:#1f2328">|</span> <span style="color:#6639ba">Out-File</span> -Encoding ASCII -FilePath <span style="color:#0a3069">"</span><span style="color:#953800">$path</span><span style="color:#0a3069">\SetupComplete2.cmd"</span>
+</span></span></code></pre></div><p>Note that in keeping with the theme, my script runs <code>SetupComplete3.cmd</code> if present so that consumers of my custom image can
+apply their own customization without needing to hook or replace my script.</p>
+<h2 id="final-thoughts">Final thoughts</h2>
+<p>While I expect this issue to be somewhat niche, piecing this all together took a solid week of poking, prodding, and wading through
+docs. If I can save at least one other person the trouble, then it’s worth it.</p>
+<p>I’ve also reported this issue to the Windows Provisioning team privately for consideration; unfortunately, I don’t have a bug
+or feature request link I can share.</p>
+<p>If I’ve made any mistakes or you have thoughts on how to improve on this scenario, please feel free to open an issue or
+provide a Pull Request to this post!</p>
+
+    </section>
+
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="/" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="/">Matt Kotsenas</a></h4>
+
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Running+post+setup+commands+on+Azure+VMs+with+SetupComplete2&amp;url=http%3a%2f%2flocalhost%3a1313%2fposts%2fazure-setupcomplete2%2f" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fposts%2fazure-setupcomplete2%2f" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+        <a class="read-next-story" style="background-image: url(/img/ignoreif-mstest/cover.png)" href="http://localhost:1313/posts/ignoreif-mstest/">
+          <section class="post">
+            <h2>Programmatically skip / ignore tests in MSTest v2</h2>
+            <p></p><p>If you read that headline and you’re like me, your first thought is probably “that …</p>…<p></p>
+          </section>
+        </a>
+      
+      
+        
+        <a class="read-next-story prev" style="background-image: url(/img/implementing-ioptionsfactory-to-create-options-instances.png)" href="http://localhost:1313/posts/implementing-ioptionsfactory-to-create-options-instances/">
+          <section class="post">
+            <h2>Implementing IOptionsFactory&lt;T&gt; to create custom options instances</h2>
+            <p></p><h2 id="backstory">Backstory</h2>
+<p>Recently, I was writing a .NET console app to integrate with a third-party library. The …</p>…<p></p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="/js/jquery.fitvids.js"></script>
+    <script src="/js/index.js"></script>
+  
+
+</body></html>

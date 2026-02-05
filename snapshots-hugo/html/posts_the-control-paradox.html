@@ -1,0 +1,420 @@
+<!DOCTYPE html><html lang="en"><head><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant="" defer=""></script>
+    <meta charset="utf-8">
+    <title>The Control Paradox | void where_prohibited() { ... }</title>
+    <meta name="description" content="A personal website for Matt Kotsenas">
+    <meta name="HandheldFriendly" content="True">
+    
+    <meta property="og:title" content="The Control Paradox | void where_prohibited() { ... }">
+    <meta property="og:description" content="A personal website for Matt Kotsenas">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="http://localhost:1313/posts/the-control-paradox/">
+    <meta property="og:image" content="http://localhost:1313/img/the-control-paradox/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The Control Paradox | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="A personal website for Matt Kotsenas">
+    <meta name="twitter:image" content="http://localhost:1313/img/the-control-paradox/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css">
+    <link rel="stylesheet" href="/css/hljs.css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400">
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      <li class="nav-any" role="presentation">
+        <a href="/">Home</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/about">About</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/photos">Photos</a>
+      </li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+    <div class="site-wrapper">
+
+      
+<header class="main-header post-head" style="background-image: url(/img/the-control-paradox/cover.jpg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>
+
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">The Control Paradox</h1>
+      <section class="post-meta">
+        <time class="post-date" datetime="2026-February-05">05 February 2026</time>
+        
+        <a href="/tags/ai/">ai</a>, <a href="/tags/agents/">agents</a>
+        
+      </section>
+    </header>
+
+    <section class="post-content">
+      <p>Your agent orchestrator probably gives you less control than you think.</p>
+<h2 id="the-setup">The setup</h2>
+<p>Here’s a scene that plays out in engineering organizations everywhere: a team decides to use AI agents for large-scale
+refactoring across their codebase. Hundreds of repos. Thousands of files. The kind of work that would take a human team
+years.</p>
+<p>Let’s call this kind of cross-repo effort a <em>campaign</em>: a named initiative with a defined scope, tracked state, and a
+finish line.</p>
+<p>And then someone says the magic words: “we need a pipeline”.</p>
+<p>Of course we do! We’re engineers. We build pipelines. We’ve been building pipelines since Jenkins was just a glimmer in
+Kohsuke Kawaguchi’s eye. Clone, build, test, transform, verify, PR. Steps. States. Transitions. This is our comfort zone.</p>
+<p>So the team goes off and builds what I’ll call the <strong>Narrow Context Pattern</strong>: a deterministic state machine that drives
+an AI agent through discrete steps. The agent gets called at specific points with prompts like “fix this build error”
+or “migrate this API call”, but the orchestrator holds the reins. The agent sees only what we show it. The pipeline
+controls the flow.</p>
+<p>It feels safe. It feels <em>engineered</em>.</p>
+<p>And here’s the paradox: <strong>by taking control away from the agent, we often get worse outcomes</strong>.</p>
+<h2 id="iron-man-vs-ultron-but-not-how-youd-expect">Iron Man vs. Ultron (but not how you’d expect)</h2>
+<p>Tom Limoncelli wrote a fantastic piece called <a href="https://queue.acm.org/detail.cfm?id=2841313">Automation Should Be Like Iron Man, Not Ultron</a>.
+The thesis is essentially that automation should collaborate with humans, not replace them. Ultron-style automation runs
+autonomously until it hits a wall, then fails catastrophically. Iron Man-style automation keeps humans in the loop,
+empowering them to do more while staying in control.</p>
+<p>Most people read this and think: “Right, so we should constrain our AI agents. Keep them on a leash so we understand
+what they’re doing. Pipeline-driven orchestration = Iron Man”.</p>
+<p><strong>They have it exactly backwards.</strong></p>
+<p>The Narrow Context Pattern is Ultron in disguise.</p>
+<p>When the pipeline fails at step 47 of 52, what are your options? In practice: retry or restart. Yes, some pipelines
+offer checkpointing and partial reruns. But even those only preserve <em>outputs</em>, not reasoning. The agent has no memory
+of the decisions made in steps 1-46. It was a hired gun, called in for specific jobs, dismissed after each one.</p>
+<p>There’s no collaboration. There’s no graceful recovery. There’s just “try again”.</p>
+<p>Meanwhile, an agent that understands the overall goal, has visibility into its own history, and can reason about the
+entire campaign can say “step 47 failed because of a decision I made in step 12, let me reconsider”. It can collaborate
+with a human who drops in to help. It can <em>adapt</em>.</p>
+<p>That’s Iron Man. The suit enhances Tony Stark’s judgment. It doesn’t replace it with a rigid flowchart.</p>
+<h2 id="the-complexity-cliff">The complexity cliff</h2>
+<p>I’ve taken to calling the failure mode implied by Limoncelli’s thinking the <strong>complexity cliff</strong>: automation that works
+until it doesn’t, and when it fails, it fails completely. No middle ground or partial success.</p>
+<p>This is important because it changes how you reach for the tool. Before you run it, you have to estimate the probability
+of success. If that probability is low, you don’t bother. The cliff limits usefulness before you even start.</p>
+<p>Pipeline orchestrators hit this cliff hard. Not because they’re poorly built. Often they’re beautifully engineered, with
+retries and caching and telemetry. But they fail anyway, because their fundamental model doesn’t scale to genuine
+novelty.</p>
+<p>Consider: you’ve built a migration pipeline that handles 90% of cases elegantly. The remaining 10% are edge cases. So
+you add conditionals. Exception handlers. Special-case steps. Your clean state machine accumulates complexity like
+sediment.</p>
+<p>Now something truly novel happens. A repo with a structure no one anticipated. A build system that violates assumptions.</p>
+<p>Your Ultron falls off the cliff. The agent that made the decisions is long gone. Its context evaporated after each step
+completed. And because Ultron-style automation treats failure as exceptional, not expected, there’s no graceful recovery
+path; engineers stare at logs trying to reconstruct what happened, quickly give up, and do the work by hand.</p>
+<p>Early in our experimentation, we built exactly this kind of system. It worked at small scale for a handful of repos and
+simple transformations. We thought we were being rigorous. We thought deterministic control meant predictable outcomes.
+What we discovered was that we’d given the orchestrator too much responsibility and the agent too little context. At scale,
+the narrow context pattern produced <em>locally reasonable but globally suboptimal decisions</em>. The agent would try to do
+exactly what we asked in each step. However, without visibility into the overall goal it couldn’t course-correct. It
+couldn’t reuse prior investigation. It re-reasoned about how to compile each time. Small issues compounded and
+frequently the agent failed or gave up.</p>
+<h2 id="persistent-task-tracking">Persistent task tracking</h2>
+<p>The core problem with the Narrow Context Pattern is that context evaporates between steps—the agent can’t reason about
+what it did or why.</p>
+<p>So what’s the alternative? Let the agent run wild? Full autonomy, hope for the best?</p>
+<p>No. That way lies what some have affectionately called “agent chaos at scale”. Pure autonomy can work if you have senior
+engineers willing to heroically untangle the wreckage each time. But heroics don’t scale. Production systems need
+predictable recovery, not individual brilliance.</p>
+<p>The answer is an emerging pattern that others have arrived at independently: <strong>let the agent decompose its own work, but
+persist that decomposition outside the context window</strong>. This solves the core problem: the agent retains goal visibility
+and decision history even across restarts, without the context rot that comes from endless conversations.</p>
+<p>Tools like <a href="https://omercan.io/trekker/">Trekker</a> create a simple SQLite db of
+issues with a CLI interface. The agent can easily query “what’s ready to work on”. The <a href="https://www.humanlayer.dev/blog/brief-history-of-ralph">Ralph Loop</a>
+takes a complementary approach: spawn a fresh agent instance per iteration, with state persisted to filesystem and git.
+Each agent reads the current state, does a unit of work, updates the state, and terminates. No context rot. No
+compounding errors from long conversations.</p>
+<h2 id="isnt-this-where-we-started">Isn’t this where we started?</h2>
+<p>At first glance, it might sound like we’ve come full circle to the Narrow Context Pattern I was criticizing to begin
+with. Both involve discrete units of work. Both persist state externally. But the key difference is <em>who’s driving</em>.</p>
+<ul>
+<li><strong>Narrow Context Pattern</strong>: External orchestrator drives the agent, feeding it one task at a time. The agent focuses
+because it literally cannot see anything else.</li>
+<li><strong>Persistent Task Tracking</strong>: The agent maintains visibility into the overall goal while working on specific tasks. It
+focuses because it <em>chooses</em> to, with the full campaign in view.</li>
+</ul>
+<p>Same practical effect (focus on immediate work), completely different reasoning dynamics. What makes persistent task
+tracking work:</p>
+<ul>
+<li><strong>Agent owns work breakdown</strong>: The agent decomposes goals into tasks, not externally imposed by an orchestrator</li>
+<li><strong>Persistent tracking outside context</strong>: Task state lives on outside chat history</li>
+<li><strong>Goal visibility</strong>: The agent can always see the overall objective and remaining work, giving it a trajectory</li>
+<li><strong>Explore, then preserve</strong>: The agent can fork, experiment, and backtrack where only the chosen path is persisted.
+This works better than simple context compaction. I saw repeatedly that agents that could explore and backtrack
+produced better diffs than agents with a single, longer exploration that experienced compaction. Whether this is
+about preserved optionality or something deeper about how models reason, I don’t know.</li>
+</ul>
+<p>We discovered this need through trial and error. Before adopting persistent task tracking, the agent would wander
+aimlessly and make “careless mistakes” like cloning repos to different locations between iterations, losing track of its
+work, etc. Giving it an external driver didn’t help either; the agent would reason correctly on each narrow step, but
+lose that reasoning on the next iteration. Each restart compounded failure risk. When we gave the agent persistent task
+tracking, something shifted. It stopped wandering. It could reason about whether its current action served the larger
+purpose.</p>
+<p>Persistent task tracking also enables the Iron Man collaboration we actually want:</p>
+<ul>
+<li>A human can see what the agent is working on</li>
+<li>A human can resume a failed campaign with context intact</li>
+<li>A human can adjust goals mid-flight without starting over</li>
+<li>Multiple agents or humans can collaborate on the same campaign</li>
+</ul>
+<p>When you inevitably encounter a novel situation, Iron Man helps you calculate a new path. Ultron just crashes.</p>
+<p><img src="/img/the-control-paradox/kanban.png" alt="Agent kanban board"></p>
+<h2 id="where-to-draw-the-line">Where to draw the line</h2>
+<p>I don’t know exactly where the line should be drawn between agent autonomy and deterministic control. I don’t think
+anybody does yet. But I’m increasingly convinced it’s <strong>closer to the agent-native end than most engineers assume</strong>.</p>
+<p>Here’s a framework for thinking about it:</p>
+<h3 id="give-to-the-agent">Give to the Agent</h3>
+<ul>
+<li><strong>Goal visibility</strong>: The agent should always know <em>why</em> it’s doing what it’s doing</li>
+<li><strong>Decision authority over approach</strong>: If there are multiple ways to accomplish a task, let the agent choose</li>
+<li><strong>Recovery and adaptation</strong>: When things go wrong, the agent should be first responder</li>
+<li><strong>Context accumulation</strong>: History of decisions, not just history of outputs</li>
+<li><strong>Sandbox execution</strong>: Let the agent own execution <em>within</em> the sandbox—filesystem, local git operations, build and
+test, design and work breakdown, retry loops, and flagging tasks as blocked</li>
+</ul>
+<p>Avoid stripping ambient state by driving the agent externally step-by-step, or hiding what tasks remain. The agent
+needs that visibility to reason effectively.</p>
+<h3 id="keep-in-deterministic-control">Keep in deterministic control</h3>
+<ul>
+<li><strong>Irreversible external effects</strong>: Use policy, via hooks or a broker, for operations with side effects
+(force-push or PR creation) and resource enforcement</li>
+<li><strong>Verification gates</strong>: Agents will claim success without evidence. Make verification blocking, not advisory. No PR
+without passing tests, no “done” without proof.</li>
+<li><strong>Concurrency boundaries</strong>: Which repos are being worked on, lease management, preventing conflicts</li>
+<li><strong>Audit trail</strong>: What happened, when, what state resulted, and full reasoning and tool call logs</li>
+<li><strong>Resource limits</strong>: Timeouts, token budgets, iteration caps</li>
+</ul>
+<p>Don’t let the agent mutate campaign scope. It can mark tasks blocked; only the harness can abandon them. The agent
+proposes, the harness disposes.</p>
+<h3 id="the-risk-framing-matters">The risk framing matters</h3>
+<p>Here’s what makes agent orchestration fundamentally different from the ops automation that Limoncelli was writing about:
+<strong>before opening a PR, mistakes are cheap</strong>.</p>
+<p>We’re not doing ops work. Nothing is unrecoverable. If the agent clones a repo wrong, clone again. If it generates bad
+code, regenerate. If it goes down a blind alley, backtrack. The entire pre-PR phase is a sandbox. We can afford way more
+agent autonomy than our ops-trained instincts suggest. The place to be rigorous is at the moment of irreversible effect,
+not in the exploratory work that precedes it.</p>
+<h2 id="lessons-learned">Lessons Learned</h2>
+<p>The opinions above emerged from experimentation. Here’s surpising patterns and mistakes made more than once.</p>
+<h3 id="on-focus">On Focus</h3>
+<ul>
+<li>Agents struggle with repetition. Ask an agent to “do this in 10 places” and it does it in 5. Ask it to “do this in
+one place” ten times and it gets all ten. Sequential focus keeps the work coherent.</li>
+<li>External task tracking (visible to the agent) is remarkably effective. It provides a vector to reason against that
+prevents drift.</li>
+<li>The narrow context pattern achieves focus by restriction. Persistent task tracking achieves focus by goal-visibility.
+The latter produces better decisions.</li>
+</ul>
+<h3 id="on-collaboration">On Collaboration</h3>
+<ul>
+<li>A ledger or persistent record of what’s been done and what’s pending enables collaboration in ways traditional
+pipelines cannot.</li>
+<li>When a human can see agent state and resume from where it left off, the whole system becomes more robust. Failures
+become pauses, not restarts.</li>
+<li>Claude Code / Copilot <a href="https://code.claude.com/docs/en/plugins">plugins</a> are underrated for collaboration. They let teams share
+capabilities across workflows, enable reuse between engineers, and bridge the gap between “works on my machine” and
+“works at scale”. That bridge shrinks the complexity cliff; you can test a plugin locally on one repo and gradually
+scale up.</li>
+</ul>
+<h3 id="on-debugging">On Debugging</h3>
+<ul>
+<li>Debug logs make agent behavior auditable. But there’s a difference between auditable (what happened) and interpretable
+(why it happened).</li>
+<li>LLM-as-judge patterns are useful for evaluating outcomes. Have a separate agent analyze the work, reflecting on the
+original prompt and the diff to assess alignment.</li>
+<li>When the agent fails consistently, feed it its own debug logs and ask “what went wrong” to produce surprisingly useful
+meta-analysis (but don’t trust it blindly).</li>
+</ul>
+<h3 id="on-nondeterminism">On Nondeterminism</h3>
+<ul>
+<li>We used to worry a lot about agent nondeterminism. What we discovered is that it matters less than we thought for
+coding work, and matters enormously for testing. The solution isn’t making agents deterministic, it’s accepting
+nondeterminism for execution and relying on robust, automated testing.</li>
+<li>An LLM pretending to be a state machine is <em>not</em> a state machine. Do not confuse it for one.</li>
+</ul>
+<h3 id="on-cost">On Cost</h3>
+<ul>
+<li>The economics have shifted. At ~$0.08/iteration for meaningful work, the cost of agent orchestration is noise compared
+to developer time. I suspect this will change in the future, but for now it’s true.</li>
+<li>The real cost isn’t tokens, it’s iteration time when things go wrong. Focus on improving iteration times.</li>
+</ul>
+<h2 id="coming-full-circle">Coming full circle</h2>
+<p>Most engineers orchestrating agents default to deterministic control because that’s how we’ve always built automation.
+We extend our mental models from CI pipelines and workflow engines. This isn’t distrust of AI but rather the path of
+cognitive least resistance.</p>
+<p>But this framing carries hidden costs:</p>
+<ul>
+<li>Agents make locally reasonable but globally suboptimal decisions</li>
+<li>Recovery from failure means restart, not resume</li>
+<li>The complexity cliff looms as edge cases accumulate</li>
+</ul>
+<p>Ceding control to the agent offers an alternative: give agents goal visibility and a vector to reason against while
+keeping deterministic control over irreversible effects. Focus through purpose, not through blindness.</p>
+<p>The control paradox: sometimes you get more control by giving it away.</p>
+<h2 id="what-now">What Now</h2>
+<p>If you’re convinced (or at least curious), here’s how to put these ideas into practice. I’ve split recommendations by
+audience: practitioners building on existing tools, and toolmakers shaping what comes next.</p>
+<h3 id="for-practitioners">For practitioners</h3>
+<p><strong>Start with sandboxing.</strong> Think about isolation early as it can be painful to retrofit. Use the built-in extension
+points where possible. <code>PreToolUse</code> hooks can prevent side effects without the pain of full containerization.</p>
+<p><strong>Adopt persistent task tracking.</strong> Don’t reinvent this. Tools like Trekker exist. Pick one or build something similar,
+but get task state out of the chat history and into something durable. This is how you avoid the complexity cliff.</p>
+<p><strong>Resist the urge to parallelize everything.</strong> Serial focus beats parallel chaos. Your agent will thank you (or at least
+stop skipping steps).</p>
+<p><strong>Remember: pre-PR mistakes are cheap.</strong> Don’t over-engineer the exploratory phase. Save your rigor for the test loop.</p>
+<p><strong>Use LLM-as-judge for evaluation.</strong> When work finishes (or fails), have a separate agent step in to judge. Feed it the
+original prompt and diff and ask “did this accomplish the goal”? Require signoff before the task can advance to the next
+state.</p>
+<p><strong>Separate tool brand from campaign brand.</strong> If you’re running refactoring campaigns for many engineers, one
+poorly-conceived campaign can teach your users that the tool produces slop. Reviewers start ignoring your PRs. Engineers
+stop proposing campaigns. Make sure they know the difference between “this campaign was bad” and “this tool is bad”.</p>
+<p><strong>Think about composability.</strong> Create packages with vertical skills. <a href="https://docs.github.com/en/copilot/concepts/agents/about-agent-skills">Skills</a> explain <em>how</em> to do
+something and should work in any context. The prompt provides the policy or decision framework for how to leverage the
+skill in a particular context.</p>
+<h3 id="for-toolmakers">For toolmakers</h3>
+<p><strong>Allow hooks to mutate, not just observe.</strong> Claude Code generally gets this right. <code>PreToolUse</code> should be able to
+rewrite commands. <code>UserPromptSubmit</code> should be able to inject context. For example, it should be possible with a hook
+to add <code>--reference-if-able</code> to git clone commands to use a local cache automatically.</p>
+<p><strong>Consider a “hermetic mode”.</strong> Large scale refactors need to isolate themselves from machine state like user
+instructions and other configuration. It should be possible to create a “profile” that specifies the installed
+instructions, tools, skills, etc. Anything not listed should be disabled for the session.</p>
+<p><strong>Expose task state as a first-class primitive.</strong> The current TodoWrite tools are inadequate for proper supervision.
+Make it easy for agents to know what’s done, what’s pending, and what’s blocked. Make it easy for humans to see the same
+thing. Allow it to persist across sessions.</p>
+
+    </section>
+
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="/" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="/">Matt Kotsenas</a></h4>
+
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=The+Control+Paradox&amp;url=http%3a%2f%2flocalhost%3a1313%2fposts%2fthe-control-paradox%2f" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fposts%2fthe-control-paradox%2f" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+  
+    
+      
+        
+        <a class="read-next-story" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">
+          </a><section class="post"><a class="read-next-story" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">
+            <h2>MSBuild Traversal project best practices</h2>
+            <p></p></a><blockquote><a class="read-next-story" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">
+</a><p><a class="read-next-story" style="background-image: url(/img/traversal-project-best-practices/cover.jpeg)" href="http://localhost:1313/posts/traversal-project-best-practices/">[!NOTE]
+This post assumes you’re already familiar with the
+</a><a href="https://github.com/microsoft/MSBuildSdks/blob/main/src/Traversal/README.md">Microsoft.Build.Traversal</a>
+SDK, …</p></blockquote>…<p></p>
+          </section>
+        
+      
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="/js/jquery.fitvids.js"></script>
+    <script src="/js/index.js"></script>
+  
+
+</body></html>

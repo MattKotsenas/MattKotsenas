@@ -1,0 +1,433 @@
+<!DOCTYPE html><html lang="en"><head><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant="" defer=""></script>
+    <meta charset="utf-8">
+    <title>Programmatically skip / ignore tests in MSTest v2 | void where_prohibited() { ... }</title>
+    <meta name="description" content="A personal website for Matt Kotsenas">
+    <meta name="HandheldFriendly" content="True">
+    
+    <meta property="og:title" content="Programmatically skip / ignore tests in MSTest v2 | void where_prohibited() { ... }">
+    <meta property="og:description" content="A personal website for Matt Kotsenas">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="http://localhost:1313/posts/ignoreif-mstest/">
+    <meta property="og:image" content="http://localhost:1313/img/ignoreif-mstest/cover-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Programmatically skip / ignore tests in MSTest v2 | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="A personal website for Matt Kotsenas">
+    <meta name="twitter:image" content="http://localhost:1313/img/ignoreif-mstest/cover-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css">
+    <link rel="stylesheet" href="/css/hljs.css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400">
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      <li class="nav-any" role="presentation">
+        <a href="/">Home</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/about">About</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/photos">Photos</a>
+      </li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+    <div class="site-wrapper">
+
+      
+<header class="main-header post-head" style="background-image: url(/img/ignoreif-mstest/cover.png)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>
+
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Programmatically skip / ignore tests in MSTest v2</h1>
+      <section class="post-meta">
+        <time class="post-date" datetime="2019-March-20">20 March 2019</time>
+        
+        <a href="/tags/.net/">.net</a>, <a href="/tags/mstest/">mstest</a>, <a href="/tags/testfx/">testfx</a>, <a href="/tags/testing/">testing</a>
+        
+      </section>
+    </header>
+
+    <section class="post-content">
+      <p>If you read that headline and you’re like me, your first thought is probably “that sounds like a terrible idea”. While
+usually I’d agree with you (and myself?), allow me to bury the lede a little bit and provide a bit of motivation. Then,
+with that out of the way, I’ll describe one possible solution to a problem that occurs more often than you might expect.</p>
+<h2 id="the-motivation">The Motivation</h2>
+<p>Recently I’ve had to write some .NET Core code that runs cross-platform (Windows, Linux, and macOS).
+Unfortunately for me, a fair amount of that code interacts with the underlying OS in various ways (OS APIs, file
+system manipulation, etc.) that .NET doesn’t completely abstract away. As a result, I’m writing platform-specific code.</p>
+<p>Here’s an example for the purposes of this post:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">PathHelper</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">bool</span> IsSamePath<span style="color:#1f2328">(</span><span style="color:#cf222e">string</span> path1<span style="color:#1f2328">,</span> <span style="color:#cf222e">string</span> path2<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">if</span> <span style="color:#1f2328">(</span>RuntimeInformation<span style="color:#1f2328">.</span>IsOSPlatform<span style="color:#1f2328">(</span>OSPlatform<span style="color:#1f2328">.</span>Windows<span style="color:#1f2328">))</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">return</span> <span style="color:#cf222e">string</span><span style="color:#1f2328">.</span>Equals<span style="color:#1f2328">(</span>path1<span style="color:#1f2328">,</span> path2<span style="color:#1f2328">,</span> StringComparison<span style="color:#1f2328">.</span>OrdinalIgnoreCase<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> <span style="color:#cf222e">string</span><span style="color:#1f2328">.</span>Equals<span style="color:#1f2328">(</span>path1<span style="color:#1f2328">,</span> path2<span style="color:#1f2328">,</span> StringComparison<span style="color:#1f2328">.</span>Ordinal<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>In this example, I have a “helper class” (I’m not a big fan of classes with the name “helper” in it, but I’ll save
+that for another day) that takes two paths as strings and decides if they represent the same path. This method is aware
+that on Windows, paths are by default <a href="https://devblogs.microsoft.com/commandline/per-directory-case-sensitivity-and-wsl/">case-insensitive</a>, whereas on Linux and macOS, paths are case sensitive, and
+adjusts accordingly (keep in mind this is just an example, in reality Windows can be made case sensitive, and this
+code doesn’t handle lots of cases you should care about like canonicalization, along with other problems).</p>
+<p>Now, of course, since we’re all good little engineers, there’s also a test that goes with this code (you <em>do</em> write
+tests, don’t you?). I use the <a href="https://github.com/Microsoft/testfx">MSTest v2 framework</a> just to keep friction low for other developers.</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#1f2328">[TestClass]</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">TwoPathsThatDifferOnlyByCase</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">    [TestMethod]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">void</span> AreTheSameOnWindowsAndDifferentOnLinuxAndMacOS<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> pathHelper <span style="color:#1f2328">=</span> <span style="color:#cf222e">new</span> PathHelper<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">if</span> <span style="color:#1f2328">(</span>RuntimeInformation<span style="color:#1f2328">.</span>IsOSPlatform<span style="color:#1f2328">(</span>OSPlatform<span style="color:#1f2328">.</span>Windows<span style="color:#1f2328">))</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            Assert<span style="color:#1f2328">.</span>IsTrue<span style="color:#1f2328">(</span>pathHelper<span style="color:#1f2328">.</span>IsSamePath<span style="color:#1f2328">(</span><span style="color:#0a3069">"C:\\HELLO\\WORLD"</span><span style="color:#1f2328">,</span> <span style="color:#0a3069">"C:\\hello\\world"</span><span style="color:#1f2328">));</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">else</span> <span style="color:#cf222e">if</span> <span style="color:#1f2328">(</span>RuntimeInformation<span style="color:#1f2328">.</span>IsOSPlatform<span style="color:#1f2328">(</span>OSPlatform<span style="color:#1f2328">.</span>Linux<span style="color:#1f2328">)</span> <span style="color:#1f2328">||</span> RuntimeInformation<span style="color:#1f2328">.</span>IsOSPlatform<span style="color:#1f2328">(</span>OSPlatform<span style="color:#1f2328">.</span>OSX<span style="color:#1f2328">))</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            Assert<span style="color:#1f2328">.</span>IsFalse<span style="color:#1f2328">(</span>pathHelper<span style="color:#1f2328">.</span>IsSamePath<span style="color:#1f2328">(</span><span style="color:#0a3069">"/HELLO/WORLD"</span><span style="color:#1f2328">,</span> <span style="color:#0a3069">"/hello/world"</span><span style="color:#1f2328">));</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">else</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            Assert<span style="color:#1f2328">.</span>Fail<span style="color:#1f2328">(</span><span style="color:#0a3069">"Unknown OS Platform"</span><span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>So that gets the job done, but I have to say looking at it makes me feel a bit… bad. There are a couple of
+problems I see with our test case (our example code suffers from similar problems, but let’s just focus on tests for now):</p>
+<ul>
+<li>The test must be run on multiple platforms to hit all the interesting assertions, which isn’t obvious without looking at the code. If a developer runs the tests in Visual Studio and gets all green check marks, that should mean we’re good to go, right?</li>
+<li>By using a <a href="https://medium.com/@TechMagic/get-started-with-behavior-driven-development-ecdca40e827b">Behavior Driven Development</a>-esque naming scheme, the name make it clear that the test is doing too much (I mean, who names something “AreTheSameOnWindowsAndDifferentOnLinuxAndMacOS”?)</li>
+<li>Because Windows and Linux file systems are different, we shouldn’t reuse the test data; on one platform a rooted path might start <code>C:\</code> whereas on another it might start <code>/</code>.</li>
+</ul>
+<p>Really these are two different but related tests that just happen to be combined because that’s the way the code is structured. So how can we make it better?</p>
+<h2 id="whats-an-ideal-solution">What’s an ideal solution?</h2>
+<p>In my ideal world, we could break this test apart into two tests: one for Windows and one for Linux and macOS.
+Here’s an example of what I mean:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#1f2328">[TestClass]</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">TwoPathsThatDifferOnlyByCase</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">    [TestMethod]</span> <span style="color:#57606a">// This test should only run on Windows</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">void</span> AreTheSameOnWindows<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> pathHelper <span style="color:#1f2328">=</span> <span style="color:#cf222e">new</span> PathHelper<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>        Assert<span style="color:#1f2328">.</span>IsTrue<span style="color:#1f2328">(</span>pathHelper<span style="color:#1f2328">.</span>IsSamePath<span style="color:#1f2328">(</span><span style="color:#0a3069">"C:\\HELLOWORLD"</span><span style="color:#1f2328">,</span> <span style="color:#0a3069">"C:\\helloworld"</span><span style="color:#1f2328">));</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">
+</span></span></span><span style="display:flex;"><span><span style="color:#1f2328">    [TestMethod]</span> <span style="color:#57606a">// This test should only run on Linux and macOS</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">void</span> AreDifferentOnLinuxAndMacOS<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> pathHelper <span style="color:#1f2328">=</span> <span style="color:#cf222e">new</span> PathHelper<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>        Assert<span style="color:#1f2328">.</span>IsFalse<span style="color:#1f2328">(</span>pathHelper<span style="color:#1f2328">.</span>IsSamePath<span style="color:#1f2328">(</span><span style="color:#0a3069">"/HELLO/WORLD"</span><span style="color:#1f2328">,</span> <span style="color:#0a3069">"/hello/world"</span><span style="color:#1f2328">));</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>Breaking them apart would clearly signal to developers that there are two test cases here to consider and allow them to pass / fail independently.
+Of course, simply creating two test cases causes an immediate problem: one will always fail. Developers working on Windows will always see a failing
+Linux test and vice versa. That’s a big no-no in my book, because it starts to reinforce the idea that it’s OK to have broken tests.</p>
+<p>The “official” way to solve this in MSTest v2 is to use the <code>[TestCategory]</code> <a href="https://visualstudiomagazine.com/blogs/tool-tracker/2018/07/organizing-test-cases.aspx">attribute</a> and use names like “windows-only”
+and “linux-only” and then filter test cases out that way. Other test frameworks like xUnit and NUnit have similar mechanisms via
+<a href="https://www.brendanconnolly.net/organizing-tests-with-xunit-traits/">traits</a> and <a href="https://docs.nunit.org/articles/nunit/writing-tests/attributes/category.html">categories</a>. However, that requires developers to configure the IDE properly, is fragile
+as it’s based on strings, and can quickly become unwieldy.</p>
+<p>It would be better if a test could declare its dependencies and the test runner could evaluate those and decide whether to run the test.
+Something like the <code>[Ignore]</code> attribute, but dynamically / conditionally applied at runtime…</p>
+<h2 id="introducing-the-ignoreif-attribute">Introducing the [IgnoreIf] Attribute</h2>
+<p>So now with all that out of the way, I’d like to propose one possible way to solve this, at least for MSTest; I’m sure other test
+frameworks can use similar solutions (or already do).</p>
+<p>Let’s introduce a new attribute <code>[IgnoreIf]</code>, that lets us do just that by specifying the name of a method to run to evaluate if
+the test should run:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#1f2328">[TestClass]</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">TwoPathsThatDifferOnlyByCase</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> <span style="color:#cf222e">static</span> <span style="color:#cf222e">bool</span> NotWindows<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> <span style="color:#1f2328">!</span>RuntimeInformation<span style="color:#1f2328">.</span>IsOSPlatform<span style="color:#1f2328">(</span>OSPlatform<span style="color:#1f2328">.</span>Windows<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> <span style="color:#cf222e">static</span> <span style="color:#cf222e">bool</span> NotLinuxNorMacOS<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> <span style="color:#1f2328">!</span>RuntimeInformation<span style="color:#1f2328">.</span>IsOSPlatform<span style="color:#1f2328">(</span>OSPlatform<span style="color:#1f2328">.</span>Linux<span style="color:#1f2328">)</span> <span style="color:#1f2328">&amp;&amp;</span>
+</span></span><span style="display:flex;"><span>               <span style="color:#1f2328">!</span>RuntimeInformation<span style="color:#1f2328">.</span>IsOSPlatform<span style="color:#1f2328">(</span>OSPlatform<span style="color:#1f2328">.</span>OSX<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">
+</span></span></span><span style="display:flex;"><span><span style="color:#1f2328">    [TestMethodWithIgnoreIfSupport]</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">    [IgnoreIf(nameof(NotWindows))]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">void</span> AreTheSameOnWindows<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> pathHelper <span style="color:#1f2328">=</span> <span style="color:#cf222e">new</span> PathHelper<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>        Assert<span style="color:#1f2328">.</span>IsTrue<span style="color:#1f2328">(</span>pathHelper<span style="color:#1f2328">.</span>IsSamePath<span style="color:#1f2328">(</span><span style="color:#0a3069">"C:\\HELLOWORLD"</span><span style="color:#1f2328">,</span> <span style="color:#0a3069">"C:\\helloworld"</span><span style="color:#1f2328">));</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">
+</span></span></span><span style="display:flex;"><span><span style="color:#1f2328">    [TestMethodWithIgnoreIfSupport]</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">    [IgnoreIf(nameof(NotLinuxNorMacOS))]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">void</span> AreDifferentOnLinuxAndMacOS<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> pathHelper <span style="color:#1f2328">=</span> <span style="color:#cf222e">new</span> PathHelper<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>        Assert<span style="color:#1f2328">.</span>IsFalse<span style="color:#1f2328">(</span>pathHelper<span style="color:#1f2328">.</span>IsSamePath<span style="color:#1f2328">(</span><span style="color:#0a3069">"/HELLO/WORLD"</span><span style="color:#1f2328">,</span> <span style="color:#0a3069">"/hello/world"</span><span style="color:#1f2328">););</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>MSTest has several extensibility points that you’re probably aware of such as <code>[TestInitalize]</code> and <code>[TestCleanup]</code>, but those
+are aimed at setting up <em>your</em> environment for testing. In this case, we want to modify test execution. Lucky for us, the
+MSTest team has started <a href="https://github.com/Microsoft/testfx-docs/tree/master/RFCs">thinking about this</a> and has two extensibility points already: subclassing the <code>[TestClass]</code>
+and <code>[TestMethod]</code> attributes.</p>
+<p>Unfortunately for us, the <code>[Ignore]</code> attribute is marked as <code>sealed</code> and doesn’t have any extensibility points, so we must create
+one using the <code>[TestMethod]</code>.</p>
+<p>For this solution, I borrowed from the MSTest extensibility document directly, as well as <a href="https://www.meziantou.net/2018/02/26/mstest-v2-customize-test-execution">Gerald Barre’s post</a> on using test
+method extensibility to set the thread’s apartment state. In our case, we want our test method to know about our <code>[IgnoreIf]</code>
+attribute, invoke the referenced method, and interpret the result.</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#57606a">/// &lt;summary&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// An extension to the [TestMethod] attribute. It walks the method and class hierarchy looking</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// for an [IgnoreIf] attribute. If one or more are found, they are each evaluated, if the attribute</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// returns `true`, evaluation is short-circuited, and the test method is skipped.</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// &lt;/summary&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">TestMethodWithIgnoreIfSupportAttribute</span> <span style="color:#1f2328">:</span> TestMethodAttribute
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">override</span> TestResult<span style="color:#1f2328">[]</span> Execute<span style="color:#1f2328">(</span>ITestMethod testMethod<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> ignoreAttributes <span style="color:#1f2328">=</span> FindAttributes<span style="color:#1f2328">(</span>testMethod<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#57606a">// Evaluate each attribute, and skip if one returns `true`</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">foreach</span> <span style="color:#1f2328">(</span><span style="color:#cf222e">var</span> ignoreAttribute <span style="color:#cf222e">in</span> ignoreAttributes<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">if</span> <span style="color:#1f2328">(</span>ignoreAttribute<span style="color:#1f2328">.</span>ShouldIgnore<span style="color:#1f2328">(</span>testMethod<span style="color:#1f2328">))</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#cf222e">var</span> message <span style="color:#1f2328">=</span> <span style="color:#0a3069">$"Test not executed. Conditional ignore method '{ignoreAttribute.IgnoreCriteriaMethodName}' evaluated to 'true'."</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#cf222e">return</span> <span style="color:#cf222e">new</span><span style="color:#1f2328">[]</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>                    <span style="color:#cf222e">new</span> TestResult
+</span></span><span style="display:flex;"><span>                    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>                        Outcome <span style="color:#1f2328">=</span> UnitTestOutcome<span style="color:#1f2328">.</span>Inconclusive<span style="color:#1f2328">,</span>
+</span></span><span style="display:flex;"><span>                        TestFailureException <span style="color:#1f2328">=</span> <span style="color:#cf222e">new</span> AssertInconclusiveException<span style="color:#1f2328">(</span>message<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>                    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#1f2328">};</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> <span style="color:#cf222e">base</span><span style="color:#1f2328">.</span>Execute<span style="color:#1f2328">(</span>testMethod<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> IEnumerable<span style="color:#1f2328">&lt;</span>IgnoreIfAttribute<span style="color:#1f2328">&gt;</span> FindAttributes<span style="color:#1f2328">(</span>ITestMethod testMethod<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#57606a">// Look for an [IgnoreIf] on the method, including any virtuals this method overrides</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> ignoreAttributes <span style="color:#1f2328">=</span> <span style="color:#cf222e">new</span> List<span style="color:#1f2328">&lt;</span>IgnoreIfAttribute<span style="color:#1f2328">&gt;();</span>
+</span></span><span style="display:flex;"><span>        ignoreAttributes<span style="color:#1f2328">.</span>AddRange<span style="color:#1f2328">(</span>testMethod<span style="color:#1f2328">.</span>GetAttributes<span style="color:#1f2328">&lt;</span>IgnoreIfAttribute<span style="color:#1f2328">&gt;(</span>inherit<span style="color:#1f2328">:</span> <span style="color:#cf222e">true</span><span style="color:#1f2328">));</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#57606a">// Walk the class hierarchy looking for an [IgnoreIf] attribute</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> type <span style="color:#1f2328">=</span> testMethod<span style="color:#1f2328">.</span>MethodInfo<span style="color:#1f2328">.</span>DeclaringType<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">while</span> <span style="color:#1f2328">(</span>type <span style="color:#1f2328">!=</span> <span style="color:#cf222e">null</span><span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            ignoreAttributes<span style="color:#1f2328">.</span>AddRange<span style="color:#1f2328">(</span>type<span style="color:#1f2328">.</span>GetCustomAttributes<span style="color:#1f2328">&lt;</span>IgnoreIfAttribute<span style="color:#1f2328">&gt;(</span>inherit<span style="color:#1f2328">:</span> <span style="color:#cf222e">true</span><span style="color:#1f2328">));</span>
+</span></span><span style="display:flex;"><span>            type <span style="color:#1f2328">=</span> type<span style="color:#1f2328">.</span>DeclaringType<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> ignoreAttributes<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>So here we’ve named our new attribute <code>TestMethodWithIgnoreIfSupportAttribute</code> to be descriptive (feel free to name
+it something like <code>TestMethodEx</code> if the name is too long). The <code>Execute</code> method looks for our <code>[IgnoreIf]</code> attributes up the
+class hierarchy, and if an ignore returns <code>true</code>, we stop processing, don’t run the test, and instead return a <code>TestResult</code>
+saying that the test wasn’t run. This outcome also results in the little yellow triangle in Visual Studio, just like you get
+with the regular <code>[Ignore]</code>.</p>
+<p><img src="/img/ignoreif-mstest/test-explorer.png" alt="image of Visual Studio Test Explorer pain with two tests, one named “AreTheSameOnWindows” with the passed icon next to it, and one named “AreNotTheSameOnLinuxAndMacOS” with the skipped icon next to it"></p>
+<p>Now that we have our extension point for the <code>[IgnoreIf]</code> attribute, it’s time to implement it:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#57606a">/// &lt;summary&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// An extension to the [Ignore] attribute. Instead of using test lists / test categories to conditionally</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// skip tests, allow a [TestClass] or [TestMethod] to specify a method to run. If the method returns</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// `true` the test method will be skipped. The "ignore criteria" method must be `static`, return a single</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// `bool` value, and not accept any parameters. By default, it is named "IgnoreIf".</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// &lt;/summary&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">IgnoreIfAttribute</span> <span style="color:#1f2328">:</span> Attribute
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">string</span> IgnoreCriteriaMethodName <span style="color:#1f2328">{</span> <span style="color:#cf222e">get</span><span style="color:#1f2328">;</span> <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> IgnoreIfAttribute<span style="color:#1f2328">(</span><span style="color:#cf222e">string</span> ignoreCriteriaMethodName <span style="color:#1f2328">=</span> <span style="color:#0a3069">"IgnoreIf"</span><span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        IgnoreCriteriaMethodName <span style="color:#1f2328">=</span> ignoreCriteriaMethodName<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">internal</span> <span style="color:#cf222e">bool</span> ShouldIgnore<span style="color:#1f2328">(</span>ITestMethod testMethod<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">try</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#57606a">// Search for the method specified by name in this class or any parent classes.</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">var</span> searchFlags <span style="color:#1f2328">=</span> BindingFlags<span style="color:#1f2328">.</span>Public <span style="color:#1f2328">|</span> BindingFlags<span style="color:#1f2328">.</span>NonPublic <span style="color:#1f2328">|</span> BindingFlags<span style="color:#1f2328">.</span>FlattenHierarchy <span style="color:#1f2328">|</span> BindingFlags<span style="color:#1f2328">.</span>Static<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">var</span> method <span style="color:#1f2328">=</span> testMethod<span style="color:#1f2328">.</span>MethodInfo<span style="color:#1f2328">.</span>DeclaringType<span style="color:#1f2328">.</span>GetMethod<span style="color:#1f2328">(</span>IgnoreCriteriaMethodName<span style="color:#1f2328">,</span> searchFlags<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">return</span> <span style="color:#1f2328">(</span><span style="color:#cf222e">bool</span><span style="color:#1f2328">)</span> method<span style="color:#1f2328">.</span>Invoke<span style="color:#1f2328">(</span><span style="color:#cf222e">null</span><span style="color:#1f2328">,</span> <span style="color:#cf222e">null</span><span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">catch</span> <span style="color:#1f2328">(</span>Exception e<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">var</span> message <span style="color:#1f2328">=</span> <span style="color:#0a3069">$"Conditional ignore method {IgnoreCriteriaMethodName} not found. Ensure the method is in the same class as the test method, marked as `static`, returns a `bool`, and doesn't accept any parameters."</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">throw</span> <span style="color:#cf222e">new</span> ArgumentException<span style="color:#1f2328">(</span>message<span style="color:#1f2328">,</span> e<span style="color:#1f2328">);</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>The attribute itself is simple, with just a single, reflection-heavy operation that gets the “ignore criteria” method from the name,
+executes it, and returns the result.</p>
+<p>One final piece, and this is totally optional. We can also create a custom <code>[TestClass]</code> attribute so that a whole test class can be
+annotated with <code>[IgnoreIf]</code> criteria, instead of requiring our <code>TestMethodWithIgnoreIfSupport</code> be used in place of every <code>[TestMethod]</code>.</p>
+<p>The code for that simply looks like this:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#57606a">/// &lt;summary&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// An extension of the [TestClass] attribute. If applied to a class, any [TestMethod] attributes</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// are automatically upgraded to [TestMethodWithIgnoreIfSupport].</span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">/// &lt;/summary&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">TestClassWithIgnoreIfSupportAttribute</span> <span style="color:#1f2328">:</span> TestClassAttribute
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">override</span> TestMethodAttribute GetTestMethodAttribute<span style="color:#1f2328">(</span>TestMethodAttribute testMethodAttribute<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">if</span> <span style="color:#1f2328">(</span>testMethodAttribute <span style="color:#cf222e">is</span> TestMethodWithIgnoreIfSupportAttribute<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#cf222e">return</span> testMethodAttribute<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> <span style="color:#cf222e">new</span> TestMethodWithIgnoreIfSupportAttribute<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>Also note that after writing this post, I found that a snippet called <code>[ConditionalFact]</code> for xUnit seems to be <a href="https://github.com/search?l=C%23&amp;q=ConditionalFactAttribute&amp;type=Code">floating around</a>.</p>
+
+    </section>
+
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="/" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="/">Matt Kotsenas</a></h4>
+
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Programmatically+skip+%2F+ignore+tests+in+MSTest+v2&amp;url=http%3a%2f%2flocalhost%3a1313%2fposts%2fignoreif-mstest%2f" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fposts%2fignoreif-mstest%2f" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+        <a class="read-next-story" style="background-image: url(/img/squamish-2017/squamish-start.jpg)" href="http://localhost:1313/posts/squamish-2017-race-report/">
+          </a><section class="post"><a class="read-next-story" style="background-image: url(/img/squamish-2017/squamish-start.jpg)" href="http://localhost:1313/posts/squamish-2017-race-report/">
+            <h2>A 2017 Squamish 50/50 race report</h2>
+            <p></p></a><p><a class="read-next-story" style="background-image: url(/img/squamish-2017/squamish-start.jpg)" href="http://localhost:1313/posts/squamish-2017-race-report/"></a><a href="https://teamrunrun.com/">Team RunRun</a> has a tradition of writing race reports, both as an opportunity for reflection, and to …</p>…<p></p>
+          </section>
+        
+      
+      
+        
+        <a class="read-next-story prev" style="background-image: url(/img/azure-setupcomplete2.jpg)" href="http://localhost:1313/posts/azure-setupcomplete2/">
+          <section class="post">
+            <h2>Running post setup commands on Azure VMs with SetupComplete2</h2>
+            <p></p><p>Trying to enable the Administrator account on a custom VM image for Azure lead down a rabbit hole. …</p>…<p></p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="/js/jquery.fitvids.js"></script>
+    <script src="/js/index.js"></script>
+  
+
+</body></html>

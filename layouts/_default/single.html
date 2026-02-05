@@ -1,0 +1,17 @@
+{{ define "main" }}
+{{ partial "masthead.html" . }}
+
+<main class="content" role="main">
+  <article class="post page">
+
+    <header class="post-header">
+      <h1 class="post-title">{{ .Title }}</h1>
+    </header>
+
+    <section class="post-content">
+      {{ .Content }}
+    </section>
+
+  </article>
+</main>
+{{ end }}

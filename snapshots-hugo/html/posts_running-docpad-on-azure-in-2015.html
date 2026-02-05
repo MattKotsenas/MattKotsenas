@@ -1,0 +1,257 @@
+<!DOCTYPE html><html lang="en"><head><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant="" defer=""></script>
+    <meta charset="utf-8">
+    <title>Running docpad on Azure in 2015 | void where_prohibited() { ... }</title>
+    <meta name="description" content="A personal website for Matt Kotsenas">
+    <meta name="HandheldFriendly" content="True">
+    
+    <meta property="og:title" content="Running docpad on Azure in 2015 | void where_prohibited() { ... }">
+    <meta property="og:description" content="A personal website for Matt Kotsenas">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="http://localhost:1313/posts/running-docpad-on-azure-in-2015/">
+    <meta property="og:image" content="http://localhost:1313/img/cover.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Running docpad on Azure in 2015 | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="A personal website for Matt Kotsenas">
+    <meta name="twitter:image" content="http://localhost:1313/img/cover.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css">
+    <link rel="stylesheet" href="/css/hljs.css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400">
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      <li class="nav-any" role="presentation">
+        <a href="/">Home</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/about">About</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/photos">Photos</a>
+      </li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+    <div class="site-wrapper">
+
+      
+<header class="main-header post-head" style="background-image: url(/img/cover.jpg)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>
+
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Running docpad on Azure in 2015</h1>
+      <section class="post-meta">
+        <time class="post-date" datetime="2015-December-23">23 December 2015</time>
+        
+        <a href="/tags/docpad/">docpad</a>, <a href="/tags/azure/">azure</a>
+        
+      </section>
+    </header>
+
+    <section class="post-content">
+      <h2 id="why-docpad">Why docpad</h2>
+<p>I really needed to freshen up the site. It was created hastily and really didn’t follow best practices. I wanted something that would reflect better on me and that I wouldn’t be embarrassed to direct people to. So I started evaluating my options against these criteria:</p>
+<ul>
+<li>
+<p><strong>Looks good</strong> - I’m not a designer; I’m that jerk who forgets to clear floats. I want something with themes / templates / layouts I can follow to avoid hurting others’ eyes.</p>
+</li>
+<li>
+<p><strong>Supports dev and ops best practices</strong> - Most of my experience is in backend development, and I have only passing familiarity with many frontend development tools and practices from the last few years. I’d love to use the site as a playground to learn production-quality processes and tools (Grunt, Less, Bower, etc.).</p>
+</li>
+<li>
+<p><strong>Works with Azure</strong> - I’ve already got some other projects in Azure and I really enjoy using it. So my solution should run in Azure, and per the previous requirement, with minimal bubble gum and shoestring.</p>
+</li>
+</ul>
+<p>After looking at that list and thinking about where the site is likely to go in the next year or two I started leaning towards <a href="https://davidwalsh.name/introduction-static-site-generators">static site generators</a> because they keep costs low, support good practices and performance, and are an opportunity to learn more tools.</p>
+<p>My first choice for a site generator was <a href="https://jekyllrb.com/">Jekyll</a>. It’s popular, well supported, and fits <em>most</em> my requirements. However, Azure websites don’t natively support ruby, and I didn’t want to check in the generated site because committing generated files feels like a violation of dev best practices. After spending some time looking for alternatives, <a href="http://docpad.org/">docpad</a> seemed like a great fit since it seemed relatively popular, had “skeletons” which function as themes, and ran on node which Azure supports.</p>
+<h2 id="setup">Setup</h2>
+<p>Chances are if you found this blog post you’re probably also having problems deploying docpad on Azure. Before continuing, be sure to read the <a href="http://docpad.org/docs/deploy/">official deploy docs</a> and <a href="https://github.com/ntotten/ntotten.github.com/blob/master/_posts/2013-01-11-static-site-generation-with-docpad-on-windows-azure-web-sites.md">Nathan’s setup guide</a>. I don’t want to repeat the great content that’s already there, just provide some help for specific issues you may encounter.</p>
+<h3 id="processstdin-errors">process.stdin errors</h3>
+<p>After following the instructions I’d get the following error in the deployment logs</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>Error: The task <span style="color:#0550ae">[</span>generate<span style="color:#0550ae">]</span> just completed, but it had already completed earlier, this is unexpected. State information is:
+</span></span><span style="display:flex;"><span><span style="color:#0550ae">{</span> error: <span style="color:#0a3069">'Error: The task [actions bundle: load ready ?  ready] just completed, but it had already completed earlier, this is unexpected. State information is:
+</span></span></span><span style="display:flex;"><span><span style="color:#0a3069">{ error: \'</span>Error: EINVAL, invalid argument
+</span></span><span style="display:flex;"><span>  at new Socket <span style="color:#0550ae">(</span>net.js:156:18<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at process.stdin <span style="color:#0550ae">(</span>node.js:664:19<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>      at ConsoleInterface.destroy <span style="color:#0550ae">(</span>D:<span style="color:#0a3069">\h</span>ome<span style="color:#0a3069">\s</span>ite<span style="color:#0a3069">\r</span>epository<span style="color:#0a3069">\n</span>ode_modules<span style="color:#0a3069">\d</span>ocpad<span style="color:#0a3069">\o</span>ut<span style="color:#0a3069">\l</span>ib<span style="color:#0a3069">\i</span>nterfaces<span style="color:#0a3069">\c</span>onsole.js:111:14<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>        at ConsoleInterface.destroy <span style="color:#0550ae">(</span>D:<span style="color:#0a3069">\h</span>ome<span style="color:#0a3069">\s</span>ite<span style="color:#0a3069">\r</span>epository<span style="color:#0a3069">\n</span>ode_modules<span style="color:#0a3069">\d</span>ocpad<span style="color:#0a3069">\o</span>ut<span style="color:#0a3069">\l</span>ib<span style="color:#0a3069">\i</span>nterfaces<span style="color:#0a3069">\c</span>onsole.js:4:59<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>          at completeAction <span style="color:#0550ae">(</span>D:<span style="color:#0a3069">\h</span>ome<span style="color:#0a3069">\s</span>ite<span style="color:#0a3069">\r</span>epository<span style="color:#0a3069">\n</span>ode_modules<span style="color:#0a3069">\d</span>ocpad<span style="color:#0a3069">\o</span>ut<span style="color:#0a3069">\l</span>ib<span style="color:#0a3069">\i</span>nterfaces<span style="color:#0a3069">\c</span>onsole.js:166:35<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>            at Task.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...&lt;snip&gt;...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  at Task.exit <span style="color:#0550ae">(</span>D:<span style="color:#0a3069">\h</span>ome<span style="color:#0a3069">\s</span>ite<span style="color:#0a3069">\r</span>epository<span style="color:#0a3069">\n</span>ode_modules<span style="color:#0a3069">\d</span>ocpad<span style="color:#0a3069">\n</span>ode_modules<span style="color:#0a3069">\t</span>askgroup<span style="color:#0a3069">\o</span>ut<span style="color:#0a3069">\l</span>ib<span style="color:#0a3069">\t</span>askgroup.js:309:15<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>  at Domain.EventEmitter.emit <span style="color:#0550ae">(</span>events.js:95:17<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>  at process._fatalException <span style="color:#0550ae">(</span>node.js:249:27<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>  at process._fatalException <span style="color:#0550ae">(</span>node.js:267:30<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>  at process._fatalException <span style="color:#0550ae">(</span>node.js:267:30<span style="color:#0550ae">)</span>
+</span></span></code></pre></div><p>Searching around I see StackOverflow answers like <a href="http://stackoverflow.com/questions/17297422/trouble-with-starting-node-js-from-a-cygwin-console">this</a> which say cygwin isn’t supported by node. I’m not certain that Azure uses cygwin, but I do know they support bash scripts in Windows environments, so it’s possible they’re running the node scripts under that environment.</p>
+<p>If you keep digging you’ll see <a href="http://stackoverflow.com/a/28553596">recommendations</a> to use Grunt with a plugin like <code>grunt-shell</code> or <code>grunt-exec</code> to run docpad and turn stdin off to avoid the issue. Don’t do that (you’ll see why). Instead, in your <code>package.json</code> change your node engine from 0.12 like they suggest in the docs to 5.0.0.</p>
+<h3 id="docpad-hangs-when-running-under-grunt">docpad hangs when running under Grunt</h3>
+<p>Before upgrading my node version I first tried running docpad under Grunt to avoid the aforementioned stdin issue, which ran into <a href="https://github.com/docpad/docpad/issues/988">this hang</a>. The only workaround I’ve found is to downgrade docpad from 6.78.4 to 6.75.x.</p>
+<h3 id="error-shutdown-epipe">Error: shutdown EPIPE</h3>
+<p>After getting my stdin issue resolved by using a newer version of node, I tried upgrading to the latest docpad version again. At that point I started getting the following stack:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>events.js:141
+</span></span><span style="display:flex;"><span>      throw er<span style="color:#1f2328">;</span> // Unhandled <span style="color:#0a3069">'error'</span> event
+</span></span><span style="display:flex;"><span>            ^
+</span></span><span style="display:flex;"><span>Error: shutdown EPIPE
+</span></span><span style="display:flex;"><span>    at exports._errnoException <span style="color:#0550ae">(</span>util.js:734:11<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at ReadStream.onSocketFinish <span style="color:#0550ae">(</span>net.js:218:26<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at emitNone <span style="color:#0550ae">(</span>events.js:67:13<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at ReadStream.emit <span style="color:#0550ae">(</span>events.js:163:7<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at finishMaybe <span style="color:#0550ae">(</span>_stream_writable.js:477:14<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at endWritable <span style="color:#0550ae">(</span>_stream_writable.js:486:3<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at ReadStream.Writable.end <span style="color:#0550ae">(</span>_stream_writable.js:452:5<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at ReadStream.Socket.end <span style="color:#0550ae">(</span>net.js:393:31<span style="color:#0550ae">)</span>
+</span></span><span style="display:flex;"><span>    at process._tickCallback <span style="color:#0550ae">(</span>node.js:350:11<span style="color:#0550ae">)</span>
+</span></span></code></pre></div><p>I’m not sure what caused this, but downgrading docpad to 6.75.x again fixed the issue.</p>
+<h2 id="wrap-up">Wrap Up</h2>
+<p>It seems that node has been moving fast over the last few years and the ecosystem is still catching up. I’ll update this post with additional errors and bug numbers as I find and file them. If I’m missing something feel free to reach out to <a href="https://twitter.com/MattKotsenas">@MattKotsenas</a>!</p>
+
+    </section>
+
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="/" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="/">Matt Kotsenas</a></h4>
+
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Running+docpad+on+Azure+in+2015&amp;url=http%3a%2f%2flocalhost%3a1313%2fposts%2frunning-docpad-on-azure-in-2015%2f" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fposts%2frunning-docpad-on-azure-in-2015%2f" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+        <a class="read-next-story" style="background-image: url(/img/windows-8-blog-performance-lab.jpg)" href="http://localhost:1313/posts/windows-8-blog-performance-lab/">
+          <section class="post">
+            <h2>New blog post over at Building Windows 8 blog</h2>
+            <p></p><p>Exciting times! The Building Windows 8 blog recently published a post written by myself and my …</p>…<p></p>
+          </section>
+        </a>
+      
+      
+        
+        <a class="read-next-story prev" style="background-image: url(/img/cover.jpg)" href="http://localhost:1313/posts/https-in-service-fabric-web-api/">
+          <section class="post">
+            <h2>HTTP &amp; HTTPS in Service Fabric Web API</h2>
+            <p></p><h2 id="prerequisites">Prerequisites</h2>
+<p>Before we start, here are the prerequisites for this article. These instructions were …</p>…<p></p>
+          </section>
+        </a>
+      
+    
+  
+    
+  
+    
+  
+</aside>
+
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="/js/jquery.fitvids.js"></script>
+    <script src="/js/index.js"></script>
+  
+
+</body></html>

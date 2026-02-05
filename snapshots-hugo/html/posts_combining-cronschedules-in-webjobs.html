@@ -1,0 +1,318 @@
+<!DOCTYPE html><html lang="en"><head><script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-46LYETW5NE&amp;cx=c&amp;gtm=4e6240"></script><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant="" defer=""></script>
+    <meta charset="utf-8">
+    <title>Combining cron expressions in Azure WebJobs TimerTriggers | void where_prohibited() { ... }</title>
+    <meta name="description" content="A personal website for Matt Kotsenas">
+    <meta name="HandheldFriendly" content="True">
+    
+    <meta property="og:title" content="Combining cron expressions in Azure WebJobs TimerTriggers | void where_prohibited() { ... }">
+    <meta property="og:description" content="A personal website for Matt Kotsenas">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="http://localhost:1313/posts/combining-cronschedules-in-webjobs/">
+    <meta property="og:image" content="http://localhost:1313/img/combining-cronschedules-in-webjobs-social.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Combining cron expressions in Azure WebJobs TimerTriggers | void where_prohibited() { ... }">
+    <meta name="twitter:description" content="A personal website for Matt Kotsenas">
+    <meta name="twitter:image" content="http://localhost:1313/img/combining-cronschedules-in-webjobs-social.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/screen.css">
+    <link rel="stylesheet" href="/css/hljs.css">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Merriweather:300,700,700italic,300italic|Open+Sans:700,400">
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="alternate" type="application/rss+xml" title="void where_prohibited() { ... }" href="/rss.xml">
+    <link rel="me" href="https://hachyderm.io/@mattkotsenas">
+    
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-8867357-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-8867357-1');
+    </script>
+    
+  <style id="fit-vids-style">.fluid-width-video-wrapper{width:100%;position:relative;padding:0;}.fluid-width-video-wrapper iframe,.fluid-width-video-wrapper object,.fluid-width-video-wrapper embed {position:absolute;top:0;left:0;width:100%;height:100%;}</style></head>
+  <body class="post-template nav-closed">
+    <div class="nav">
+    <h3 class="nav-title">Menu</h3>
+    <a href="#" class="nav-close">
+      <span class="hidden">Close</span>
+    </a>
+    <ul>
+      <li class="nav-any" role="presentation">
+        <a href="/">Home</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/about">About</a>
+      </li>
+      <li class="nav-any" role="presentation">
+        <a href="/photos">Photos</a>
+      </li>
+    </ul>
+    <a class="subscribe-button icon-feed" href="/rss.xml">Subscribe</a>
+</div>
+<span class="nav-cover"></span>
+
+    <div class="site-wrapper">
+
+      
+<header class="main-header post-head" style="background-image: url(/img/combining-cronschedules-in-webjobs.png)">
+  <nav class="main-nav overlay clearfix">
+    
+    <a class="blog-logo" href="/"><img src="/img/home.png" alt="void where_prohibited() { ... }"></a>
+    
+    <a class="menu-button icon-menu" href="#"><span class="word">Menu</span></a>
+  </nav>
+</header>
+
+
+<main class="content" role="main">
+  <article class="post">
+
+    <header class="post-header">
+      <h1 class="post-title">Combining cron expressions in Azure WebJobs TimerTriggers</h1>
+      <section class="post-meta">
+        <time class="post-date" datetime="2017-August-09">09 August 2017</time>
+        
+        <a href="/tags/azure/">azure</a>, <a href="/tags/webjobs/">webjobs</a>
+        
+      </section>
+    </header>
+
+    <section class="post-content">
+      <p>Azure WebJobs support the concept of triggers, which let your job do work in response to a HTTP request, a blob or service bus message, or on a timer.
+Specifically, the <code>TimerTrigger</code> attribute allows you to specify a cron expression as a trigger for your WebJob.
+Rather than re-invent the wheel, I’ll defer to the <a href="https://github.com/Azure/azure-webjobs-sdk-extensions/blob/master/README.md#timertrigger">README</a> as a great resource for understanding using timers in your WebJob.</p>
+<h2 id="the-problem">The Problem</h2>
+<p>The TimerTrigger attribute is easy to use and super handy, but it’s a bit limited in one important way: it can only handle a single cron expression.
+Combining cron expressions can be very useful in situations where a job needs to run frequently sometimes (for example, during business hours), but infrequently at other times.</p>
+<p>The simplest way to accomplish this is just to create multiple jobs that execute the same code, which might look something like this:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#57606a">// Every 15 minutes, between 06:00 AM and 08:59 PM</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">private</span> <span style="color:#cf222e">const</span> <span style="color:#cf222e">string</span> PeakHours <span style="color:#1f2328">=</span> <span style="color:#0a3069">"0 */15 6-20 * * *"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">// Every hour from 12:00 AM to 06:00 AM and 09:00 PM to 12:00 AM</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">private</span> <span style="color:#cf222e">const</span> <span style="color:#cf222e">string</span> NonPeakHours <span style="color:#1f2328">=</span> <span style="color:#0a3069">"0 0 0-5,21-23 * * *"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">static</span> <span style="color:#cf222e">void</span> CleanupPeakHours<span style="color:#1f2328">([</span>TimerTrigger<span style="color:#1f2328">(</span>PeakHours<span style="color:#1f2328">)]</span> TimerInfo timer<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    DoCleanup<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">static</span> <span style="color:#cf222e">void</span> CleanupNonPeakHours<span style="color:#1f2328">([</span>TimerTrigger<span style="color:#1f2328">(</span>NonPeakHours<span style="color:#1f2328">)]</span> TimerInfo timer<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    DoCleanup<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>But this means that we technically have <em>two</em> WebJobs, and hence two sets of logs, and this solution just generally doesn’t scale very well if you have lots of jobs or lots of cron expressions.</p>
+<h2 id="writing-a-custom-timerschedule">Writing a custom TimerSchedule</h2>
+<p>The WebJobs SDK provides a [TimerSchedule][github-timerschedule] abstract class, which provides the building blocks we’ll need to build a custom scheduler that supports multiple cron expressions, as well as reuse across jobs.
+The extensions package provides a few implementations of <code>TimerSchedule</code>: <code>CronSchedule</code> and <code>ConstantSchedule</code>, which are designed to be used directly, as well as <code>DailySchedule</code> and <code>WeeklySchedule</code>, which are designed for extension.
+Example are available <a href="https://github.com/Azure/azure-webjobs-sdk-extensions/blob/master/src/ExtensionsSample/Samples/TimerSamples.cs">here</a>.</p>
+<p>In our two-job solution, the <code>TimerTrigger</code> takes our cron expression and hands it off to <code>TimerSchedule</code> to parse it into an object and calculate the next occurrence of the schedule.</p>
+<p>To inherit from <code>TimerSchedule</code>, we just need to implement <code>GetNextOccurrence()</code>:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">CombinedCronSchedule</span> <span style="color:#1f2328">:</span> TimerSchedule
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">override</span> DateTime GetNextOccurrence<span style="color:#1f2328">(</span>DateTime now<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">throw</span> <span style="color:#cf222e">new</span> NotImplementedException<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>In order to implement <code>GetNextOccurrence</code>, we need:</p>
+<ol>
+<li>A collection of cron expressions</li>
+<li>For each expression, get the next occurrence of that expression</li>
+<li>Pick the correct expression from the available list</li>
+</ol>
+<p>which could look something like this:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">CombinedCronSchedule</span> <span style="color:#1f2328">:</span> TimerSchedule
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> <span style="color:#cf222e">readonly</span> IReadOnlyCollection<span style="color:#1f2328">&lt;</span>CronSchedule<span style="color:#1f2328">&gt;</span> _schedules<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> CombinedCronSchedule<span style="color:#1f2328">(</span><span style="color:#cf222e">params</span> <span style="color:#cf222e">string</span><span style="color:#1f2328">[]</span> expressions<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        _schedules <span style="color:#1f2328">=</span> expressions<span style="color:#1f2328">.</span>Select<span style="color:#1f2328">(</span>s <span style="color:#1f2328">=&gt;</span> <span style="color:#cf222e">new</span> CronSchedule<span style="color:#1f2328">(</span>s<span style="color:#1f2328">)).</span>ToList<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">override</span> DateTime GetNextOccurrence<span style="color:#1f2328">(</span>DateTime now<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> _schedules<span style="color:#1f2328">.</span>Select<span style="color:#1f2328">(</span>s <span style="color:#1f2328">=&gt;</span> s<span style="color:#1f2328">.</span>GetNextOccurrence<span style="color:#1f2328">(</span>now<span style="color:#1f2328">)).</span>Min<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>You can see that we delegate most of the work to <code>CronSchedule</code>.</p>
+<p>That meets our needs, but from looking at the other implementations of <code>TimerSchedule</code>, we can make a few more minor tweaks to make debugging and extensibility easier.
+Namely, we should override<code>ToString()</code>, and we should make the occurrence selector a parameter, instead of hardcoding it to be <code>Math.Min()</code>. The full solution then looks like this:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#cf222e">using</span> <span style="color:#24292e">System</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">using</span> <span style="color:#24292e">System.Collections.Generic</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">using</span> <span style="color:#24292e">System.Linq</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">using</span> <span style="color:#24292e">Microsoft.Azure.WebJobs.Extensions.Timers</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">CombinedCronSchedule</span> <span style="color:#1f2328">:</span> TimerSchedule
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> <span style="color:#cf222e">readonly</span> Func<span style="color:#1f2328">&lt;</span>IEnumerable<span style="color:#1f2328">&lt;</span>DateTime<span style="color:#1f2328">&gt;,</span> DateTime<span style="color:#1f2328">&gt;</span> _nextOccurenceSelector<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> <span style="color:#cf222e">readonly</span> IReadOnlyCollection<span style="color:#1f2328">&lt;</span>CronSchedule<span style="color:#1f2328">&gt;</span> _schedules<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> CombinedCronSchedule<span style="color:#1f2328">(</span><span style="color:#cf222e">params</span> <span style="color:#cf222e">string</span><span style="color:#1f2328">[]</span> expressions<span style="color:#1f2328">)</span> <span style="color:#1f2328">:</span> <span style="color:#cf222e">this</span><span style="color:#1f2328">(</span>dates <span style="color:#1f2328">=&gt;</span> dates<span style="color:#1f2328">.</span>Min<span style="color:#1f2328">(),</span> expressions<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> CombinedCronSchedule<span style="color:#1f2328">(</span>Func<span style="color:#1f2328">&lt;</span>IEnumerable<span style="color:#1f2328">&lt;</span>DateTime<span style="color:#1f2328">&gt;,</span> DateTime<span style="color:#1f2328">&gt;</span> nextOccurenceSelector<span style="color:#1f2328">,</span> <span style="color:#cf222e">params</span> <span style="color:#cf222e">string</span><span style="color:#1f2328">[]</span> expressions<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        _nextOccurenceSelector <span style="color:#1f2328">=</span> nextOccurenceSelector<span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>        _schedules <span style="color:#1f2328">=</span> expressions<span style="color:#1f2328">.</span>Select<span style="color:#1f2328">(</span>s <span style="color:#1f2328">=&gt;</span> <span style="color:#cf222e">new</span> CronSchedule<span style="color:#1f2328">(</span>s<span style="color:#1f2328">)).</span>ToList<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">override</span> DateTime GetNextOccurrence<span style="color:#1f2328">(</span>DateTime now<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> _nextOccurenceSelector<span style="color:#1f2328">(</span>_schedules<span style="color:#1f2328">.</span>Select<span style="color:#1f2328">(</span>s <span style="color:#1f2328">=&gt;</span> s<span style="color:#1f2328">.</span>GetNextOccurrence<span style="color:#1f2328">(</span>now<span style="color:#1f2328">)));</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> <span style="color:#cf222e">override</span> <span style="color:#cf222e">string</span> ToString<span style="color:#1f2328">()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">var</span> schedules <span style="color:#1f2328">=</span> <span style="color:#cf222e">string</span><span style="color:#1f2328">.</span>Join<span style="color:#1f2328">(</span><span style="color:#0a3069">", "</span><span style="color:#1f2328">,</span> _schedules<span style="color:#1f2328">.</span>Select<span style="color:#1f2328">(</span>s <span style="color:#1f2328">=&gt;</span> s<span style="color:#1f2328">.</span>ToString<span style="color:#1f2328">()));</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#cf222e">return</span> <span style="color:#0a3069">$"Schedules: {schedules}"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>So that’s all we need to <em>support</em> combining cron expressions, but now how do we <em>use</em> it as our WebJob trigger?
+The simplest way is to create a class that represents our new schedule:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">class</span> <span style="color:#1f2328">PeakNonPeakSchedule</span> <span style="color:#1f2328">:</span> CombinedCronSchedule
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#57606a">// Every 15 minutes, between 06:00 AM and 08:59 PM</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> <span style="color:#cf222e">const</span> <span style="color:#cf222e">string</span> PeakHours <span style="color:#1f2328">=</span> <span style="color:#0a3069">"0 */15 6-20 * * *"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#57606a">// Every hour from 12:00 AM to 06:00 AM and 09:00 PM to 12:00 AM</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">private</span> <span style="color:#cf222e">const</span> <span style="color:#cf222e">string</span> NonPeakHours <span style="color:#1f2328">=</span> <span style="color:#0a3069">"0 0 0-5,21-23 * * *"</span><span style="color:#1f2328">;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#cf222e">public</span> PeakNonPeakSchedule<span style="color:#1f2328">()</span> <span style="color:#1f2328">:</span> <span style="color:#cf222e">base</span><span style="color:#1f2328">(</span>PeakHours<span style="color:#1f2328">,</span> NonPeak<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span></code></pre></div><p>(which can be reused for multiple jobs) and then to reference that schedule from the <code>TimerTrigger</code> attribute like this:</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-csharp" data-lang="csharp"><span style="display:flex;"><span><span style="color:#cf222e">public</span> <span style="color:#cf222e">static</span> <span style="color:#cf222e">void</span> Cleanup<span style="color:#1f2328">([</span>TimerTrigger<span style="color:#1f2328">(</span><span style="color:#cf222e">typeof</span><span style="color:#1f2328">(</span>PeakNonPeakSchedule<span style="color:#1f2328">))]</span> TimerInfo timer<span style="color:#1f2328">)</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">{</span>
+</span></span><span style="display:flex;"><span>    DoCleanup<span style="color:#1f2328">();</span>
+</span></span><span style="display:flex;"><span><span style="color:#1f2328">}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#57606a">// No second job needed!</span>
+</span></span></code></pre></div><h2 id="caveats">Caveats</h2>
+<p>Ideally, we could omit the <code>PeakNonPeakSchedule</code> class entirely and pass our expressions directly to <code>CombinedCronSchedule</code>, but two things prevent that:</p>
+<ol>
+<li><code>TimerTrigger</code> is an attribute, so its parameters must be compile-time constants, which means you can only pass a <em>type</em>, and that type requires a public, parameterless constructor</li>
+<li><code>TimerTrigger</code> is sealed, preventing us from creating our own attribute that uses <code>CombinedCronSchedule</code></li>
+</ol>
+<p>If anyone has suggestions on how to make the <code>CombinedCronSchedule</code> even easier to use, please let me know and I’ll update the post.</p>
+<p>A big thanks to <a href="https://twitter.com/petesopinions">@petesopinions</a> for all his investigation and coming up with this solution!</p>
+
+    </section>
+
+    <footer class="post-footer">
+
+      
+      <figure class="author-image">
+        <a class="img" href="/" style="background-image: url(https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55)"><span class="hidden">Matt Kotsenas's Picture</span></a>
+      </figure>
+      
+
+      <section class="author">
+        <h4><a href="/">Matt Kotsenas</a></h4>
+
+        <div class="author-meta">
+          
+          <span class="author-location icon-location">Seattle, WA</span>
+          
+        </div>
+      </section>
+
+      <section class="share">
+        <h4>Share / feeds</h4>
+        <a class="icon-twitter" href="https://twitter.com/intent/tweet?text=Combining+cron+expressions+in+Azure+WebJobs+TimerTriggers&amp;url=http%3a%2f%2flocalhost%3a1313%2fposts%2fcombining-cronschedules-in-webjobs%2f" onclick="window.open(this.href, 'twitter-share', 'width=550,height=235');return false;">
+          <span class="hidden">Twitter</span>
+        </a>
+        <a class="icon-facebook" href="https://www.facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fposts%2fcombining-cronschedules-in-webjobs%2f" onclick="window.open(this.href, 'facebook-share','width=580,height=296');return false;">
+          <span class="hidden">Facebook</span>
+        </a>
+        <a class="icon-feed" href="/rss.xml">
+          <span class="hidden">RSS</span>
+        </a>
+      </section>
+      <section>
+        <div>
+          <em>
+            Did I make a mistake? Do you have a better idea? Please, help make the web better by sending me corrections at <a class="icon-github" href="https://github.com/MattKotsenas/MattKotsenas"><span class="hidden">GitHub</span></a>.
+          </em>
+        </div>
+      </section>
+    </footer>
+
+  </article>
+</main>
+
+<aside class="read-next">
+  
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+      
+        
+        <a class="read-next-story" style="background-image: url(/img/wpa-regions/cover.png)" href="http://localhost:1313/posts/generate-wpa-regions-from-performance-marks/">
+          </a><section class="post"><a class="read-next-story" style="background-image: url(/img/wpa-regions/cover.png)" href="http://localhost:1313/posts/generate-wpa-regions-from-performance-marks/">
+            <h2>Generating WPA Regions of Interest from performance marks</h2>
+            <p></p></a><p><a class="read-next-story" style="background-image: url(/img/wpa-regions/cover.png)" href="http://localhost:1313/posts/generate-wpa-regions-from-performance-marks/">In a </a><a href="/posts/using-wpa-to-analyze-performance-marks">recent post</a>, I showed how to view <code>performance.mark()</code>s in WPA. This post is a small follow-on on …</p>…<p></p>
+          </section>
+        
+      
+      
+        
+        <a class="read-next-story prev" style="background-image: url(/img/squamish-2017/squamish-start.jpg)" href="http://localhost:1313/posts/squamish-2017-race-report/">
+          </a><section class="post"><a class="read-next-story prev" style="background-image: url(/img/squamish-2017/squamish-start.jpg)" href="http://localhost:1313/posts/squamish-2017-race-report/">
+            <h2>A 2017 Squamish 50/50 race report</h2>
+            <p></p></a><p><a class="read-next-story prev" style="background-image: url(/img/squamish-2017/squamish-start.jpg)" href="http://localhost:1313/posts/squamish-2017-race-report/"></a><a href="https://teamrunrun.com/">Team RunRun</a> has a tradition of writing race reports, both as an opportunity for reflection, and to …</p>…<p></p>
+          </section>
+        
+      
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+    
+  
+</aside>
+
+
+      <footer class="site-footer clearfix">
+        <section class="copyright"><a href="/">void where_prohibited() { ... }</a> © 2026</section>
+      </footer>
+
+    </div>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="/js/jquery.fitvids.js"></script>
+    <script src="/js/index.js"></script>
+  
+
+</body></html>

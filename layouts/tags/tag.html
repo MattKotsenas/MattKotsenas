@@ -1,0 +1,28 @@
+{{ define "main" }}
+{{ partial "masthead.html" . }}
+
+<main id="content" class="content" role="main">
+  <h1 style="width: 80%; max-width: 710px; margin: 0px auto;">Posts for "{{ .Title | lower }}" tag</h1>
+  {{ range .Pages }}
+  <article class="post">
+    <header class="post-header">
+      <h2 class="post-title"><a href="{{ .Permalink }}">{{ .Title }}</a></h2>
+    </header>
+    <section class="post-excerpt">
+      <p>{{ with .Params.excerpt }}{{ . }}{{ else }}{{ .Summary | plainify | truncate 200 }}{{ end }} <a class="read-more" href="{{ .Permalink }}">&raquo;</a></p>
+    </section>
+    <footer class="post-meta">
+      {{ with $.Site.Params.authorImg }}
+        <img class="author-thumb" src="{{ . }}" alt="{{ $.Site.Params.author }}" nopin="nopin" />
+      {{ end }}
+      <a href="/">{{ $.Site.Params.author }}</a>
+      {{ with .Params.tags }}
+        {{ range $i, $tag := . }}{{ if $i }}, {{ end }}<a href="/tags/{{ $tag | urlize }}/">{{ $tag }}</a>{{ end }}
+      {{ end }}
+      <time class="post-date" datetime="{{ .Date.Format "2006-January-02" }}">{{ .Date.Format "02 January 2006" }}</time>
+    </footer>
+  </article>
+  {{ end }}
+
+</main>
+{{ end }}

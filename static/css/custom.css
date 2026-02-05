@@ -1,0 +1,33 @@
+.icon-github
+{
+    background-image: url('/img/github-mark.svg');
+    background-size: 32px;
+    width: 32px;
+    height: 32px;
+    display: inline-block;
+    margin-bottom: -8px;
+}
+
+.icon-mastodon
+{
+    background-image: url('/img/mastodon-mark.svg');
+    background-size: 32px;
+    width: 32px;
+    height: 32px;
+    display: inline-block;
+    margin-bottom: -8px;
+}
+
+.icon-linkedin
+{
+    background-image: url('/img/linkedin-mark.svg');
+    background-size: 32px;
+    width: 32px;
+    height: 32px;
+    display: inline-block;
+    margin-bottom: -8px;
+}
+
+.post-footer .share .icon-feed:hover {
+    color: #ea7818;
+}

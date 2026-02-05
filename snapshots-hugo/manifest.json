@@ -1,0 +1,232 @@
+{
+  "crawledAt": "2026-02-05T21:26:55.958Z",
+  "baseUrl": "http://localhost:1313",
+  "totalPages": 45,
+  "pages": [
+    {
+      "pathname": "/",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/about",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/photos",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/rss.xml",
+      "status": 200,
+      "skipped": "not HTML"
+    },
+    {
+      "pathname": "/posts/the-control-paradox",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/ai",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/agents",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/traversal-project-best-practices",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/.net",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/msbuild",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/pwsh-profiling-async-startup",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/powershell",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/msbuild-targets-with-vertical-slices",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/implementing-ioptionsfactory-to-create-options-instances",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/2",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/ignoreif-mstest",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/mstest",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/testfx",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/testing",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/powershell-dynamicproxy-indexers",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/https-in-service-fabric-web-api",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/azure",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/service-fabric",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/azure-setupcomplete2",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/3",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/windows",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/squamish-2017-race-report",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/running",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/race-reports",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/combining-cronschedules-in-webjobs",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/webjobs",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/generate-wpa-regions-from-performance-marks",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/performance",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/chrome",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/edge",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/wpa",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/using-wpa-to-analyze-performance-marks",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/running-docpad-on-azure-in-2015",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/docpad",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/4",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/windows-8-blog-performance-lab",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/microsoft",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/tags/ie",
+      "status": 200,
+      "saved": true
+    },
+    {
+      "pathname": "/posts/ie10-graphics-performance-and-quality-demo",
+      "status": 200,
+      "saved": true
+    }
+  ]
+}
