@@ -1,6 +1,7 @@
 ---
 title: "Combining cron expressions in Azure WebJobs TimerTriggers"
 cover: /img/combining-cronschedules-in-webjobs.png
+socialImage: /img/combining-cronschedules-in-webjobs-social.jpg
 isPost: true
 active: true
 excerpt: Azure supports using cron expressions to trigger WebJobs, but each job can have only a single cron schedule. Learn how to use the TimerSchedule class to create custom schedules and combine cron expressions

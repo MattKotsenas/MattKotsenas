@@ -1,6 +1,7 @@
 ---
 title: "MSBuild Traversal project best practices"
 cover: /img/traversal-project-best-practices/cover.jpeg
+socialImage: /img/traversal-project-best-practices/cover-social.jpg
 isPost: true
 active: true
 excerpt: Best practices for using MSBuild traversal projects

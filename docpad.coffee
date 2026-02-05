@@ -1,5 +1,20 @@
 moment = require('moment')
+{ execSync } = require('child_process')
+
 docpadConfig = {
+  events:
+    generateBefore: (opts, next) ->
+      # Generate social preview images before building (dev only, requires sharp)
+      try
+        require.resolve('sharp')
+        console.log('Generating social preview images...')
+        execSync('node scripts/generate-social-images.js', { stdio: 'inherit' })
+      catch err
+        if err.code is 'MODULE_NOT_FOUND'
+          console.log('Skipping social image generation (sharp not installed)')
+        else
+          console.error('Social image generation failed:', err.message)
+      next()
   templateData:
     site:
       title: 'void where_prohibited() { ... }'
@@ -38,6 +53,9 @@ docpadConfig = {
     masthead: (d) ->
       d = d || @document
       if d.cover then d.cover else @site.cover
+    socialImage: (d) ->
+      d = d || @document
+      if d.socialImage then d.socialImage else if d.cover then d.cover else @site.cover
     isCurrent: (l) ->
       if @document.section is l.section  then ' nav-current'
       else if @document.url is l.href then ' nav-current'

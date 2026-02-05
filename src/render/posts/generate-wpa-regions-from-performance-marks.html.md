@@ -1,6 +1,7 @@
 ---
 title: "Generating WPA Regions of Interest from performance marks"
 cover: /img/wpa-regions/cover.png
+socialImage: /img/wpa-regions/cover-social.jpg
 isPost: true
 active: true
 excerpt: Automate creating WPA Regions of Interest files using PowerShell

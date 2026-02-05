@@ -1,6 +1,7 @@
 ---
 title: "New blog post over at Building Windows 8 blog"
 cover: /img/windows-8-blog-performance-lab.jpg
+socialImage: /img/windows-8-blog-performance-lab-social.jpg
 isPost: true
 active: true
 excerpt: Exciting times! The Building Windows 8 blog recently published a post written by myself and my colleagues...

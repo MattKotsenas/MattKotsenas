@@ -1,6 +1,7 @@
 ---
 title: "A tech demo showing canvas performance and quality in IE 10"
 cover: /img/ie10-graphics-performance-and-quality-demo.png
+socialImage: /img/ie10-graphics-performance-and-quality-demo-social.jpg
 isPost: true
 active: true
 excerpt: In IE 10 we're focusing on performance and quality of our canvas implementation...

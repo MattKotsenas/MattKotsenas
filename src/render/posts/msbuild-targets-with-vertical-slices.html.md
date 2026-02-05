@@ -1,6 +1,7 @@
 ---
 title: "Simplify MSBuild Directory.Build.props and .targets files with vertical slices"
 cover: /img/msbuild-targets-with-vertical-slices/cover.jpg
+socialImage: /img/msbuild-targets-with-vertical-slices/cover-social.jpg
 isPost: true
 active: true
 excerpt: Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with
