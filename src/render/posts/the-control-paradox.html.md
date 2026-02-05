@@ -173,6 +173,8 @@ needs that visibility to reason effectively.
 
 - **Irreversible external effects**: Use policy, via hooks or a broker, for operations with side effects
     (force-push or PR creation) and resource enforcement
+- **Verification gates**: Agents will claim success without evidence. Make verification blocking, not advisory. No PR
+    without passing tests, no "done" without proof.
 - **Concurrency boundaries**: Which repos are being worked on, lease management, preventing conflicts
 - **Audit trail**: What happened, when, what state resulted, and full reasoning and tool call logs
 - **Resource limits**: Timeouts, token budgets, iteration caps
@@ -195,8 +197,8 @@ not in the exploratory work that precedes it.
 The opinions above emerged from experimentation. Here's surpising patterns and mistakes made more than once.
 
 ### On Focus
-- Agents get "bored" with parallelism (their word, not mine). Give them too many concurrent tasks and they start cutting
-    corners. Sequential focus keeps the work coherent.
+- Agents struggle with repetition. Ask an agent to "do this in 10 places" and it does it in 5. Ask it to "do this in
+    one place" ten times and it gets all ten. Sequential focus keeps the work coherent.
 - External task tracking (visible to the agent) is remarkably effective. It provides a vector to reason against that
     prevents drift.
 - The narrow context pattern achieves focus by restriction. Persistent task tracking achieves focus by goal-visibility.
@@ -266,11 +268,12 @@ stop skipping steps).
 **Remember: pre-PR mistakes are cheap.** Don't over-engineer the exploratory phase. Save your rigor for the test loop.
 
 **Use LLM-as-judge for evaluation.** When work finishes (or fails), have a separate agent step in to judge. Feed it the
-original prompt and diff and ask "did this accomplish the goal?"
+original prompt and diff and ask "did this accomplish the goal"? Require signoff before the task can advance to the next
+state.
 
 **Separate tool brand from campaign brand.** If you're running refactoring campaigns for many engineers, one
-poorly-conceived campaign can teach your users that the tool produces slop. Make sure they know the difference between
-"this campaign was bad" and "this tool is bad".
+poorly-conceived campaign can teach your users that the tool produces slop. Reviewers start ignoring your PRs. Engineers
+stop proposing campaigns. Make sure they know the difference between "this campaign was bad" and "this tool is bad".
 
 **Think about composability.** Create packages with vertical skills. [Skills][agent-skills] explain _how_ to do
 something and should work in any context. The prompt provides the policy or decision framework for how to leverage the
