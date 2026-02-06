@@ -2,3 +2,8 @@
 .max-w-prose {
   max-width: 1024px !important;
 }
+
+/* Add clock symbol before reading time */
+span[title="Reading time"]::before {
+  content: "◷ ";
+}
