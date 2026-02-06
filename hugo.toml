@@ -2,25 +2,13 @@ baseURL = 'https://matt.kotsenas.com/'
 languageCode = 'en-us'
 title = "void where_prohibited() { ... }"
 
-# Output to 'out/' to match DocPad
-publishDir = 'out'
-
 # Clean URLs (no .html extension)
 uglyURLs = false
 
 # Hugo modules
 [module]
   [[module.imports]]
-    path = "github.com/KKKZOZ/hugo-admonitions"
-
-[params]
-  tagline = 'Programmer. Runner. Trying my best.'
-  description = 'A personal website for Matt Kotsenas'
-  logo = '/img/home.png'
-  cover = '/img/cover.jpg'
-  author = 'Matt Kotsenas'
-  authorImg = 'https://gravatar.com/avatar/13e6e96d176cd18ef232d054b8e65f55'
-  authorLocation = 'Seattle, WA'
+    path = "github.com/nunocoracao/blowfish/v2"
 
 [taxonomies]
   tag = 'tags'
@@ -41,11 +29,74 @@ uglyURLs = false
 
 [markup]
   [markup.highlight]
-    style = 'github'
-    lineNos = false
+    noClasses = false
   [markup.goldmark]
     [markup.goldmark.renderer]
       unsafe = true
 
 [minify.tdewolff.html]
   keepQuotes = true # We live in a society
+
+# Blowfish theme configuration
+[params]
+  colorScheme = "noir"
+  defaultAppearance = "dark"
+  autoSwitchAppearance = false
+  
+  enableSearch = false
+  enableCodeCopy = true
+  
+  mainSections = ["posts"]
+  
+  [params.author]
+    name = "Matt Kotsenas"
+    image = "img/home.png"
+    headline = "Programmer. Runner. Trying my best."
+    bio = "A personal website for Matt Kotsenas"
+    links = [
+      { github = "https://github.com/MattKotsenas" },
+      { mastodon = "https://hachyderm.io/@mattkotsenas" },
+      { linkedin = "https://www.linkedin.com/in/mattkotsenas" },
+      { rss = "/rss.xml" }
+    ]
+
+  [params.homepage]
+    layout = "hero"
+    homepageImage = "img/cover.jpg"
+    showRecent = true
+    recentLimit = 5
+
+  [params.article]
+    showDate = true
+    showReadingTime = true
+    showTableOfContents = false
+    showRelatedContent = true
+    relatedContentLimit = 3
+    showTaxonomies = true
+    showAuthor = false
+    showBreadcrumbs = true
+
+  [params.list]
+    showBreadcrumbs = true
+    showTableOfContents = false
+
+  [params.taxonomy]
+    showTermCount = true
+
+# Google Analytics
+googleAnalytics = "UA-8867357-1"
+
+[[menus.main]]
+  name = "Posts"
+  pageRef = "posts"
+  weight = 10
+
+[[menus.main]]
+  name = "Tags"
+  pageRef = "tags"
+  weight = 20
+
+[[menus.main]]
+  name = "About"
+  pageRef = "about"
+  weight = 30

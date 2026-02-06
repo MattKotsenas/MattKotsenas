@@ -1,7 +1,6 @@
 ---
+showHero: true
 title: "The Control Paradox"
-cover: cover.jpg
-socialImage: cover-social.jpg
 description: Your agent orchestrator probably gives you less control than you think.
 date: 2026-02-05T04:39:59.000Z
 tags:

@@ -1,6 +1,6 @@
 # MattKotsenas
 
-Personal website for [matt.kotsenas.com](https://matt.kotsenas.com). The site is generated using [Hugo](https://gohugo.io/) and uses a theme based on [Casper](https://github.com/TryGhost/Casper).
+Personal website for [matt.kotsenas.com](https://matt.kotsenas.com). The site is generated using [Hugo](https://gohugo.io/) with the [Blowfish](https://blowfish.page/) theme.
 
 ## Building locally
 
@@ -11,7 +11,7 @@ docker build -t mattkotsenas/blog -f build/Dockerfile .
 # Generate the site
 docker run --rm -v ${PWD}:/src mattkotsenas/blog hugo --minify
 
-# Output is in the out/ directory
+# Output is in the public/ directory
 ```
 
 ## Development server

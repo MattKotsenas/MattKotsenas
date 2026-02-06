@@ -1,5 +1,5 @@
 casper-original
 node_modules
-out
+public
 .hugo_build.lock
 resources/
