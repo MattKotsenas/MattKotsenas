@@ -5,6 +5,9 @@ title = "void where_prohibited() { ... }"
 # Clean URLs (no .html extension)
 uglyURLs = false
 
+# Preserve taxonomy names as-is (don't auto-capitalize)
+capitalizeListTitles = false
+
 [taxonomies]
   tag = 'tags'
 
