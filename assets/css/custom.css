@@ -7,3 +7,10 @@
 span[title="Reading time"]::before {
   content: "◷ ";
 }
+
+/* Round hero image corners to match other elements */
+article img[src*="feature"],
+.hero img,
+[class*="hero"] img {
+  border-radius: 0.5rem;
+}
