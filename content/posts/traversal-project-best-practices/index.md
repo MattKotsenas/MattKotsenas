@@ -2,6 +2,7 @@
 showHero: true
 title: "MSBuild Traversal project best practices"
 description: Best practices for using MSBuild traversal projects
+summary: "Best practices for using MSBuild traversal projects"
 date: 2025-03-07T17:48:22.000Z
 tags:
   - dotnet

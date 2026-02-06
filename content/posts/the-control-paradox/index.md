@@ -2,6 +2,7 @@
 showHero: true
 title: "The Control Paradox"
 description: Your agent orchestrator probably gives you less control than you think.
+summary: "Your agent orchestrator probably gives you less control than you think."
 date: 2026-02-05T04:39:59.000Z
 tags:
  - ai

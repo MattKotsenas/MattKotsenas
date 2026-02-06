@@ -38,6 +38,7 @@ mainSections = ["posts"]
 [list]
   showBreadcrumbs = true
   showTableOfContents = false
+  showSummary = true
 
 [taxonomy]
   showTermCount = true

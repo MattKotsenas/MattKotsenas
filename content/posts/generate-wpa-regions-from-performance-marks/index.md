@@ -3,6 +3,7 @@ showHero: true
 title: "Generating WPA Regions of Interest from performance marks"
 
 description: Automate creating WPA Regions of Interest files using PowerShell
+summary: "Automate creating WPA Regions of Interest files using PowerShell"
 date: 2017-07-26T23:57:58.000Z
 tags:
  - performance

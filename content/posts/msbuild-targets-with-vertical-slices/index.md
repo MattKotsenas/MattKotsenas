@@ -2,6 +2,7 @@
 showHero: true
 title: "Simplify MSBuild Directory.Build.props and .targets files with vertical slices"
 description: Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with
+summary: "Use vertical slices / features as an organization mechanism and make Directory.Build.props and .targets files easier to work with"
 date: 2023-09-14T00:07:20.000Z
 tags:
  - dotnet

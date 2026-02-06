@@ -1,6 +1,7 @@
 ---
 title: "The curious case of PowerShell, Castle DynamicProxy and indexers"
 description: I seem to have hit some sort of edge case between the Castle DynamicProxy object and the binding / dispatching of method calls in PowerShell.
+summary: "I seem to have hit some sort of edge case between the Castle DynamicProxy object and the binding / dispatching of method calls in PowerShell."
 date: 2016-07-19T23:33:34.000Z
 tags:
  - powershell

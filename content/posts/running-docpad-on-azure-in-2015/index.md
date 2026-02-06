@@ -1,6 +1,7 @@
 ---
 title: "Running docpad on Azure in 2015"
 description: I really needed to freshen up the site. It was created hastily and really didn't follow best practices...
+summary: "I really needed to freshen up the site. It was created hastily and really didn't follow best practices..."
 date: 2015-12-23T14:19:19.000Z
 tags:
  - docpad

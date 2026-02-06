@@ -1,6 +1,7 @@
 ---
 title: "Implementing IOptionsFactory<T> to create custom options instances"
 description: Recently, I was writing a .NET console app to integrate with a third-party library and had an opportunity to use the IOptions pattern. However, the settings object didn't have a public, parameterless constructor. Here's how I used IOptionsFactory to support these types of options classes...
+summary: "Recently, I was writing a .NET console app to integrate with a third-party library and had an opportunity to use the IOptions pattern. However, the settings object didn't have a public, parameterless constructor. Here's how I used IOptionsFactory to support these types of options classes..."
 date: 2023-06-15T17:10:21.000Z
 tags:
  - dotnet

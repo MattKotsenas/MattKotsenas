@@ -1,6 +1,7 @@
 ---
 title: "Running post setup commands on Azure VMs with SetupComplete2"
 description: Trying to enable the Administrator account on a custom VM image for Azure lead down a rabbit hole
+summary: "Trying to enable the Administrator account on a custom VM image for Azure lead down a rabbit hole"
 date: 2020-05-12T04:19:48.000Z
 tags:
  - azure

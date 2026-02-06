@@ -1,6 +1,7 @@
 ---
 title: "A tech demo showing canvas performance and quality in IE 10"
 description: In IE 10 we're focusing on performance and quality of our canvas implementation...
+summary: "In IE 10 we're focusing on performance and quality of our canvas implementation..."
 date: 2011-06-29T20:42:00.000Z
 tags:
  - microsoft

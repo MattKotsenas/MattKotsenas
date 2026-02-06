@@ -1,6 +1,7 @@
 ---
 title: "HTTP & HTTPS in Service Fabric Web API"
 description: Updating the boilerplate code in a Service Fabric Web API to support HTTP and HTTPS endpoints simultaneously
+summary: "Updating the boilerplate code in a Service Fabric Web API to support HTTP and HTTPS endpoints simultaneously"
 date: 2016-04-27T01:19:19.000Z
 tags:
  - azure
