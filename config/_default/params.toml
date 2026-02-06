@@ -1,0 +1,43 @@
+colorScheme = "noir"
+defaultAppearance = "dark"
+autoSwitchAppearance = false
+
+enableSearch = false
+enableCodeCopy = true
+
+mainSections = ["posts"]
+
+[author]
+  name = "Matt Kotsenas"
+  image = "img/home.png"
+  headline = "Programmer. Runner. Trying my best."
+  bio = "A personal website for Matt Kotsenas"
+  links = [
+    { github = "https://github.com/MattKotsenas" },
+    { mastodon = "https://hachyderm.io/@mattkotsenas" },
+    { linkedin = "https://www.linkedin.com/in/mattkotsenas" },
+    { rss = "/rss.xml" }
+  ]
+
+[homepage]
+  layout = "hero"
+  homepageImage = "img/cover.jpg"
+  showRecent = true
+  recentLimit = 5
+
+[article]
+  showDate = true
+  showReadingTime = true
+  showTableOfContents = false
+  showRelatedContent = true
+  relatedContentLimit = 3
+  showTaxonomies = true
+  showAuthor = false
+  showBreadcrumbs = true
+
+[list]
+  showBreadcrumbs = true
+  showTableOfContents = false
+
+[taxonomy]
+  showTermCount = true
