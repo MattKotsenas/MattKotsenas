@@ -1,0 +1,34 @@
+baseURL = 'https://matt.kotsenas.com/'
+languageCode = 'en-us'
+title = "void where_prohibited() { ... }"
+
+# Clean URLs (no .html extension)
+uglyURLs = false
+
+# Preserve taxonomy names as-is (don't auto-capitalize)
+capitalizeListTitles = false
+
+[taxonomies]
+  tag = 'tags'
+
+[permalinks]
+  posts = '/posts/:slug/'
+
+[pagination]
+  pagerSize = 5
+  path = ''
+
+# RSS feed at /rss.xml
+[outputFormats.RSS]
+  baseName = 'rss'
+
+[outputs]
+  home = ['HTML', 'RSS']
+
+[minify.tdewolff.html]
+  keepQuotes = true # We live in a society
+
+# Google Analytics
+[services]
+  [services.googleAnalytics]
+    id = "UA-8867357-1"

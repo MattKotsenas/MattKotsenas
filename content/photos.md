@@ -1,6 +1,9 @@
 ---
 title: 'Photos'
 slug: 'photos'
+showDate: false
+showReadingTime: false
+showAuthor: false
 ---
 
 

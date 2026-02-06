@@ -1,11 +1,10 @@
 ---
+showHero: true
 title: "Profiling and asynchronous initialization to improve PowerShell startup"
-cover: cover.jpeg
-socialImage: cover-social.jpg
 description: Initialize your PowerShell profile asynchronously using idle events
 date: 2024-05-24T20:15:11.000Z
 tags:
- - PowerShell
+ - powershell
 slug: "pwsh-profiling-async-startup"
 ---
 

@@ -1,0 +1,5 @@
+<!-- Syntax highlighting (class-based light/dark) -->
+{{ $syntaxLight := resources.Get "css/syntax.css" | minify }}
+{{ $syntaxDark := resources.Get "css/syntax-dark.css" | minify }}
+<link rel="stylesheet" href="{{ $syntaxLight.Permalink }}">
+<link rel="stylesheet" href="{{ $syntaxDark.Permalink }}">

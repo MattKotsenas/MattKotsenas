@@ -1,6 +1,5 @@
 ---
 title: "Using the Windows Performance Toolkit to analyze performance marks on Edge and Chrome"
-cover: filter-to-marks.png
 description: Learn how to use the Windows Performance Toolkit to drill into web app scenarios using performance.mark
 date: 2017-07-24T18:53:27.000Z
 tags:
@@ -9,6 +8,7 @@ tags:
  - edge
  - wpa
 slug: "using-wpa-to-analyze-performance-marks"
+showHero: true
 ---
 
 I have a bit of a love / hate relationship with the [Windows Performance Toolkit][wpt]. It's easy to be overwhelmed by

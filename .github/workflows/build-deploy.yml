@@ -23,7 +23,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: site
-          path: out/
+          path: public/
 
   deploy:
     needs: build
