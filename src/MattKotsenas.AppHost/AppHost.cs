@@ -1,6 +1,14 @@
+using MattKotsenas.AppHost;
 using Microsoft.Extensions.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
+
+if (builder.ExecutionContext.IsPublishMode)
+{
+    builder.AddAzureInfrastructure(
+        "blog-existing",
+        BlogInfrastructure.ConfigureExisting);
+}
 
 if (builder.ExecutionContext.IsRunMode)
 {

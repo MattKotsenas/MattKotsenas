@@ -23,6 +23,18 @@ jobs:
       - name: Build AppHost
         run: dotnet build MattKotsenas.slnx --configuration Release
 
+      - name: Generate deployment artifacts
+        run: >-
+          dotnet aspire publish
+          --output-path generated/azure
+          --non-interactive
+
+      - name: Verify generated artifacts
+        shell: bash
+        run: |
+          git diff --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
+
       - name: Verify AppHost formatting
         run: >-
           dotnet format MattKotsenas.slnx
