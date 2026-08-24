@@ -16,8 +16,8 @@ if (builder.ExecutionContext.IsPublishMode)
     builder.AddAzureEnvironment().WithResourceGroup(blogResourceGroup);
 
     var blog = builder.AddAzureInfrastructure(
-        "blog-existing",
-        BlogInfrastructure.ConfigureExisting);
+        "blog",
+        BlogInfrastructure.Configure);
 
     // App Service does not expose its shared inbound address through ARM.
     var websiteInboundIpAddress = builder.AddParameter(

@@ -15,8 +15,8 @@ resource rg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   location: location
 }
 
-module blog_existing 'blog-existing/blog-existing.bicep' = {
-  name: 'blog-existing'
+module blog 'blog/blog.bicep' = {
+  name: 'blog'
   scope: rg
   params: {
     location: location
@@ -28,8 +28,8 @@ module blog_dns 'blog-dns/blog-dns.bicep' = {
   scope: resourceGroup(dnsResourceGroupName)
   params: {
     location: location
-    defaultHostName: blog_existing.outputs.defaultHostName
-    customDomainVerificationId: blog_existing.outputs.customDomainVerificationId
+    defaultHostName: blog.outputs.defaultHostName
+    customDomainVerificationId: blog.outputs.customDomainVerificationId
     websiteInboundIpAddress: websiteInboundIpAddress
   }
 }
