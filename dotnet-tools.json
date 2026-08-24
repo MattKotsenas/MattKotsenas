@@ -2,17 +2,17 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "aspire.cli": {
-      "version": "13.5.2",
-      "commands": [
-        "aspire"
-      ],
-      "rollForward": false
-    },
     "slopwatch.cmd": {
       "version": "0.4.2",
       "commands": [
         "slopwatch"
+      ],
+      "rollForward": false
+    },
+    "aspire.cli": {
+      "version": "13.5.2",
+      "commands": [
+        "aspire"
       ],
       "rollForward": false
     }
