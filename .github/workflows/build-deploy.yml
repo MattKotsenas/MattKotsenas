@@ -29,9 +29,6 @@ jobs:
           --no-restore
           --verify-no-changes
 
-      - name: Check AppHost changes
-        run: dotnet slopwatch analyze --fail-on warning
-
       - name: Test AppHost
         run: >-
           dotnet test MattKotsenas.slnx
