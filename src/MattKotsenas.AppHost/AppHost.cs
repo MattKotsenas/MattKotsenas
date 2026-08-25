@@ -11,6 +11,9 @@ var builder = DistributedApplication.CreateBuilder(args);
 var repositoryRoot = Path.GetFullPath(
     Path.Combine(builder.AppHostDirectory, "..", ".."));
 var isRunMode = builder.ExecutionContext.IsRunMode;
+var useDevelopmentContainer =
+    isRunMode &&
+    !builder.Configuration.GetValue<bool>("Blog:UseProductionContainer");
 
 if (builder.ExecutionContext.IsPublishMode)
 {
@@ -51,10 +54,10 @@ var blog = builder
         "blog",
         repositoryRoot,
         "build/Dockerfile",
-        stage: isRunMode ? "dev" : "final")
+        stage: useDevelopmentContainer ? "dev" : "final")
     .WithHttpEndpoint(
         port: configuredPort is 0 ? null : configuredPort,
-        targetPort: isRunMode ? 1313 : 8080,
+        targetPort: useDevelopmentContainer ? 1313 : 8080,
         name: "http")
     .WithHttpHealthCheck("/", endpointName: "http")
     .WithExternalHttpEndpoints()
@@ -68,22 +71,35 @@ var blog = builder
         container.Resources.Memory = "0.5Gi";
     });
 
-if (isRunMode)
+if (useDevelopmentContainer)
 {
     blog
         .WithBindMount(repositoryRoot, "/src")
         .WithArgs("server", "--bind", "0.0.0.0");
+}
 
+if (isRunMode)
+{
     blog.WithCommand(
         name: "configure-container-app-deployment",
         displayName: "Configure Container App deployment",
-        executeCommand: context =>
-            DeploymentSetup.ConfigureAsync(repositoryRoot, context),
+        executeCommand: DeploymentSetup.ExecuteAsync,
         commandOptions: new CommandOptions
         {
-            Description = "Configures the Azure OIDC identity and GitHub repository variables.",
-            ConfirmationMessage = "Create or update the Azure identity, subscription roles, federated credential, and GitHub variables?",
+            Description = "Configures GitHub-to-Azure OIDC deployment.",
+            ConfirmationMessage = "Create or update the Entra application, federated credential, subscription roles, immutable GitHub OIDC subject, and repository variables?",
             IconName = "CloudArrowUp",
+            Arguments =
+            [
+                new InteractionInput
+                {
+                    Name = "applicationId",
+                    Label = "Existing application ID (optional)",
+                    InputType = InputType.Text,
+                    Required = false,
+                    MaxLength = 36,
+                },
+            ],
         });
 }
 

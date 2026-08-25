@@ -21,14 +21,13 @@ dotnet aspire start
 ## Container App preview deployment
 
 After signing in with the Azure and GitHub CLIs, start the AppHost and run **Configure Container App deployment** on
-the `blog` resource. The command configures the Entra application, its federated credential for `main`, subscription
-roles, the immutable GitHub OIDC subject, and repository variables. Run it from a terminal:
+the `blog` resource. The command configures GitHub-to-Azure OIDC deployment. It can also be run from the terminal:
 
-```powershell
-pwsh -NoProfile -File ./scripts/Configure-ContainerAppOidc.ps1
+```bash
+dotnet aspire resource blog configure-container-app-deployment
 ```
 
-If the application already exists, verify its application ID and pass it explicitly with `-ApplicationId`.
+If the application already exists, verify its application ID and pass it with `--applicationId`.
 
 Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
 West US 3.

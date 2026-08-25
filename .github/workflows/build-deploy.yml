@@ -72,35 +72,6 @@ jobs:
           --file build/Dockerfile
           .
 
-      - name: Verify production container
-        shell: bash
-        run: |
-          docker build --target final --tag mattkotsenas/blog:ci --file build/Dockerfile .
-          test "$(docker image inspect --format '{{.Config.User}}' mattkotsenas/blog:ci)" = "101"
-
-          container_id="$(docker run --detach --rm --publish 127.0.0.1::8080 mattkotsenas/blog:ci)"
-          trap 'docker stop "$container_id" > /dev/null' EXIT
-          port="$(docker port "$container_id" 8080/tcp | sed 's/.*://')"
-
-          ready=false
-          for _ in {1..20}; do
-            if curl --fail --location --max-redirs 3 --silent "http://127.0.0.1:$port/" > /dev/null; then
-              ready=true
-              break
-            fi
-            sleep 0.25
-          done
-
-          if [ "$ready" != true ]; then
-            docker logs "$container_id"
-            exit 1
-          fi
-
-          curl --fail --location --max-redirs 3 --silent "http://127.0.0.1:$port/about/" > /dev/null
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$port/about.html")" = "301"
-          curl --silent --head "http://127.0.0.1:$port/about.html" | tr -d '\r' | grep --fixed-strings --line-regexp "Location: /about"
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$port/web.config")" = "404"
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
