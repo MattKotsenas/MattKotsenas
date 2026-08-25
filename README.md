@@ -17,8 +17,8 @@ docker run --rm -v ${PWD}:/src mattkotsenas/blog hugo --minify
 ## Development server
 
 ```bash
-dotnet tool restore
-dotnet aspire start
+# Start dev server with live reload
+docker run --rm -v ${PWD}:/src -p 1313:1313 mattkotsenas/blog hugo server --bind 0.0.0.0
 
 # Open http://localhost:1313
 ```
