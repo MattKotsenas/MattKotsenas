@@ -8,6 +8,34 @@ on:
   workflow_dispatch:
 
 jobs:
+  apphost:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Build AppHost
+        run: dotnet build MattKotsenas.slnx --configuration Release
+
+      - name: Verify AppHost formatting
+        run: >-
+          dotnet format MattKotsenas.slnx
+          --no-restore
+          --verify-no-changes
+
+      - name: Test AppHost
+        run: >-
+          dotnet test MattKotsenas.slnx
+          --configuration Release
+          --no-build
+          --no-restore
+
   build:
     runs-on: ubuntu-latest
     steps:
