@@ -1,0 +1,15 @@
+.git
+.github
+artifacts
+generated
+public
+resources
+**/.hugo_build.lock
+src
+tests
+*.slnx
+*.props
+aspire.config.json
+dotnet-tools.json
+global.json
+nuget.config

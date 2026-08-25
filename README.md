@@ -5,13 +5,8 @@ Personal website for [matt.kotsenas.com](https://matt.kotsenas.com). The site is
 ## Building locally
 
 ```bash
-# Build the Hugo Docker image
-docker build -t mattkotsenas/blog -f build/Dockerfile .
-
-# Generate the site
-docker run --rm -v ${PWD}:/src mattkotsenas/blog hugo --minify
-
-# Output is in the public/ directory
+# Generate the site with the production Docker build
+docker build --target export --output type=local,dest=public -f build/Dockerfile .
 ```
 
 ## Development server
@@ -23,11 +18,25 @@ dotnet aspire start
 # Open http://localhost:1313
 ```
 
+## Container App preview deployment
+
+After signing in with the Azure and GitHub CLIs, start the AppHost and run **Configure Container App deployment** on
+the `blog` resource. The command configures GitHub-to-Azure OIDC deployment. It can also be run from the terminal:
+
+```bash
+dotnet aspire resource blog configure-container-app-deployment
+```
+
+If the application already exists, verify its application ID and pass it with `--applicationId`.
+
+Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
+West US 3.
+
 ## Creating a new post
 
 ```bash
 # Create a new post (replace 'my-post-slug' with your post's URL slug)
-docker run --rm -v ${PWD}:/src mattkotsenas/blog hugo new posts/my-post-slug/index.md
+docker run --rm -v "${PWD}:/src" "$(docker build --quiet --target dev -f build/Dockerfile .)" new posts/my-post-slug/index.md
 ```
 
 This creates a new post with the correct frontmatter. To add a hero image:
