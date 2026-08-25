@@ -21,9 +21,10 @@ dotnet aspire start
 ## Container App preview deployment
 
 The `container-app-preview` GitHub environment requires `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and
-`AZURE_SUBSCRIPTION_ID` secrets. The Azure identity needs a federated credential for
-`repo:MattKotsenas/MattKotsenas:environment:container-app-preview`, plus the **Contributor** and **Role Based Access
-Control Administrator** roles on the target subscription for initial provisioning.
+`AZURE_SUBSCRIPTION_ID` secrets. The Azure identity needs a federated credential with issuer
+`https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`, and subject
+`repo:MattKotsenas/MattKotsenas:environment:container-app-preview`. It also needs the **Contributor** and **Role Based
+Access Control Administrator** roles on the target subscription for initial provisioning.
 
 Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
 West US 3.
