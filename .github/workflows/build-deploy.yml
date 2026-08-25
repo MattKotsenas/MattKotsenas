@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   apphost:
     runs-on: ubuntu-latest
@@ -22,6 +25,26 @@ jobs:
 
       - name: Build AppHost
         run: dotnet build MattKotsenas.slnx --configuration Release
+
+      - name: Generate deployment artifacts
+        run: >-
+          dotnet aspire publish
+          --output-path generated/azure
+          --environment preview
+          --non-interactive
+
+      - name: Verify generated artifacts
+        shell: bash
+        run: |
+          git diff --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
+
+      - name: Validate deployment artifacts
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            az bicep build --file "$file" --stdout > /dev/null
+          done < <(find generated/azure -name '*.bicep' -print0)
 
       - name: Verify AppHost formatting
         run: >-
@@ -41,11 +64,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Hugo Docker image
-        run: docker build -t mattkotsenas/blog-hugo -f build/Dockerfile .
-
       - name: Generate site with Hugo
-        run: docker run --rm -v ${{ github.workspace }}:/src mattkotsenas/blog-hugo hugo --minify
+        run: >-
+          docker build
+          --target export
+          --output type=local,dest=public
+          --file build/Dockerfile
+          .
+
+      - name: Verify production container
+        shell: bash
+        run: |
+          docker build --target final --tag mattkotsenas/blog:ci --file build/Dockerfile .
+          test "$(docker image inspect --format '{{.Config.User}}' mattkotsenas/blog:ci)" = "101"
+
+          container_id="$(docker run --detach --rm --publish 127.0.0.1::8080 mattkotsenas/blog:ci)"
+          trap 'docker stop "$container_id" > /dev/null' EXIT
+          port="$(docker port "$container_id" 8080/tcp | sed 's/.*://')"
+
+          ready=false
+          for _ in {1..20}; do
+            if curl --fail --location --max-redirs 3 --silent "http://127.0.0.1:$port/" > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 0.25
+          done
+
+          if [ "$ready" != true ]; then
+            docker logs "$container_id"
+            exit 1
+          fi
+
+          curl --fail --location --max-redirs 3 --silent "http://127.0.0.1:$port/about/" > /dev/null
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$port/about.html")" = "301"
+          curl --silent --head "http://127.0.0.1:$port/about.html" | tr -d '\r' | grep --fixed-strings --line-regexp "Location: /about"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$port/web.config")" = "404"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -53,10 +107,10 @@ jobs:
           name: site
           path: public/
 
-  deploy:
+  deploy-legacy-web-app-until-container-cutover:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
       url: https://matt.kotsenas.com
@@ -74,3 +128,36 @@ jobs:
           app-name: mattkotsenas
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: site/
+
+  deploy-container-app:
+    needs: [apphost, build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment:
+      name: container-app-preview
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Sign in to Azure
+        uses: azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac # v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy with Aspire
+        env:
+          Azure__Location: westus3
+          Azure__ResourceGroup: blog
+          Azure__SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: dotnet aspire deploy --environment preview --non-interactive

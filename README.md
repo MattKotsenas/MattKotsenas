@@ -5,13 +5,8 @@ Personal website for [matt.kotsenas.com](https://matt.kotsenas.com). The site is
 ## Building locally
 
 ```bash
-# Build the Hugo Docker image
-docker build -t mattkotsenas/blog -f build/Dockerfile .
-
-# Generate the site
-docker run --rm -v ${PWD}:/src mattkotsenas/blog hugo --minify
-
-# Output is in the public/ directory
+# Generate the site with the production Docker build
+docker build --target export --output type=local,dest=public -f build/Dockerfile .
 ```
 
 ## Development server
@@ -23,11 +18,22 @@ dotnet aspire start
 # Open http://localhost:1313
 ```
 
+## Container App preview deployment
+
+The `container-app-preview` GitHub environment requires `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and
+`AZURE_SUBSCRIPTION_ID` secrets. The Azure identity needs a federated credential for
+`repo:MattKotsenas/MattKotsenas:environment:container-app-preview`, plus the **Contributor** and **Role Based Access
+Control Administrator** roles on the target subscription for initial provisioning.
+
+Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
+West US 3.
+
 ## Creating a new post
 
 ```bash
 # Create a new post (replace 'my-post-slug' with your post's URL slug)
-docker run --rm -v ${PWD}:/src mattkotsenas/blog hugo new posts/my-post-slug/index.md
+docker build --target dev --tag mattkotsenas/blog-dev -f build/Dockerfile .
+docker run --rm -v ${PWD}:/src mattkotsenas/blog-dev new posts/my-post-slug/index.md
 ```
 
 This creates a new post with the correct frontmatter. To add a hero image:

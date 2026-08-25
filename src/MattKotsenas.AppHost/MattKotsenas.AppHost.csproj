@@ -9,4 +9,8 @@
     <UserSecretsId>0769a827-2f22-4e44-a1a9-2ddb5a902f0c</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
+  </ItemGroup>
+
 </Project>
