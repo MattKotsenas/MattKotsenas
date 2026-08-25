@@ -133,8 +133,6 @@ jobs:
     needs: [apphost, build]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
-    environment:
-      name: container-app-preview
     permissions:
       contents: read
       id-token: write
@@ -151,13 +149,13 @@ jobs:
       - name: Sign in to Azure
         uses: azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac # v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy with Aspire
         env:
           Azure__Location: westus3
           Azure__ResourceGroup: blog
-          Azure__SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
         run: dotnet aspire deploy --environment preview --non-interactive

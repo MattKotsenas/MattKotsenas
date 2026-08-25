@@ -20,11 +20,15 @@ dotnet aspire start
 
 ## Container App preview deployment
 
-The `container-app-preview` GitHub environment requires `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and
-`AZURE_SUBSCRIPTION_ID` secrets. The Azure identity needs a federated credential with issuer
-`https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`, and subject
-`repo:MattKotsenas/MattKotsenas:environment:container-app-preview`. It also needs the **Contributor** and **Role Based
-Access Control Administrator** roles on the target subscription for initial provisioning.
+After signing in with the Azure and GitHub CLIs, start the AppHost and run **Configure Container App deployment** on
+the `blog` resource. The command configures the Entra application, its federated credential for `main`, subscription
+roles, the immutable GitHub OIDC subject, and repository variables. Run it from a terminal:
+
+```powershell
+pwsh -NoProfile -File ./scripts/Configure-ContainerAppOidc.ps1
+```
+
+If the application already exists, verify its application ID and pass it explicitly with `-ApplicationId`.
 
 Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
 West US 3.
@@ -33,8 +37,7 @@ West US 3.
 
 ```bash
 # Create a new post (replace 'my-post-slug' with your post's URL slug)
-docker build --target dev --tag mattkotsenas/blog-dev -f build/Dockerfile .
-docker run --rm -v ${PWD}:/src mattkotsenas/blog-dev new posts/my-post-slug/index.md
+docker run --rm -v "${PWD}:/src" "$(docker build --quiet --target dev -f build/Dockerfile .)" new posts/my-post-slug/index.md
 ```
 
 This creates a new post with the correct frontmatter. To add a hero image:

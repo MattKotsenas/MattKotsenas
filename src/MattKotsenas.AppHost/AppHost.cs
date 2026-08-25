@@ -1,3 +1,5 @@
+using MattKotsenas.AppHost;
+
 using Aspire.Hosting.Azure;
 using Azure.Provisioning;
 using Azure.Provisioning.Authorization;
@@ -15,11 +17,8 @@ if (builder.ExecutionContext.IsPublishMode)
     var environment = builder
         .AddAzureContainerAppEnvironment("container-apps")
         .WithDashboard(false);
-    var registry = environment.Resource.ContainerRegistry
-        ?? throw new InvalidOperationException("The Container Apps environment requires a registry.");
-
-    builder
-        .CreateResourceBuilder(registry)
+    environment
+        .GetAzureContainerRegistry()
         .ConfigureInfrastructure(infrastructure =>
         {
             var registryService = infrastructure
@@ -74,6 +73,18 @@ if (isRunMode)
     blog
         .WithBindMount(repositoryRoot, "/src")
         .WithArgs("server", "--bind", "0.0.0.0");
+
+    blog.WithCommand(
+        name: "configure-container-app-deployment",
+        displayName: "Configure Container App deployment",
+        executeCommand: context =>
+            DeploymentSetup.ConfigureAsync(repositoryRoot, context),
+        commandOptions: new CommandOptions
+        {
+            Description = "Configures the Azure OIDC identity and GitHub repository variables.",
+            ConfirmationMessage = "Create or update the Azure identity, subscription roles, federated credential, and GitHub variables?",
+            IconName = "CloudArrowUp",
+        });
 }
 
 builder.Build().Run();

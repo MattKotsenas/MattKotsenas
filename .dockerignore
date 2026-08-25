@@ -5,6 +5,7 @@ generated
 public
 resources
 **/.hugo_build.lock
+scripts
 src
 tests
 *.slnx
