@@ -17,6 +17,9 @@ var useDevelopmentContainer =
 
 if (builder.ExecutionContext.IsPublishMode)
 {
+    var deploymentPrincipalId = ObjectId.FromString(
+        builder.Configuration["DeploymentPrincipalId"]);
+
     var environment = builder
         .AddAzureContainerAppEnvironment("container-apps")
         .WithDashboard(false);
@@ -30,7 +33,11 @@ if (builder.ExecutionContext.IsPublishMode)
                 .Single();
             var principalId = new ProvisioningParameter(
                 AzureBicepResource.KnownParameters.UserPrincipalId,
-                typeof(Guid));
+                typeof(string))
+            {
+                Value = new BicepValue<string>(
+                    deploymentPrincipalId.ToString()),
+            };
             infrastructure.Add(principalId);
 
             var pushAssignment = registryService.CreateRoleAssignment(

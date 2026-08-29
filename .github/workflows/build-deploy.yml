@@ -27,6 +27,8 @@ jobs:
         run: dotnet build MattKotsenas.slnx --configuration Release
 
       - name: Generate deployment artifacts
+        env:
+          DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
         run: >-
           dotnet aspire publish
           --output-path generated/azure
@@ -129,4 +131,5 @@ jobs:
           Azure__Location: westus3
           Azure__ResourceGroup: blog
           Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
         run: dotnet aspire deploy --environment preview --non-interactive

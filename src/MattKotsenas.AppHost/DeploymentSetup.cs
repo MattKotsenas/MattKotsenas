@@ -87,6 +87,7 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
         await SetRepositoryVariablesAsync(
             canonicalRepository,
             application.AppId,
+            servicePrincipal.Id,
             account,
             cancellationToken);
 
@@ -383,6 +384,7 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
     private async Task SetRepositoryVariablesAsync(
         string canonicalRepository,
         string applicationId,
+        string deploymentPrincipalId,
         AzureAccount account,
         CancellationToken cancellationToken)
     {
@@ -390,6 +392,11 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
             canonicalRepository,
             "AZURE_CLIENT_ID",
             applicationId,
+            cancellationToken);
+        await SetRepositoryVariableAsync(
+            canonicalRepository,
+            "AZURE_DEPLOYMENT_PRINCIPAL_ID",
+            deploymentPrincipalId,
             cancellationToken);
         await SetRepositoryVariableAsync(
             canonicalRepository,
