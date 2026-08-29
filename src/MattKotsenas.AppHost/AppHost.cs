@@ -50,6 +50,44 @@ if (builder.ExecutionContext.IsPublishMode)
                 pushAssignment.RoleDefinitionId);
             infrastructure.Add(pushAssignment);
         });
+
+    var legacyWebResourceGroup = builder.AddParameter(
+        "legacyWebResourceGroupName",
+        "Default-Web-WestUS",
+        publishValueAsDefault: true);
+    var legacyWeb = builder.AddAzureInfrastructure(
+        "legacy-web",
+        LegacyWebAppInfrastructure.Configure);
+    legacyWeb.Resource.Scope = new(legacyWebResourceGroup.Resource);
+
+    // App Service does not expose its shared inbound address through ARM.
+    var legacyWebInboundIpAddress = builder.AddParameter(
+        "legacyWebInboundIpAddress",
+        "168.62.20.37",
+        publishValueAsDefault: true);
+    var legacyRootVerificationId = builder.AddParameter(
+        "legacyRootVerificationId",
+        "F883000E15157DBAA27BE77E3C2BFB8F5B8D3E5BED81331607354AA636C349BE",
+        publishValueAsDefault: true);
+    var dnsResourceGroup = builder.AddParameter(
+        "dnsResourceGroupName",
+        "dns",
+        publishValueAsDefault: true);
+    var dns = builder
+        .AddAzureInfrastructure("blog-dns", DnsInfrastructure.Configure)
+        .WithParameter(
+            "defaultHostName",
+            legacyWeb.GetOutput("defaultHostName"))
+        .WithParameter(
+            "customDomainVerificationId",
+            legacyWeb.GetOutput("customDomainVerificationId"))
+        .WithParameter(
+            "websiteInboundIpAddress",
+            legacyWebInboundIpAddress)
+        .WithParameter(
+            "legacyRootVerificationId",
+            legacyRootVerificationId);
+    dns.Resource.Scope = new(dnsResourceGroup.Resource);
 }
 
 var configuredPort = isRunMode
