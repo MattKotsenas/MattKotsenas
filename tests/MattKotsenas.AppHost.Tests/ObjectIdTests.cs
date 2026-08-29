@@ -2,7 +2,7 @@ using MattKotsenas.AppHost;
 
 namespace MattKotsenas.AppHost.Tests;
 
-public sealed class DeploymentPrincipalTests
+public sealed class ObjectIdTests
 {
     [Theory]
     [InlineData(null)]
@@ -10,25 +10,25 @@ public sealed class DeploymentPrincipalTests
     [InlineData(" ")]
     [InlineData("not-a-guid")]
     [InlineData("{55555555-5555-5555-5555-555555555555}")] // Braced GUIDs are not canonical object IDs.
-    public void ParseObjectIdRejectsInvalidValues(string? value)
+    public void FromStringRejectsInvalidValues(string? value)
     {
         var exception = Assert.Throws<InvalidOperationException>(
-            () => DeploymentPrincipal.ParseObjectId(value));
+            () => ObjectId.FromString(value));
 
         Assert.Contains(
-            "must contain the deployment principal's object ID",
+            "must be a canonical GUID",
             exception.Message,
             StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ParseObjectIdReturnsCanonicalGuid()
+    public void ToStringReturnsCanonicalGuid()
     {
-        var result = DeploymentPrincipal.ParseObjectId(
+        var objectId = ObjectId.FromString(
             "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE");
 
         Assert.Equal(
             "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-            result);
+            objectId.ToString());
     }
 }

@@ -17,7 +17,7 @@ var useDevelopmentContainer =
 
 if (builder.ExecutionContext.IsPublishMode)
 {
-    var deploymentPrincipalId = DeploymentPrincipal.ParseObjectId(
+    var deploymentPrincipalId = ObjectId.FromString(
         builder.Configuration["DeploymentPrincipalId"]);
 
     var environment = builder
@@ -35,7 +35,8 @@ if (builder.ExecutionContext.IsPublishMode)
                 AzureBicepResource.KnownParameters.UserPrincipalId,
                 typeof(string))
             {
-                Value = new BicepValue<string>(deploymentPrincipalId),
+                Value = new BicepValue<string>(
+                    deploymentPrincipalId.ToString()),
             };
             infrastructure.Add(principalId);
 
