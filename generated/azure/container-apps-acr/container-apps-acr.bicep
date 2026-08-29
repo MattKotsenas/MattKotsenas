@@ -1,7 +1,7 @@
 @description('The location for the resource(s) to be deployed.')
 param location string = resourceGroup().location
 
-param userPrincipalId string
+param userPrincipalId string = '9c15469b-4a51-4121-af1b-5182ff484ad9'
 
 resource container_apps_acr 'Microsoft.ContainerRegistry/registries@2025-04-01' = {
   name: take('containerappsacr${uniqueString(resourceGroup().id)}', 50)

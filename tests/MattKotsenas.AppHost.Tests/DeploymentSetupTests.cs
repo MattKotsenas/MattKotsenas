@@ -133,6 +133,9 @@ public sealed class DeploymentSetupTests
                 $"variable set AZURE_CLIENT_ID --repo MattKotsenas/MattKotsenas --body {AppId}",
                 invocation.Arguments),
             invocation => Assert.Equal(
+                $"variable set AZURE_DEPLOYMENT_PRINCIPAL_ID --repo MattKotsenas/MattKotsenas --body {ServicePrincipalId}",
+                invocation.Arguments),
+            invocation => Assert.Equal(
                 "variable set AZURE_TENANT_ID --repo MattKotsenas/MattKotsenas --body 22222222-2222-2222-2222-222222222222",
                 invocation.Arguments),
             invocation => Assert.Equal(
@@ -271,7 +274,7 @@ public sealed class DeploymentSetupTests
                 invocation.Arguments.Contains(" create ", StringComparison.Ordinal) ||
                 invocation.Arguments.Contains(" update ", StringComparison.Ordinal));
         Assert.Equal(
-            3,
+            4,
             runner.Invocations.Count(invocation =>
                 invocation.Arguments.StartsWith(
                     "variable set ",

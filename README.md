@@ -24,10 +24,14 @@ After signing in with the Azure and GitHub CLIs, start the AppHost and run **Con
 the `blog` resource. The command configures GitHub-to-Azure OIDC deployment. It can also be run from the terminal:
 
 ```bash
+dotnet aspire start
 dotnet aspire resource blog configure-container-app-deployment
+dotnet aspire stop
 ```
 
-If the application already exists, verify its application ID and pass it with `--applicationId`.
+Run `dotnet aspire stop` even if configuration fails. If the application already exists, verify its application ID and
+pass it with `--applicationId`. If the deployment service principal is replaced, rerun this command and commit the
+regenerated deployment artifacts.
 
 Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
 West US 3.
