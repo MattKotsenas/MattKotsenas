@@ -1,5 +1,7 @@
 using System.Net;
 
+using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Azure;
 using Azure.Provisioning;
 using Azure.Provisioning.Dns;
 using Azure.Provisioning.Expressions;
@@ -9,14 +11,48 @@ namespace MattKotsenas.AppHost;
 // Azure.Provisioning.Dns is prerelease and marks its entire API as experimental.
 #pragma warning disable AZPROVISION001
 
-internal static class DnsInfrastructure
+internal static class DnsExtensions
 {
     private const int TtlInSeconds = 3600;
 
-    public static void Configure(Infrastructure infrastructure)
+    public static IResourceBuilder<AzureBicepResource> AddBlogDns(
+        this IDistributedApplicationBuilder builder,
+        IResourceBuilder<AzureBicepResource> legacyWeb)
     {
-        ArgumentNullException.ThrowIfNull(infrastructure);
+        // App Service does not expose its shared inbound address through ARM.
+        var legacyWebInboundIpAddress = builder.AddParameter(
+            "legacyWebInboundIpAddress",
+            "168.62.20.37",
+            publishValueAsDefault: true);
+        var legacyRootVerificationId = builder.AddParameter(
+            "legacyRootVerificationId",
+            "F883000E15157DBAA27BE77E3C2BFB8F5B8D3E5BED81331607354AA636C349BE",
+            publishValueAsDefault: true);
+        var dnsResourceGroup = builder.AddParameter(
+            "dnsResourceGroupName",
+            "dns",
+            publishValueAsDefault: true);
+        var dns = builder
+            .AddAzureInfrastructure("blog-dns", AddDnsResources)
+            .WithParameter(
+                "defaultHostName",
+                legacyWeb.GetOutput("defaultHostName"))
+            .WithParameter(
+                "customDomainVerificationId",
+                legacyWeb.GetOutput("customDomainVerificationId"))
+            .WithParameter(
+                "websiteInboundIpAddress",
+                legacyWebInboundIpAddress)
+            .WithParameter(
+                "legacyRootVerificationId",
+                legacyRootVerificationId);
+        dns.Resource.Scope = new(dnsResourceGroup.Resource);
 
+        return dns;
+    }
+
+    private static void AddDnsResources(Infrastructure infrastructure)
+    {
         var defaultHostName = new ProvisioningParameter(
             "defaultHostName",
             typeof(string));
