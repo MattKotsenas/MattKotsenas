@@ -72,11 +72,25 @@ public sealed class BlogTests
         using var webConfig = await client.GetAsync(
             "/web.config",
             cancellationToken);
+        using var manifest = await client.GetAsync(
+            "/site.webmanifest",
+            cancellationToken);
+        using var filteringImage = await client.GetAsync(
+            "/posts/using-wpa-to-analyze-performance-marks/filter-to-marks.png",
+            cancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, about.StatusCode);
         Assert.Equal(HttpStatusCode.MovedPermanently, legacyAbout.StatusCode);
         Assert.Equal("/about", legacyAbout.Headers.Location?.OriginalString);
         Assert.Equal(HttpStatusCode.NotFound, webConfig.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, manifest.StatusCode);
+        Assert.Equal(
+            "application/manifest+json",
+            manifest.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(HttpStatusCode.OK, filteringImage.StatusCode);
+        Assert.Equal(
+            "image/png",
+            filteringImage.Content.Headers.ContentType?.MediaType);
 
         var containerId = Assert.IsType<string>(
             Assert.Single(
