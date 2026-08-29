@@ -1,6 +1,7 @@
 baseURL = 'https://matt.kotsenas.com/'
 languageCode = 'en-us'
 title = "void where_prohibited() { ... }"
+timeout = '2m'
 
 # Clean URLs (no .html extension)
 uglyURLs = false
