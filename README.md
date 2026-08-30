@@ -36,6 +36,11 @@ regenerated deployment artifacts.
 Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
 West US 3.
 
+## Azure DNS
+
+The publish model owns website records within the Azure DNS zones in resource group `dns`. Until the registrar
+nameservers change, those records are non-authoritative and point to the legacy Web App.
+
 ## Creating a new post
 
 ```bash

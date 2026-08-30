@@ -6,6 +6,14 @@ param location string
 
 param principalId string
 
+param legacyWebResourceGroupName string = 'Default-Web-WestUS'
+
+param dnsResourceGroupName string = 'dns'
+
+param legacyWebInboundIpAddress string = '168.62.20.37'
+
+param legacyRootVerificationId string = 'F883000E15157DBAA27BE77E3C2BFB8F5B8D3E5BED81331607354AA636C349BE'
+
 resource rg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: resourceGroupName
   location: location
@@ -27,6 +35,26 @@ module container_apps 'container-apps/container-apps.bicep' = {
     location: location
     container_apps_acr_outputs_name: container_apps_acr.outputs.name
     userPrincipalId: principalId
+  }
+}
+
+module legacy_web 'legacy-web/legacy-web.bicep' = {
+  name: 'legacy-web'
+  scope: resourceGroup(legacyWebResourceGroupName)
+  params: {
+    location: location
+  }
+}
+
+module blog_dns 'blog-dns/blog-dns.bicep' = {
+  name: 'blog-dns'
+  scope: resourceGroup(dnsResourceGroupName)
+  params: {
+    location: location
+    defaultHostName: legacy_web.outputs.defaultHostName
+    customDomainVerificationId: legacy_web.outputs.customDomainVerificationId
+    websiteInboundIpAddress: legacyWebInboundIpAddress
+    legacyRootVerificationId: legacyRootVerificationId
   }
 }
 

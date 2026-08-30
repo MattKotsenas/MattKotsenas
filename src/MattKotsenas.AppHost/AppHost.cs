@@ -50,6 +50,9 @@ if (builder.ExecutionContext.IsPublishMode)
                 pushAssignment.RoleDefinitionId);
             infrastructure.Add(pushAssignment);
         });
+
+    var legacyWeb = builder.AddLegacyWebAppReference();
+    builder.AddBlogDns(legacyWeb);
 }
 
 var configuredPort = isRunMode
