@@ -41,28 +41,6 @@ resource rootWww 'Microsoft.Network/dnsZones/CNAME@2018-05-01' = {
   }
 }
 
-resource rootLegacyApexVerification 'Microsoft.Network/dnsZones/CNAME@2018-05-01' = {
-  name: 'awverify'
-  parent: rootZone
-  properties: {
-    CNAMERecord: {
-      cname: 'awverify.${defaultHostName}'
-    }
-    TTL: 3600
-  }
-}
-
-resource rootLegacyWwwVerification 'Microsoft.Network/dnsZones/CNAME@2018-05-01' = {
-  name: 'awverify.www'
-  parent: rootZone
-  properties: {
-    CNAMERecord: {
-      cname: 'awverify.${defaultHostName}'
-    }
-    TTL: 3600
-  }
-}
-
 resource rootApexVerification 'Microsoft.Network/dnsZones/TXT@2018-05-01' = {
   name: 'asuid'
   properties: {
@@ -117,28 +95,6 @@ resource blogWww 'Microsoft.Network/dnsZones/CNAME@2018-05-01' = {
   properties: {
     CNAMERecord: {
       cname: defaultHostName
-    }
-    TTL: 3600
-  }
-}
-
-resource blogLegacyApexVerification 'Microsoft.Network/dnsZones/CNAME@2018-05-01' = {
-  name: 'awverify'
-  parent: blogZone
-  properties: {
-    CNAMERecord: {
-      cname: 'awverify.${defaultHostName}'
-    }
-    TTL: 3600
-  }
-}
-
-resource blogLegacyWwwVerification 'Microsoft.Network/dnsZones/CNAME@2018-05-01' = {
-  name: 'awverify.www'
-  parent: blogZone
-  properties: {
-    CNAMERecord: {
-      cname: 'awverify.${defaultHostName}'
     }
     TTL: 3600
   }

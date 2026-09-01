@@ -4,7 +4,6 @@ using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Azure;
 using Azure.Provisioning;
 using Azure.Provisioning.Dns;
-using Azure.Provisioning.Expressions;
 
 namespace MattKotsenas.AppHost;
 
@@ -81,15 +80,11 @@ internal static class DnsExtensions
         blogZone.Name = "matt.kotsenas.com";
         infrastructure.Add(blogZone);
 
-        var legacyVerificationHostName = BicepFunction.Interpolate(
-            $"awverify.{defaultHostName.Value}");
-
         AddWebsiteRecords(
             infrastructure,
             rootZone,
             "root",
             defaultHostName,
-            legacyVerificationHostName,
             customDomainVerificationId,
             websiteInboundIpAddress,
             legacyRootVerificationId);
@@ -98,7 +93,6 @@ internal static class DnsExtensions
             blogZone,
             "blog",
             defaultHostName,
-            legacyVerificationHostName,
             customDomainVerificationId,
             websiteInboundIpAddress,
             additionalApexVerificationId: null);
@@ -109,7 +103,6 @@ internal static class DnsExtensions
         DnsZone zone,
         string identifierPrefix,
         BicepValue<string> defaultHostName,
-        BicepValue<string> legacyVerificationHostName,
         BicepValue<string> customDomainVerificationId,
         BicepValue<IPAddress> websiteInboundIpAddress,
         BicepValue<string>? additionalApexVerificationId)
@@ -134,24 +127,6 @@ internal static class DnsExtensions
             Name = "www",
             TtlInSeconds = TtlInSeconds,
             Cname = defaultHostName,
-        });
-
-        infrastructure.Add(new DnsCnameRecord(
-            $"{identifierPrefix}LegacyApexVerification")
-        {
-            Parent = zone,
-            Name = "awverify",
-            TtlInSeconds = TtlInSeconds,
-            Cname = legacyVerificationHostName,
-        });
-
-        infrastructure.Add(new DnsCnameRecord(
-            $"{identifierPrefix}LegacyWwwVerification")
-        {
-            Parent = zone,
-            Name = "awverify.www",
-            TtlInSeconds = TtlInSeconds,
-            Cname = legacyVerificationHostName,
         });
 
         AddVerificationRecord(
