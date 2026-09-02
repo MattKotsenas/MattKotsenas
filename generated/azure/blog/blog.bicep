@@ -7,21 +7,7 @@ param container_apps_outputs_azure_container_apps_environment_id string
 
 param blog_containerimage string
 
-param rootCertificateName string
-
-param rootDomain string
-
-param rootWwwCertificateName string
-
-param rootWwwDomain string
-
-param blogCertificateName string
-
-param blogDomain string
-
-param blogWwwCertificateName string
-
-param blogWwwDomain string
+param container_apps_outputs_azure_container_apps_environment_name string
 
 param container_apps_outputs_azure_container_registry_endpoint string
 
@@ -39,24 +25,20 @@ resource blog 'Microsoft.App/containerApps@2025-07-01' = {
         transport: 'http'
         customDomains: [
           {
-            name: rootDomain
-            bindingType: (rootCertificateName != '') ? 'SniEnabled' : 'Disabled'
-            certificateId: (rootCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${rootCertificateName}' : null
+            name: 'kotsenas.com'
+            bindingType: 'Auto'
           }
           {
-            name: rootWwwDomain
-            bindingType: (rootWwwCertificateName != '') ? 'SniEnabled' : 'Disabled'
-            certificateId: (rootWwwCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${rootWwwCertificateName}' : null
+            name: 'www.kotsenas.com'
+            bindingType: 'Auto'
           }
           {
-            name: blogDomain
-            bindingType: (blogCertificateName != '') ? 'SniEnabled' : 'Disabled'
-            certificateId: (blogCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${blogCertificateName}' : null
+            name: 'matt.kotsenas.com'
+            bindingType: 'Auto'
           }
           {
-            name: blogWwwDomain
-            bindingType: (blogWwwCertificateName != '') ? 'SniEnabled' : 'Disabled'
-            certificateId: (blogWwwCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${blogWwwCertificateName}' : null
+            name: 'www.matt.kotsenas.com'
+            bindingType: 'Auto'
           }
         ]
       }
@@ -91,4 +73,60 @@ resource blog 'Microsoft.App/containerApps@2025-07-01' = {
       '${container_apps_outputs_azure_container_registry_managed_identity_id}': { }
     }
   }
+}
+
+resource container_apps 'Microsoft.App/managedEnvironments@2025-07-01' existing = {
+  name: container_apps_outputs_azure_container_apps_environment_name
+}
+
+resource rootCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+  name: 'managed-kotsenas-com'
+  location: resourceGroup().location
+  properties: {
+    subjectName: 'kotsenas.com'
+    domainControlValidation: 'TXT'
+  }
+  parent: container_apps
+  dependsOn: [
+    blog
+  ]
+}
+
+resource rootWwwCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+  name: 'managed-www-kotsenas-com'
+  location: resourceGroup().location
+  properties: {
+    subjectName: 'www.kotsenas.com'
+    domainControlValidation: 'TXT'
+  }
+  parent: container_apps
+  dependsOn: [
+    blog
+  ]
+}
+
+resource blogCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+  name: 'managed-matt-kotsenas-com'
+  location: resourceGroup().location
+  properties: {
+    subjectName: 'matt.kotsenas.com'
+    domainControlValidation: 'TXT'
+  }
+  parent: container_apps
+  dependsOn: [
+    blog
+  ]
+}
+
+resource blogWwwCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+  name: 'managed-www-matt-kotsenas-com'
+  location: resourceGroup().location
+  properties: {
+    subjectName: 'www.matt.kotsenas.com'
+    domainControlValidation: 'TXT'
+  }
+  parent: container_apps
+  dependsOn: [
+    blog
+  ]
 }

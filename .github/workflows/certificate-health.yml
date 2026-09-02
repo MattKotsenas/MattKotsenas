@@ -14,39 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check production HTTPS endpoints
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r hostname
-          do
-            certificate="$(
-              timeout 30 openssl s_client \
-                -connect "${hostname}:443" \
-                -servername "${hostname}" \
-                </dev/null 2>/dev/null
-            )"
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
 
-            printf '%s' "${certificate}" |
-              openssl x509 -checkend 2592000 -noout
-            printf '%s' "${certificate}" |
-              openssl x509 \
-                -noout \
-                -subject \
-                -issuer \
-                -dates \
-                -fingerprint \
-                -sha256
-            curl \
-              --fail \
-              --head \
-              --silent \
-              --show-error \
-              --max-time 30 \
-              "https://${hostname}/" \
-              >/dev/null
-          done < <(
-            jq --raw-output \
-              '.[].hostname' \
-              src/MattKotsenas.AppHost/custom-domains.json
-          )
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Check production HTTPS endpoints
+        run: >-
+          dotnet aspire do check-blog-https
+          --environment preview
+          --non-interactive

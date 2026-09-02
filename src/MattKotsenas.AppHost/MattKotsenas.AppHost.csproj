@@ -18,8 +18,4 @@
     <PackageReference Include="Vogen" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="custom-domains.json" LogicalName="custom-domains.json" />
-  </ItemGroup>
-
 </Project>

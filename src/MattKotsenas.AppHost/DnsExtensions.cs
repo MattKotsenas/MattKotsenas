@@ -16,7 +16,8 @@ internal static class DnsExtensions
 
     public static IResourceBuilder<AzureBicepResource> AddBlogDns(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<AzureBicepResource> legacyWeb)
+        IResourceBuilder<AzureBicepResource> legacyWeb,
+        string dnsResourceGroupName)
     {
         // App Service does not expose its shared inbound address through ARM.
         var legacyWebInboundIpAddress = builder.AddParameter(
@@ -29,7 +30,7 @@ internal static class DnsExtensions
             publishValueAsDefault: true);
         var dnsResourceGroup = builder.AddParameter(
             "dnsResourceGroupName",
-            "dns",
+            dnsResourceGroupName,
             publishValueAsDefault: true);
         var dns = builder
             .AddAzureInfrastructure("blog-dns", AddDnsResources)
@@ -72,16 +73,15 @@ internal static class DnsExtensions
             typeof(string));
         infrastructure.Add(legacyRootVerificationId);
 
-        foreach (var zoneDefinition in CustomDomainSetup.Domains
-            .Where(domain => domain.Hostname == domain.ZoneName))
+        foreach (var zoneDefinition in BlogCustomDomains.Zones)
         {
             var zone = DnsZone.FromExisting(
-                $"{zoneDefinition.ZoneIdentifier}Zone");
-            zone.Name = zoneDefinition.ZoneName;
+                $"{zoneDefinition.BicepIdentifier}Zone");
+            zone.Name = zoneDefinition.Name;
             infrastructure.Add(zone);
 
             BicepValue<string>? additionalApexVerificationId = null;
-            if (zoneDefinition.RetainLegacyApexVerificationId)
+            if (zoneDefinition == BlogCustomDomains.RootZone)
             {
                 additionalApexVerificationId = legacyRootVerificationId;
             }
@@ -89,7 +89,7 @@ internal static class DnsExtensions
             AddWebsiteRecords(
                 infrastructure,
                 zone,
-                zoneDefinition.ZoneIdentifier,
+                zoneDefinition.BicepIdentifier,
                 defaultHostName,
                 customDomainVerificationId,
                 websiteInboundIpAddress,

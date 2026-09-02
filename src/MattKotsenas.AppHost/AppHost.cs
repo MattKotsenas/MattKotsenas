@@ -1,18 +1,12 @@
 using MattKotsenas.AppHost;
 
 using Aspire.Hosting.Azure;
+using Aspire.Hosting.Azure.AppContainers;
 using Azure.Provisioning;
 using Azure.Provisioning.Authorization;
 using Azure.Provisioning.ContainerRegistry;
 using Azure.Provisioning.Expressions;
 using Microsoft.Extensions.Configuration;
-
-if (args is ["prepare-custom-domains"])
-{
-    await new CustomDomainSetup(new CliWrapCommandRunner())
-        .PrepareAsync(CancellationToken.None);
-    return;
-}
 
 var builder = DistributedApplication.CreateBuilder(args);
 var repositoryRoot = Path.GetFullPath(
@@ -21,20 +15,27 @@ var isRunMode = builder.ExecutionContext.IsRunMode;
 var useDevelopmentContainer =
     isRunMode &&
     !builder.Configuration.GetValue<bool>("Blog:UseProductionContainer");
-var bindCustomDomainCertificates = builder.Configuration.GetValue(
-    "CustomDomains:BindCertificates",
-    defaultValue: true);
-var customDomainParameters =
-    new List<(
-        IResourceBuilder<ParameterResource> DomainParameter,
-        IResourceBuilder<ParameterResource> CertificateParameter)>();
+var azureSubscriptionId =
+    builder.Configuration["Azure:SubscriptionId"]
+    ?? throw new InvalidOperationException(
+        "Azure:SubscriptionId is required.");
+var azureResourceGroup =
+    builder.Configuration["Azure:ResourceGroup"]
+    ?? throw new InvalidOperationException(
+        "Azure:ResourceGroup is required.");
+var dnsResourceGroup =
+    builder.Configuration["Parameters:dnsResourceGroupName"]
+    ?? builder.Configuration["Blog:DnsResourceGroup"]
+    ?? throw new InvalidOperationException(
+        "Blog:DnsResourceGroup is required.");
+IResourceBuilder<AzureContainerAppEnvironmentResource>? environment = null;
 
 if (builder.ExecutionContext.IsPublishMode)
 {
     var deploymentPrincipalId = ObjectId.FromString(
         builder.Configuration["DeploymentPrincipalId"]);
 
-    var environment = builder
+    environment = builder
         .AddAzureContainerAppEnvironment("container-apps")
         .WithDashboard(false);
     environment
@@ -66,22 +67,7 @@ if (builder.ExecutionContext.IsPublishMode)
         });
 
     var legacyWeb = builder.AddLegacyWebAppReference();
-    builder.AddBlogDns(legacyWeb);
-
-    foreach (var domain in CustomDomainSetup.Domains)
-    {
-        customDomainParameters.Add((
-            builder.AddParameter(
-                domain.DomainParameterName,
-                domain.Hostname,
-                publishValueAsDefault: true),
-            builder.AddParameter(
-                domain.CertificateParameterName,
-                bindCustomDomainCertificates
-                    ? domain.CertificateName
-                    : string.Empty,
-                publishValueAsDefault: true)));
-    }
+    builder.AddBlogDns(legacyWeb, dnsResourceGroup);
 }
 
 var configuredPort = isRunMode
@@ -100,14 +86,13 @@ var blog = builder
         name: "http")
     .WithHttpHealthCheck("/", endpointName: "http")
     .WithExternalHttpEndpoints()
-    .PublishAsAzureContainerApp((_, containerApp) =>
+    .PublishAsAzureContainerApp((infrastructure, containerApp) =>
     {
-        foreach (var (domainParameter, certificateParameter) in
-            customDomainParameters)
+        if (environment is not null)
         {
-            containerApp.ConfigureCustomDomain(
-                domainParameter,
-                certificateParameter);
+            containerApp.ConfigureBlogCustomDomains(
+                infrastructure,
+                environment.Resource);
         }
 
         containerApp.Template.Scale.MinReplicas = 1;
@@ -117,6 +102,14 @@ var blog = builder
         container.Resources.Cpu = 0.25;
         container.Resources.Memory = "0.5Gi";
     });
+
+if (environment is not null)
+{
+    blog.WithBlogCustomDomainSteps(
+        azureSubscriptionId,
+        azureResourceGroup,
+        dnsResourceGroup);
+}
 
 if (useDevelopmentContainer)
 {
@@ -147,16 +140,6 @@ if (isRunMode)
                     MaxLength = 36,
                 },
             ],
-        });
-    blog.WithCommand(
-        name: "prepare-custom-domains",
-        displayName: "Prepare custom domains",
-        executeCommand: CustomDomainSetup.ExecuteAsync,
-        commandOptions: new CommandOptions
-        {
-            Description = "Creates and binds the managed certificates used by the production custom domains.",
-            ConfirmationMessage = "Reconcile the production custom-domain certificates and DNS validation records? Failed unbound certificates and their validation tokens may be replaced.",
-            IconName = "Certificate",
         });
 }
 
