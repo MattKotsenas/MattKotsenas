@@ -1,0 +1,42 @@
+[
+  {
+    "hostname": "kotsenas.com",
+    "zoneName": "kotsenas.com",
+    "zoneIdentifier": "root",
+    "retainLegacyApexVerificationId": true,
+    "validationRecordName": "_dnsauth",
+    "domainParameterName": "rootDomain",
+    "certificateParameterName": "rootCertificateName",
+    "certificateName": "managed-kotsenas-com"
+  },
+  {
+    "hostname": "www.kotsenas.com",
+    "zoneName": "kotsenas.com",
+    "zoneIdentifier": "root",
+    "retainLegacyApexVerificationId": true,
+    "validationRecordName": "_dnsauth.www",
+    "domainParameterName": "rootWwwDomain",
+    "certificateParameterName": "rootWwwCertificateName",
+    "certificateName": "managed-www-kotsenas-com"
+  },
+  {
+    "hostname": "matt.kotsenas.com",
+    "zoneName": "matt.kotsenas.com",
+    "zoneIdentifier": "blog",
+    "retainLegacyApexVerificationId": false,
+    "validationRecordName": "_dnsauth",
+    "domainParameterName": "blogDomain",
+    "certificateParameterName": "blogCertificateName",
+    "certificateName": "managed-matt-kotsenas-com"
+  },
+  {
+    "hostname": "www.matt.kotsenas.com",
+    "zoneName": "matt.kotsenas.com",
+    "zoneIdentifier": "blog",
+    "retainLegacyApexVerificationId": false,
+    "validationRecordName": "_dnsauth.www",
+    "domainParameterName": "blogWwwDomain",
+    "certificateParameterName": "blogWwwCertificateName",
+    "certificateName": "managed-www-matt-kotsenas-com"
+  }
+]

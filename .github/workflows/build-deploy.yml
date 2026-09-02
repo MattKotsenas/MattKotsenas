@@ -106,6 +106,11 @@ jobs:
     needs: [apphost, build]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
+    env:
+      Azure__Location: westus3
+      Azure__ResourceGroup: blog
+      Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
     permissions:
       contents: read
       id-token: write
@@ -126,10 +131,33 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Bootstrap Container App when absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$(az group exists \
+               --name "${Azure__ResourceGroup}")" == "false" ]] ||
+             [[ "$(az containerapp list \
+               --resource-group "${Azure__ResourceGroup}" \
+               --query "[?name=='blog'] | length(@)" \
+               --output tsv)" == "0" ]]
+          then
+            dotnet aspire do provision-blog-dns \
+              --environment preview \
+              --non-interactive
+            CustomDomains__BindCertificates=false \
+              dotnet aspire deploy \
+                --environment preview \
+                --non-interactive
+          fi
+
+      - name: Prepare custom domains
+        run: >-
+          dotnet run
+          --project src/MattKotsenas.AppHost
+          --configuration Release
+          --
+          prepare-custom-domains
+
       - name: Deploy with Aspire
-        env:
-          Azure__Location: westus3
-          Azure__ResourceGroup: blog
-          Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
         run: dotnet aspire deploy --environment preview --non-interactive

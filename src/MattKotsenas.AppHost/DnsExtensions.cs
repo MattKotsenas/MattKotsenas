@@ -72,30 +72,29 @@ internal static class DnsExtensions
             typeof(string));
         infrastructure.Add(legacyRootVerificationId);
 
-        var rootZone = DnsZone.FromExisting("rootZone");
-        rootZone.Name = "kotsenas.com";
-        infrastructure.Add(rootZone);
+        foreach (var zoneDefinition in CustomDomainSetup.Domains
+            .Where(domain => domain.Hostname == domain.ZoneName))
+        {
+            var zone = DnsZone.FromExisting(
+                $"{zoneDefinition.ZoneIdentifier}Zone");
+            zone.Name = zoneDefinition.ZoneName;
+            infrastructure.Add(zone);
 
-        var blogZone = DnsZone.FromExisting("blogZone");
-        blogZone.Name = "matt.kotsenas.com";
-        infrastructure.Add(blogZone);
+            BicepValue<string>? additionalApexVerificationId = null;
+            if (zoneDefinition.RetainLegacyApexVerificationId)
+            {
+                additionalApexVerificationId = legacyRootVerificationId;
+            }
 
-        AddWebsiteRecords(
-            infrastructure,
-            rootZone,
-            "root",
-            defaultHostName,
-            customDomainVerificationId,
-            websiteInboundIpAddress,
-            legacyRootVerificationId);
-        AddWebsiteRecords(
-            infrastructure,
-            blogZone,
-            "blog",
-            defaultHostName,
-            customDomainVerificationId,
-            websiteInboundIpAddress,
-            additionalApexVerificationId: null);
+            AddWebsiteRecords(
+                infrastructure,
+                zone,
+                zoneDefinition.ZoneIdentifier,
+                defaultHostName,
+                customDomainVerificationId,
+                websiteInboundIpAddress,
+                additionalApexVerificationId);
+        }
     }
 
     private static void AddWebsiteRecords(
@@ -177,3 +176,5 @@ internal static class DnsExtensions
         infrastructure.Add(verification);
     }
 }
+
+#pragma warning restore AZPROVISION001

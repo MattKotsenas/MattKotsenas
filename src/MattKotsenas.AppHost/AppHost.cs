@@ -7,6 +7,13 @@ using Azure.Provisioning.ContainerRegistry;
 using Azure.Provisioning.Expressions;
 using Microsoft.Extensions.Configuration;
 
+if (args is ["prepare-custom-domains"])
+{
+    await new CustomDomainSetup(new CliWrapCommandRunner())
+        .PrepareAsync(CancellationToken.None);
+    return;
+}
+
 var builder = DistributedApplication.CreateBuilder(args);
 var repositoryRoot = Path.GetFullPath(
     Path.Combine(builder.AppHostDirectory, "..", ".."));
@@ -14,6 +21,13 @@ var isRunMode = builder.ExecutionContext.IsRunMode;
 var useDevelopmentContainer =
     isRunMode &&
     !builder.Configuration.GetValue<bool>("Blog:UseProductionContainer");
+var bindCustomDomainCertificates = builder.Configuration.GetValue(
+    "CustomDomains:BindCertificates",
+    defaultValue: true);
+var customDomainParameters =
+    new List<(
+        IResourceBuilder<ParameterResource> DomainParameter,
+        IResourceBuilder<ParameterResource> CertificateParameter)>();
 
 if (builder.ExecutionContext.IsPublishMode)
 {
@@ -53,6 +67,21 @@ if (builder.ExecutionContext.IsPublishMode)
 
     var legacyWeb = builder.AddLegacyWebAppReference();
     builder.AddBlogDns(legacyWeb);
+
+    foreach (var domain in CustomDomainSetup.Domains)
+    {
+        customDomainParameters.Add((
+            builder.AddParameter(
+                domain.DomainParameterName,
+                domain.Hostname,
+                publishValueAsDefault: true),
+            builder.AddParameter(
+                domain.CertificateParameterName,
+                bindCustomDomainCertificates
+                    ? domain.CertificateName
+                    : string.Empty,
+                publishValueAsDefault: true)));
+    }
 }
 
 var configuredPort = isRunMode
@@ -73,6 +102,14 @@ var blog = builder
     .WithExternalHttpEndpoints()
     .PublishAsAzureContainerApp((_, containerApp) =>
     {
+        foreach (var (domainParameter, certificateParameter) in
+            customDomainParameters)
+        {
+            containerApp.ConfigureCustomDomain(
+                domainParameter,
+                certificateParameter);
+        }
+
         containerApp.Template.Scale.MinReplicas = 1;
         containerApp.Template.Scale.MaxReplicas = 1;
 
@@ -110,6 +147,16 @@ if (isRunMode)
                     MaxLength = 36,
                 },
             ],
+        });
+    blog.WithCommand(
+        name: "prepare-custom-domains",
+        displayName: "Prepare custom domains",
+        executeCommand: CustomDomainSetup.ExecuteAsync,
+        commandOptions: new CommandOptions
+        {
+            Description = "Creates and binds the managed certificates used by the production custom domains.",
+            ConfirmationMessage = "Reconcile the production custom-domain certificates and DNS validation records? Failed unbound certificates and their validation tokens may be replaced.",
+            IconName = "Certificate",
         });
 }
 

@@ -13,10 +13,6 @@ resource rootZone 'Microsoft.Network/dnsZones@2018-05-01' existing = {
   name: 'kotsenas.com'
 }
 
-resource blogZone 'Microsoft.Network/dnsZones@2018-05-01' existing = {
-  name: 'matt.kotsenas.com'
-}
-
 resource rootApex 'Microsoft.Network/dnsZones/A@2018-05-01' = {
   name: '@'
   parent: rootZone
@@ -74,6 +70,10 @@ resource rootWwwVerification 'Microsoft.Network/dnsZones/TXT@2018-05-01' = {
     TTL: 3600
   }
   parent: rootZone
+}
+
+resource blogZone 'Microsoft.Network/dnsZones@2018-05-01' existing = {
+  name: 'matt.kotsenas.com'
 }
 
 resource blogApex 'Microsoft.Network/dnsZones/A@2018-05-01' = {

@@ -1,0 +1,52 @@
+name: Production HTTPS Health
+
+on:
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check production HTTPS endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r hostname
+          do
+            certificate="$(
+              timeout 30 openssl s_client \
+                -connect "${hostname}:443" \
+                -servername "${hostname}" \
+                </dev/null 2>/dev/null
+            )"
+
+            printf '%s' "${certificate}" |
+              openssl x509 -checkend 2592000 -noout
+            printf '%s' "${certificate}" |
+              openssl x509 \
+                -noout \
+                -subject \
+                -issuer \
+                -dates \
+                -fingerprint \
+                -sha256
+            curl \
+              --fail \
+              --head \
+              --silent \
+              --show-error \
+              --max-time 30 \
+              "https://${hostname}/" \
+              >/dev/null
+          done < <(
+            jq --raw-output \
+              '.[].hostname' \
+              src/MattKotsenas.AppHost/custom-domains.json
+          )

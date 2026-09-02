@@ -7,6 +7,22 @@ param container_apps_outputs_azure_container_apps_environment_id string
 
 param blog_containerimage string
 
+param rootCertificateName string
+
+param rootDomain string
+
+param rootWwwCertificateName string
+
+param rootWwwDomain string
+
+param blogCertificateName string
+
+param blogDomain string
+
+param blogWwwCertificateName string
+
+param blogWwwDomain string
+
 param container_apps_outputs_azure_container_registry_endpoint string
 
 param container_apps_outputs_azure_container_registry_managed_identity_id string
@@ -21,6 +37,28 @@ resource blog 'Microsoft.App/containerApps@2025-07-01' = {
         external: true
         targetPort: 8080
         transport: 'http'
+        customDomains: [
+          {
+            name: rootDomain
+            bindingType: (rootCertificateName != '') ? 'SniEnabled' : 'Disabled'
+            certificateId: (rootCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${rootCertificateName}' : null
+          }
+          {
+            name: rootWwwDomain
+            bindingType: (rootWwwCertificateName != '') ? 'SniEnabled' : 'Disabled'
+            certificateId: (rootWwwCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${rootWwwCertificateName}' : null
+          }
+          {
+            name: blogDomain
+            bindingType: (blogCertificateName != '') ? 'SniEnabled' : 'Disabled'
+            certificateId: (blogCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${blogCertificateName}' : null
+          }
+          {
+            name: blogWwwDomain
+            bindingType: (blogWwwCertificateName != '') ? 'SniEnabled' : 'Disabled'
+            certificateId: (blogWwwCertificateName != '') ? '${container_apps_outputs_azure_container_apps_environment_id}/managedCertificates/${blogWwwCertificateName}' : null
+          }
+        ]
       }
       registries: [
         {
