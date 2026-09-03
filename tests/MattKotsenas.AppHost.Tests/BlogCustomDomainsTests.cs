@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using MattKotsenas.AppHost;
+using Microsoft.Extensions.Time.Testing;
 
 namespace MattKotsenas.AppHost.Tests;
 
@@ -8,50 +9,62 @@ public sealed class BlogCustomDomainsTests
 {
     private const string EnvironmentId =
         "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/blog/providers/Microsoft.App/managedEnvironments/container-apps";
+    private static readonly IReadOnlyList<BlogCustomDomainResource>
+        Domains = BlogCustomDomainResource.CreateDefaults("blog");
+
     [Fact]
-    public void CatalogDefinesApexAndWwwForEachZone()
+    public void DefaultsCreateIndependentApexAndWwwResources()
     {
-        var zones = BlogCustomDomains.All
+        var zones = Domains
             .Select(domain => domain.Zone.Name)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(BlogCustomDomains.Zones.Count, zones.Length);
+        Assert.Equal(4, Domains.Count);
+        Assert.Equal(Domains.Count, Domains.Select(domain => domain.Name)
+            .Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(
             zones.SelectMany(zone => new[] { zone, $"www.{zone}" })
                 .Order(StringComparer.Ordinal),
-            BlogCustomDomains.All
-                .Select(domain => domain.Hostname)
+            Domains.Select(domain => domain.Hostname)
                 .Order(StringComparer.Ordinal));
         Assert.All(
-            BlogCustomDomains.All,
+            Domains,
             domain => Assert.Equal(
                 domain.Hostname == domain.Zone.Name
                     ? "_dnsauth"
                     : "_dnsauth.www",
                 domain.ValidationRecordName));
+        Assert.All(
+            Domains,
+            domain =>
+            {
+                Assert.Equal(
+                    domain.IsApex ? "@" : "www",
+                    domain.DnsRecordName);
+                Assert.Equal(
+                    domain.IsApex ? "asuid" : "asuid.www",
+                    domain.OwnershipRecordName);
+            });
     }
 
     [Fact]
-    public async Task PublishValidationPublishesDistinctTokensConcurrently()
+    public async Task DomainPublicationWritesDistinctTokensConcurrently()
     {
         var runner = new RecordingCommandRunner();
-        var operations = new BlogCustomDomainDeployment(
-            runner,
-            azureSubscriptionId:
-                "11111111-1111-1111-1111-111111111111",
-            azureResourceGroup: "blog",
-            dnsResourceGroup: "dns",
-            appName: "blog",
-            pollInterval: TimeSpan.Zero,
-            provisioningTimeout: TimeSpan.FromMinutes(1));
+        var deployment = CreateDeployment(runner);
+        var cancellationToken =
+            TestContext.Current.CancellationToken;
 
-        await operations.RecoverAsync(
-            TestContext.Current.CancellationToken);
-        await operations.PublishValidationAndWaitForCertificatesAsync(
-            TestContext.Current.CancellationToken);
+        await deployment.ValidateAsync(Domains, cancellationToken);
+        await Task.WhenAll(Domains.Select(domain =>
+            deployment.RecoverAsync(domain, cancellationToken)));
+        await Task.WhenAll(Domains.Select(domain =>
+            deployment.PublishValidationAndWaitForCertificateAsync(
+                domain,
+                cancellationToken)));
 
-        var certificateList = runner.Invocations.FindLastIndex(
+        var firstCertificateList = runner.Invocations.FindIndex(
             invocation => invocation is
                 "az containerapp env certificate list");
         var tokenWrites = runner.Invocations
@@ -60,18 +73,15 @@ public sealed class BlogCustomDomainsTests
                 "az network dns record-set txt add-record")
             .ToArray();
 
-        Assert.Equal(BlogCustomDomains.All.Count, tokenWrites.Length);
+        Assert.Equal(Domains.Count, tokenWrites.Length);
         Assert.All(
             tokenWrites,
-            item => Assert.InRange(
-                item.index,
-                certificateList + 1,
-                runner.Invocations.Count - 1));
+            item => Assert.True(item.index > firstCertificateList));
         Assert.Equal(
-            BlogCustomDomains.All.Count,
+            Domains.Count,
             runner.MaxConcurrentTokenWrites);
         Assert.Equal(
-            BlogCustomDomains.All
+            Domains
                 .Select(domain =>
                     $"{domain.Zone.Name}|{domain.ValidationRecordName}|token-{domain.CertificateName}")
                 .Order(StringComparer.Ordinal),
@@ -83,11 +93,11 @@ public sealed class BlogCustomDomainsTests
     }
 
     [Fact]
-    public async Task DeploymentStepsLeaveCertificateCreationAndBindingToBicep()
+    public async Task DeploymentLeavesCertificateCreationAndBindingToBicep()
     {
         var runner = new RecordingCommandRunner();
 
-        await RunDeploymentStepsAsync(runner);
+        await RunDeploymentAsync(runner);
 
         Assert.DoesNotContain(
             runner.Invocations,
@@ -104,26 +114,25 @@ public sealed class BlogCustomDomainsTests
     }
 
     [Fact]
-    public async Task DeploymentStepsRetryTransientProbeFailures()
+    public async Task DomainVerificationRetriesTransientProbeFailures()
     {
         var runner = new RecordingCommandRunner();
 
-        await RunDeploymentStepsAsync(runner);
+        await RunDeploymentAsync(runner);
 
         Assert.Equal(
-            BlogCustomDomains.All.Count * 2,
+            Domains.Count * 2,
             runner.Invocations.Count(invocation =>
                 invocation is "curl"));
     }
 
     [Fact]
-    public async Task DeploymentStepsRetryWhenResourceGroupIsNotCreatedYet()
+    public async Task DeploymentRetriesUntilContainerAppExists()
     {
         var runner = new RecordingCommandRunner(
-            missingAppReads: 2,
-            tokenCertificateList: 1);
+            missingAppReads: 2);
 
-        await RunDeploymentStepsAsync(runner);
+        await RunDeploymentAsync(runner);
 
         Assert.True(
             runner.Invocations.Count(invocation =>
@@ -131,30 +140,33 @@ public sealed class BlogCustomDomainsTests
     }
 
     [Fact]
-    public async Task DeploymentStepsRepairExistingEmptyValidationRecords()
+    public async Task DomainPublicationRepairsEmptyValidationRecord()
     {
         var runner = new RecordingCommandRunner(
             emptyValidationRecords: true);
 
-        await RunDeploymentStepsAsync(runner);
+        await RunDeploymentAsync(runner);
 
-        Assert.Equal(
-            BlogCustomDomains.All.Count,
-            runner.TokenRecords.Count);
+        Assert.Equal(Domains.Count, runner.TokenRecords.Count);
     }
 
     [Theory]
     [InlineData("Failed")]
     [InlineData("Canceled")]
     [InlineData("DeleteFailed")]
-    public async Task RecoverRemovesTokenBeforeDeletingTerminalCertificate(
+    public async Task DomainRecoveryRemovesTokenBeforeTerminalCertificate(
         string terminalState)
     {
         var runner = new RecordingCommandRunner(
             terminalCertificateState: terminalState);
+        var deployment = CreateDeployment(runner);
+        var cancellationToken =
+            TestContext.Current.CancellationToken;
 
-        await CreateOperations(runner)
-            .RecoverAsync(TestContext.Current.CancellationToken);
+        await deployment.ValidateAsync(Domains, cancellationToken);
+        await deployment.RecoverAsync(
+            Domains[0],
+            cancellationToken);
 
         var removeToken = runner.Invocations.FindIndex(
             invocation => invocation is
@@ -166,22 +178,19 @@ public sealed class BlogCustomDomainsTests
     }
 
     [Fact]
-    public async Task RecoverRejectsUnmodeledCustomDomainBeforeMutation()
+    public async Task ValidationRejectsUnmodeledDomainBeforeMutation()
     {
         var runner = new RecordingCommandRunner(
             unexpectedCustomDomain: "other.kotsenas.com");
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => CreateOperations(runner)
-                .RecoverAsync(TestContext.Current.CancellationToken));
+            () => CreateDeployment(runner)
+                .ValidateAsync(
+                    Domains,
+                    TestContext.Current.CancellationToken));
 
         Assert.Contains("other.kotsenas.com", exception.Message);
-        Assert.DoesNotContain(
-            runner.Invocations,
-            invocation => invocation is
-                "az containerapp env certificate list" or
-                "az network dns record-set txt remove-record" or
-                "az containerapp env certificate delete");
+        AssertNoMutation(runner);
     }
 
     [Theory]
@@ -191,7 +200,7 @@ public sealed class BlogCustomDomainsTests
     [InlineData("Unknown", "expected")]
     [InlineData("Auto", "unexpected")]
     [InlineData("SniEnabled", "unexpected")]
-    public async Task RecoverRejectsUnmodeledBindingBeforeMutation(
+    public async Task ValidationRejectsUnmodeledBindingBeforeMutation(
         string bindingType,
         string? certificateId)
     {
@@ -200,50 +209,127 @@ public sealed class BlogCustomDomainsTests
             existingBindingCertificateId: certificateId);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => CreateOperations(runner)
-                .RecoverAsync(TestContext.Current.CancellationToken));
+            () => CreateDeployment(runner)
+                .ValidateAsync(
+                    Domains,
+                    TestContext.Current.CancellationToken));
 
+        AssertNoMutation(runner);
+    }
+
+    [Fact]
+    public async Task ValidationRejectsUnmodeledTerminalCertificate()
+    {
+        var runner = new RecordingCommandRunner(
+            unexpectedTerminalCertificate: true);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateDeployment(runner)
+                .ValidateAsync(
+                    Domains,
+                    TestContext.Current.CancellationToken));
+
+        Assert.Contains("managed-other-domain", exception.Message);
+        AssertNoMutation(runner);
+    }
+
+    [Fact]
+    public async Task ValidationRejectsBoundTerminalCertificateBeforeMutation()
+    {
+        var runner = new RecordingCommandRunner(
+            terminalCertificateState: "Failed",
+            boundTerminalCertificate: true);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => CreateDeployment(runner)
+                .ValidateAsync(
+                    Domains,
+                    TestContext.Current.CancellationToken));
+
+        Assert.Contains(Domains[1].CertificateName, exception.Message);
+        AssertNoMutation(runner);
+    }
+
+    [Fact]
+    public async Task CertificateTimeoutUsesInjectedTimeProvider()
+    {
+        var timeProvider = new FakeTimeProvider();
+        var deployment = CreateDeployment(
+            new RecordingCommandRunner(
+                certificatesNeverAppear: true),
+            timeProvider,
+            pollInterval: TimeSpan.FromSeconds(10),
+            provisioningTimeout: TimeSpan.FromMinutes(1));
+
+        var task = deployment
+            .PublishValidationAndWaitForCertificateAsync(
+                Domains[0],
+                TestContext.Current.CancellationToken);
+        await Task.Yield();
+        while (!task.IsCompleted)
+        {
+            timeProvider.Advance(TimeSpan.FromSeconds(10));
+            await Task.Yield();
+        }
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => task);
+    }
+
+    private static void AssertNoMutation(
+        RecordingCommandRunner runner) =>
         Assert.DoesNotContain(
             runner.Invocations,
             invocation => invocation is
-                "az containerapp env certificate list" or
                 "az network dns record-set txt remove-record" or
                 "az containerapp env certificate delete");
-    }
 
-    private static BlogCustomDomainDeployment CreateOperations(
-        ICommandRunner runner) =>
+    private static BlogCustomDomainDeployment CreateDeployment(
+        ICommandRunner runner,
+        TimeProvider? timeProvider = null,
+        TimeSpan? pollInterval = null,
+        TimeSpan? provisioningTimeout = null) =>
         new(
             runner,
+            timeProvider ?? new FakeTimeProvider(),
             azureSubscriptionId:
                 "11111111-1111-1111-1111-111111111111",
             azureResourceGroup: "blog",
             dnsResourceGroup: "dns",
             appName: "blog",
-            pollInterval: TimeSpan.Zero,
-            provisioningTimeout: TimeSpan.FromMinutes(1));
+            pollInterval: pollInterval ?? TimeSpan.Zero,
+            provisioningTimeout:
+                provisioningTimeout ?? TimeSpan.FromMinutes(1));
 
-    private static async Task RunDeploymentStepsAsync(
+    private static async Task RunDeploymentAsync(
         ICommandRunner runner)
     {
-        var operations = CreateOperations(runner);
+        var deployment = CreateDeployment(runner);
         var cancellationToken =
             TestContext.Current.CancellationToken;
-        await operations.RecoverAsync(cancellationToken);
-        await operations.PublishValidationAndWaitForCertificatesAsync(
-            cancellationToken);
-        await operations.VerifyCurrentDeploymentAsync(
-            cancellationToken);
+        await deployment.ValidateAsync(Domains, cancellationToken);
+        await Task.WhenAll(Domains.Select(domain =>
+            deployment.RecoverAsync(domain, cancellationToken)));
+        await Task.WhenAll(Domains.Select(domain =>
+            deployment.PublishValidationAndWaitForCertificateAsync(
+                domain,
+                cancellationToken)));
+        await Task.WhenAll(Domains.Select(domain =>
+            deployment.VerifyCurrentDeploymentAsync(
+                domain,
+                cancellationToken)));
     }
 
     private sealed class RecordingCommandRunner(
         int missingAppReads = 0,
         bool emptyValidationRecords = false,
         string? terminalCertificateState = null,
-        int tokenCertificateList = 2,
         string? unexpectedCustomDomain = null,
         string? existingBindingType = null,
-        string? existingBindingCertificateId = null)
+        string? existingBindingCertificateId = null,
+        bool unexpectedTerminalCertificate = false,
+        bool boundTerminalCertificate = false,
+        bool certificatesNeverAppear = false)
         : ICommandRunner
     {
         private static readonly object[] ValidationRecords =
@@ -271,18 +357,16 @@ public sealed class BlogCustomDomainsTests
             new { txtRecords = (object?)null },
         ];
         private int appShows;
-        private int certificateLists;
         private int concurrentTokenWrites;
         private int enteredTokenWrites;
         private int maxConcurrentTokenWrites;
-        private int tokenWrites;
+        private bool certificateDeleted;
         private readonly Lock sync = new();
         private readonly TaskCompletionSource allTokenWritesEntered =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly HashSet<string> failedProbes =
             new(StringComparer.OrdinalIgnoreCase);
-        private int remainingMissingAppReads =
-            missingAppReads;
+        private int remainingMissingAppReads = missingAppReads;
         private bool oldTokenPresent =
             terminalCertificateState is not null;
 
@@ -328,13 +412,11 @@ public sealed class BlogCustomDomainsTests
                 ("az", ["containerapp", "env", "certificate", "list", ..]) =>
                     ListCertificates(),
                 ("az", ["network", "dns", "record-set", "txt", "list", ..]) =>
-                    ListValidationRecords(),
-                ("az", ["network", "dns", "record-set", "txt", "create", ..]) =>
-                    Success(),
+                    ListValidationRecords(arguments),
                 ("az", ["network", "dns", "record-set", "txt", "remove-record", ..]) =>
                     RemoveValidationToken(),
                 ("az", ["containerapp", "env", "certificate", "delete", ..]) =>
-                    Success(),
+                    DeleteCertificate(),
                 ("az", ["containerapp", "env", "show", ..]) =>
                     Json(new { staticIp = "4.148.87.198" }),
                 ("curl", _) =>
@@ -367,22 +449,31 @@ public sealed class BlogCustomDomainsTests
                 : appShows == 1 && existingBindingType is not null
                 ? [new
                 {
-                    name = BlogCustomDomains.All[0].Hostname,
+                    name = Domains[0].Hostname,
                     bindingType = existingBindingType,
                     certificateId =
                         existingBindingCertificateId == "expected"
-                            ? $"{EnvironmentId}/managedCertificates/{BlogCustomDomains.All[0].CertificateName}"
+                            ? CertificateId(Domains[0])
                             : existingBindingCertificateId,
                 }]
-                : appShows == 1
+                : appShows == 1 && boundTerminalCertificate
+                ? [new
+                {
+                    name = Domains[1].Hostname,
+                    bindingType = "SniEnabled",
+                    certificateId = CertificateId(Domains[1]),
+                }]
+                : appShows == 1 ||
+                    terminalCertificateState is not null &&
+                    !certificateDeleted &&
+                    !boundTerminalCertificate
                 ? []
-                : BlogCustomDomains.All
+                : Domains
                     .Select(domain => new
                     {
                         name = domain.Hostname,
                         bindingType = "Auto",
-                        certificateId =
-                            $"{EnvironmentId}/managedCertificates/{domain.CertificateName}",
+                        certificateId = CertificateId(domain),
                     })
                     .Cast<object>()
                     .ToArray();
@@ -395,46 +486,82 @@ public sealed class BlogCustomDomainsTests
 
         private CommandOutput ListCertificates()
         {
-            certificateLists++;
-            return Json(BlogCustomDomains.All.Select((domain, index) => new
+            if (certificatesNeverAppear)
             {
-                id =
-                    $"{EnvironmentId}/managedCertificates/{domain.CertificateName}",
+                return Json(Array.Empty<object>());
+            }
+
+            var certificates = Domains.Select((domain, index) => new
+            {
+                id = CertificateId(domain),
                 name = domain.CertificateName,
                 properties = new
                 {
                     provisioningState =
-                        certificateLists == 1 &&
-                        index == 0 &&
+                        !certificateDeleted &&
+                        (index == 0 ||
+                            index == 1 &&
+                            boundTerminalCertificate) &&
                         terminalCertificateState is not null
                             ? terminalCertificateState
                             : "Succeeded",
                     validationToken =
-                        certificateLists == 1 &&
+                        !certificateDeleted &&
                         index == 0 &&
                         terminalCertificateState is not null
                             ? "old-token"
-                            : certificateLists ==
-                                tokenCertificateList
-                            ? $"token-{domain.CertificateName}"
-                            : null,
+                            : $"token-{domain.CertificateName}",
                     error = (string?)null,
                 },
-            }));
+            }).Cast<object>().ToList();
+            if (unexpectedTerminalCertificate)
+            {
+                certificates.Add(new
+                {
+                    id =
+                        $"{EnvironmentId}/managedCertificates/managed-other-domain",
+                    name = "managed-other-domain",
+                    properties = new
+                    {
+                        provisioningState = "Failed",
+                        validationToken = "other-token",
+                        error = (string?)null,
+                    },
+                });
+            }
+
+            return Json(certificates);
         }
 
-        private CommandOutput ListValidationRecords() =>
-            tokenWrites == BlogCustomDomains.All.Count
-                ? Json(ValidationRecords)
-                : oldTokenPresent
-                    ? Json(OldTokenRecords)
+        private CommandOutput ListValidationRecords(
+            IReadOnlyList<string> arguments)
+        {
+            var recordPrefix =
+                $"{ValueAfter(arguments, "--zone-name")}|{ValueAfter(arguments, "--query").Split('\'')[1]}|";
+            if (TokenRecords.Any(record =>
+                record.StartsWith(
+                    recordPrefix,
+                    StringComparison.Ordinal)))
+            {
+                return Json(ValidationRecords);
+            }
+
+            return oldTokenPresent
+                ? Json(OldTokenRecords)
                 : emptyValidationRecords
-                    ? Json(EmptyValidationRecords)
-                    : Json(Array.Empty<object>());
+                ? Json(EmptyValidationRecords)
+                : Json(Array.Empty<object>());
+        }
 
         private CommandOutput RemoveValidationToken()
         {
             oldTokenPresent = false;
+            return Success();
+        }
+
+        private CommandOutput DeleteCertificate()
+        {
+            certificateDeleted = true;
             return Success();
         }
 
@@ -452,14 +579,13 @@ public sealed class BlogCustomDomainsTests
                 ref concurrentTokenWrites);
             SetMaximum(ref maxConcurrentTokenWrites, concurrent);
             if (Interlocked.Increment(ref enteredTokenWrites) ==
-                BlogCustomDomains.All.Count)
+                Domains.Count)
             {
                 allTokenWritesEntered.SetResult();
             }
 
             await allTokenWritesEntered.Task.WaitAsync(cancellationToken);
             Interlocked.Decrement(ref concurrentTokenWrites);
-            Interlocked.Increment(ref tokenWrites);
             return Success();
         }
 
@@ -473,19 +599,20 @@ public sealed class BlogCustomDomainsTests
                 fail = failedProbes.Add(hostname);
             }
 
-            if (fail)
-            {
-                return new CommandOutput(
+            return fail
+                ? new CommandOutput(
                     28,
                     string.Empty,
-                    "Not ready");
-            }
-
-            return new CommandOutput(
-                0,
-                "HTTP/1.1 200 OK",
-                string.Empty);
+                    "Not ready")
+                : new CommandOutput(
+                    0,
+                    "HTTP/1.1 200 OK",
+                    string.Empty);
         }
+
+        private static string CertificateId(
+            BlogCustomDomainResource domain) =>
+            $"{EnvironmentId}/managedCertificates/{domain.CertificateName}";
 
         private static void SetMaximum(ref int target, int value)
         {

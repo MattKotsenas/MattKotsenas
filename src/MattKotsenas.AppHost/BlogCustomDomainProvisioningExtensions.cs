@@ -10,13 +10,14 @@ internal static class BlogCustomDomainProvisioningExtensions
     internal static void ConfigureBlogCustomDomains(
         this ContainerApp containerApp,
         AzureResourceInfrastructure infrastructure,
-        AzureContainerAppEnvironmentResource environment)
+        AzureContainerAppEnvironmentResource environment,
+        IReadOnlyList<BlogCustomDomainResource> domains)
     {
         var managedEnvironment =
             (ContainerAppManagedEnvironment)environment
                 .AddAsExistingResource(infrastructure);
 
-        foreach (var domain in BlogCustomDomains.All)
+        foreach (var domain in domains)
         {
             containerApp.Configuration.Ingress.CustomDomains.Add(
                 new ContainerAppCustomDomain
@@ -27,7 +28,7 @@ internal static class BlogCustomDomainProvisioningExtensions
                 });
 
             var certificate = new ContainerAppManagedCertificate(
-                domain.BicepIdentifier)
+                domain.CertificateBicepIdentifier)
             {
                 Parent = managedEnvironment,
                 Name = domain.CertificateName,

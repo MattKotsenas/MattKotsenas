@@ -6,6 +6,7 @@ namespace MattKotsenas.AppHost;
 
 internal sealed class BlogCustomDomainDeployment(
     ICommandRunner runner,
+    TimeProvider timeProvider,
     string azureSubscriptionId,
     string azureResourceGroup,
     string dnsResourceGroup,
@@ -20,7 +21,8 @@ internal sealed class BlogCustomDomainDeployment(
     private static readonly JsonSerializerOptions JsonOptions =
         new(JsonSerializerDefaults.Web);
 
-    internal async Task RecoverAsync(
+    internal async Task ValidateAsync(
+        IReadOnlyList<BlogCustomDomainResource> domains,
         CancellationToken cancellationToken)
     {
         var app = await GetContainerAppAsync(cancellationToken);
@@ -29,76 +31,233 @@ internal sealed class BlogCustomDomainDeployment(
             return;
         }
 
-        RejectUnmodeledCustomDomainBindings(app);
+        RejectUnmodeledCustomDomainBindings(app, domains);
 
-        var environmentId = new ResourceIdentifier(app.EnvironmentId);
-        var environmentResourceGroup = environmentId.ResourceGroupName
-            ?? throw new InvalidOperationException(
-                $"Container Apps environment '{app.EnvironmentId}' has no resource group.");
+        var environment = GetEnvironment(app);
+        var modeledCertificates = domains
+            .Select(domain => domain.CertificateName)
+            .ToHashSet(StringComparer.Ordinal);
+        var terminalCertificates =
+            (await ListManagedCertificatesAsync(
+                environment.ResourceGroup,
+                environment.Name,
+                cancellationToken))
+            .Where(IsTerminal)
+            .ToArray();
+        var unexpectedTerminalCertificates = terminalCertificates
+            .Where(certificate =>
+                !modeledCertificates.Contains(certificate.Name))
+            .Select(certificate => certificate.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (unexpectedTerminalCertificates.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"Container App '{appName}' has terminal managed certificates outside the custom-domain resource graph: {string.Join(", ", unexpectedTerminalCertificates)}.");
+        }
 
-        await DeleteUnboundTerminalCertificatesAsync(
-            app,
-            environmentResourceGroup,
-            environmentId.Name,
-            cancellationToken);
+        var boundCertificateIds = (app.CustomDomains ?? [])
+            .Select(binding => binding.CertificateId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var boundTerminalCertificates = terminalCertificates
+            .Where(certificate =>
+                boundCertificateIds.Contains(certificate.Id))
+            .Select(certificate => certificate.Name)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (boundTerminalCertificates.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"Container App '{appName}' has bound terminal managed certificates: {string.Join(", ", boundTerminalCertificates)}.");
+        }
     }
 
-    internal async Task PublishValidationAndWaitForCertificatesAsync(
+    internal async Task RecoverAsync(
+        BlogCustomDomainResource domain,
+        CancellationToken cancellationToken)
+    {
+        var app = await GetContainerAppAsync(cancellationToken);
+        if (app is null)
+        {
+            return;
+        }
+
+        var environment = GetEnvironment(app);
+        var certificate = (await ListManagedCertificatesAsync(
+                environment.ResourceGroup,
+                environment.Name,
+                cancellationToken))
+            .SingleOrDefault(certificate =>
+                certificate.Name == domain.CertificateName);
+        if (certificate is null || !IsTerminal(certificate))
+        {
+            return;
+        }
+
+        if ((app.CustomDomains ?? []).Any(binding =>
+            string.Equals(
+                binding.CertificateId,
+                certificate.Id,
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"Terminal managed certificate '{certificate.Name}' is still bound.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                certificate.Properties.ValidationToken))
+        {
+            await RemoveValidationTokenAsync(
+                domain,
+                certificate.Properties.ValidationToken,
+                cancellationToken);
+        }
+
+        await RunAsync(
+            "az",
+            cancellationToken,
+            "containerapp", "env", "certificate", "delete",
+            "--resource-group", environment.ResourceGroup,
+            "--name", environment.Name,
+            "--certificate", certificate.Name,
+            "--yes",
+            "--only-show-errors",
+            "--output", "none");
+    }
+
+    internal async Task PublishValidationAndWaitForCertificateAsync(
+        BlogCustomDomainResource domain,
         CancellationToken cancellationToken)
     {
         var app = await WaitForContainerAppAsync(cancellationToken);
-        var environmentId = new ResourceIdentifier(app.EnvironmentId);
-        var environmentResourceGroup = environmentId.ResourceGroupName
-            ?? throw new InvalidOperationException(
-                $"Container Apps environment '{app.EnvironmentId}' has no resource group.");
+        var environment = GetEnvironment(app);
+        var deadline =
+            timeProvider.GetUtcNow() + provisioningTimeout;
 
-        await PublishValidationAndWaitForCertificatesAsync(
-            environmentResourceGroup,
-            environmentId.Name,
-            cancellationToken);
+        while (timeProvider.GetUtcNow() < deadline)
+        {
+            var certificate = (await ListManagedCertificatesAsync(
+                    environment.ResourceGroup,
+                    environment.Name,
+                    cancellationToken))
+                .SingleOrDefault(certificate =>
+                    certificate.Name == domain.CertificateName);
+            if (certificate is null)
+            {
+                await DelayAsync(cancellationToken);
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                    certificate.Properties.ValidationToken))
+            {
+                await EnsureValidationTokenAsync(
+                    domain,
+                    certificate.Properties.ValidationToken,
+                    cancellationToken);
+            }
+
+            switch (certificate.Properties.ProvisioningState)
+            {
+                case "Succeeded":
+                    await RequireValidationRecordAsync(
+                        domain,
+                        cancellationToken);
+                    return;
+                case "Failed":
+                case "Canceled":
+                case "DeleteFailed":
+                    throw new InvalidOperationException(
+                        $"Managed certificate '{domain.CertificateName}' entered state '{certificate.Properties.ProvisioningState}': {certificate.Properties.Error}");
+            }
+
+            await DelayAsync(cancellationToken);
+        }
+
+        throw new InvalidOperationException(
+            $"Managed certificate '{domain.CertificateName}' did not succeed within {provisioningTimeout.TotalMinutes} minutes.");
     }
 
     internal async Task VerifyCurrentDeploymentAsync(
+        BlogCustomDomainResource domain,
         CancellationToken cancellationToken)
     {
         var app = await WaitForContainerAppAsync(cancellationToken);
-        await WaitForBindingsAndProbeAsync(
-            app.EnvironmentId,
-            cancellationToken);
+        var environment = await RunJsonAsync<ContainerAppEnvironment>(
+            "az",
+            cancellationToken,
+            "containerapp", "env", "show",
+            "--ids", app.EnvironmentId,
+            "--query", "{staticIp:properties.staticIp}",
+            "--only-show-errors",
+            "--output", "json");
+        var deadline =
+            timeProvider.GetUtcNow() + provisioningTimeout;
+
+        while (timeProvider.GetUtcNow() < deadline)
+        {
+            app = await GetContainerAppAsync(cancellationToken);
+            var binding = (app?.CustomDomains ?? [])
+                .SingleOrDefault(binding =>
+                    string.Equals(
+                        binding.Name,
+                        domain.Hostname,
+                        StringComparison.OrdinalIgnoreCase));
+            if (binding is not null &&
+                IsSecuredBinding(binding, domain, app!.EnvironmentId) &&
+                await ProbeAsync(
+                    domain.Hostname,
+                    environment.StaticIp,
+                    cancellationToken))
+            {
+                return;
+            }
+
+            await DelayAsync(cancellationToken);
+        }
+
+        throw new InvalidOperationException(
+            $"Custom domain '{domain.Hostname}' did not become healthy within {provisioningTimeout.TotalMinutes} minutes.");
+    }
+
+    private static bool IsTerminal(ManagedCertificate certificate) =>
+        certificate.Properties.ProvisioningState is
+            "Failed" or "Canceled" or "DeleteFailed";
+
+    private static ContainerAppEnvironmentId GetEnvironment(
+        ContainerAppDetails app)
+    {
+        var environmentId = new ResourceIdentifier(app.EnvironmentId);
+        var resourceGroup = environmentId.ResourceGroupName
+            ?? throw new InvalidOperationException(
+                $"Container Apps environment '{app.EnvironmentId}' has no resource group.");
+        return new(
+            ResourceGroup: resourceGroup,
+            Name: environmentId.Name);
     }
 
     private void RejectUnmodeledCustomDomainBindings(
-        ContainerAppDetails app)
+        ContainerAppDetails app,
+        IReadOnlyList<BlogCustomDomainResource> domains)
     {
-        var domains = BlogCustomDomains.All.ToDictionary(
+        var resourcesByHostname = domains.ToDictionary(
             domain => domain.Hostname,
             StringComparer.OrdinalIgnoreCase);
         var unmodeledBindings = (app.CustomDomains ?? [])
             .Where(binding =>
             {
-                if (!domains.TryGetValue(binding.Name, out var domain))
+                if (!resourcesByHostname.TryGetValue(
+                        binding.Name,
+                        out var domain))
                 {
                     return true;
                 }
 
-                var expectedCertificateId =
-                    $"{app.EnvironmentId}/managedCertificates/{domain.CertificateName}";
-                return binding.BindingType switch
-                {
-                    "Auto" =>
-                        !string.IsNullOrWhiteSpace(
-                            binding.CertificateId) &&
-                        !string.Equals(
-                            binding.CertificateId,
-                            expectedCertificateId,
-                            StringComparison.OrdinalIgnoreCase),
-                    "SniEnabled" =>
-                        !string.Equals(
-                            binding.CertificateId,
-                            expectedCertificateId,
-                            StringComparison.OrdinalIgnoreCase),
-                    _ => true,
-                };
+                return !IsSupportedBinding(
+                    binding,
+                    domain,
+                    app.EnvironmentId);
             })
             .Select(binding =>
                 $"{binding.Name} ({binding.BindingType}, {binding.CertificateId ?? "no certificate"})")
@@ -108,173 +267,40 @@ internal sealed class BlogCustomDomainDeployment(
         if (unmodeledBindings.Length > 0)
         {
             throw new InvalidOperationException(
-                $"Container App '{appName}' has custom domain bindings outside the BlogCustomDomains model: {string.Join(", ", unmodeledBindings)}.");
+                $"Container App '{appName}' has custom domain bindings outside the resource graph: {string.Join(", ", unmodeledBindings)}.");
         }
     }
 
-    private async Task DeleteUnboundTerminalCertificatesAsync(
-        ContainerAppDetails app,
-        string environmentResourceGroup,
-        string environmentName,
-        CancellationToken cancellationToken)
+    private static bool IsSupportedBinding(
+        CustomDomainBinding binding,
+        BlogCustomDomainResource domain,
+        string environmentId)
     {
-        var certificates = await ListManagedCertificatesAsync(
-            environmentResourceGroup,
-            environmentName,
-            cancellationToken);
-        var boundCertificateIds = (app.CustomDomains ?? [])
-            .Select(binding => binding.CertificateId)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var certificate in certificates.Where(certificate =>
-            certificate.Properties.ProvisioningState is
-                "Failed" or "Canceled" or "DeleteFailed"))
+        var expectedCertificateId =
+            $"{environmentId}/managedCertificates/{domain.CertificateName}";
+        return binding.BindingType switch
         {
-            var domain = BlogCustomDomains.All.SingleOrDefault(
-                candidate =>
-                    candidate.CertificateName == certificate.Name)
-                ?? throw new InvalidOperationException(
-                    $"Unexpected terminal managed certificate '{certificate.Name}'.");
-            if (boundCertificateIds.Contains(certificate.Id))
-            {
-                throw new InvalidOperationException(
-                    $"Terminal managed certificate '{certificate.Name}' is still bound.");
-            }
-
-            if (!string.IsNullOrWhiteSpace(
-                    certificate.Properties.ValidationToken))
-            {
-                await RemoveValidationTokenAsync(
-                    domain,
-                    certificate.Properties.ValidationToken,
-                    cancellationToken);
-            }
-
-            await RunAsync(
-                "az",
-                cancellationToken,
-                "containerapp", "env", "certificate", "delete",
-                "--resource-group", environmentResourceGroup,
-                "--name", environmentName,
-                "--certificate", certificate.Name,
-                "--yes",
-                "--only-show-errors",
-                "--output", "none");
-        }
+            "Auto" =>
+                string.IsNullOrWhiteSpace(binding.CertificateId) ||
+                string.Equals(
+                    binding.CertificateId,
+                    expectedCertificateId,
+                    StringComparison.OrdinalIgnoreCase),
+            "SniEnabled" =>
+                string.Equals(
+                    binding.CertificateId,
+                    expectedCertificateId,
+                    StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        };
     }
 
-    private async Task PublishValidationAndWaitForCertificatesAsync(
-        string environmentResourceGroup,
-        string environmentName,
-        CancellationToken cancellationToken)
-    {
-        var deadline = DateTimeOffset.UtcNow + provisioningTimeout;
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var certificates = await ListManagedCertificatesAsync(
-                environmentResourceGroup,
-                environmentName,
-                cancellationToken);
-            var certificatesByName = certificates.ToDictionary(
-                certificate => certificate.Name,
-                StringComparer.Ordinal);
-            var validationTasks = BlogCustomDomains.All
-                .Where(domain =>
-                    certificatesByName.TryGetValue(
-                        domain.CertificateName,
-                        out var certificate) &&
-                    !string.IsNullOrWhiteSpace(
-                        certificate.Properties.ValidationToken))
-                .Select(domain => EnsureValidationTokenAsync(
-                    domain,
-                    certificatesByName[domain.CertificateName]
-                        .Properties
-                        .ValidationToken!,
-                    cancellationToken));
-            await Task.WhenAll(validationTasks);
-
-            var allSucceeded = true;
-            foreach (var domain in BlogCustomDomains.All)
-            {
-                if (!certificatesByName.TryGetValue(
-                        domain.CertificateName,
-                        out var certificate))
-                {
-                    allSucceeded = false;
-                    continue;
-                }
-
-                switch (certificate.Properties.ProvisioningState)
-                {
-                    case "Succeeded":
-                        await RequireValidationRecordAsync(
-                            domain,
-                            cancellationToken);
-                        break;
-                    case "Failed":
-                    case "Canceled":
-                    case "DeleteFailed":
-                        throw new InvalidOperationException(
-                            $"Managed certificate '{domain.CertificateName}' entered state '{certificate.Properties.ProvisioningState}': {certificate.Properties.Error}");
-                    default:
-                        allSucceeded = false;
-                        break;
-                }
-            }
-
-            if (allSucceeded)
-            {
-                return;
-            }
-
-            await Task.Delay(pollInterval, cancellationToken);
-        }
-
-        throw new InvalidOperationException(
-            $"The managed certificates did not succeed within {provisioningTimeout.TotalMinutes} minutes.");
-    }
-
-    private async Task WaitForBindingsAndProbeAsync(
-        string environmentId,
-        CancellationToken cancellationToken)
-    {
-        var environment = await RunJsonAsync<ContainerAppEnvironment>(
-            "az",
-            cancellationToken,
-            "containerapp", "env", "show",
-            "--ids", environmentId,
-            "--query", "{staticIp:properties.staticIp}",
-            "--only-show-errors",
-            "--output", "json");
-        var deadline = DateTimeOffset.UtcNow + provisioningTimeout;
-        while (DateTimeOffset.UtcNow < deadline)
-        {
-            var app = await GetContainerAppAsync(cancellationToken);
-            var bindings = (app?.CustomDomains ?? [])
-                .ToDictionary(
-                    binding => binding.Name,
-                    StringComparer.OrdinalIgnoreCase);
-            if (HasSecuredBindings(bindings, environmentId))
-            {
-                var probes = await Task.WhenAll(
-                    BlogCustomDomains.All.Select(domain =>
-                        ProbeAsync(
-                            domain.Hostname,
-                            environment.StaticIp,
-                            cancellationToken)));
-                if (probes.All(succeeded => succeeded))
-                {
-                    return;
-                }
-            }
-
-            await Task.Delay(pollInterval, cancellationToken);
-        }
-
-        throw new InvalidOperationException(
-            "The Container App custom domains did not become healthy.");
-    }
+    private static bool IsSecuredBinding(
+        CustomDomainBinding binding,
+        BlogCustomDomainResource domain,
+        string environmentId) =>
+        !string.IsNullOrWhiteSpace(binding.CertificateId) &&
+        IsSupportedBinding(binding, domain, environmentId);
 
     private async Task<bool> ProbeAsync(
         string hostname,
@@ -300,24 +326,12 @@ internal sealed class BlogCustomDomainDeployment(
             ContainsOkStatus(result.StandardOutput);
     }
 
-    private static bool HasSecuredBindings(
-        IReadOnlyDictionary<string, CustomDomainBinding> bindings,
-        string environmentId) =>
-        BlogCustomDomains.All.All(domain =>
-            bindings.TryGetValue(
-                domain.Hostname,
-                out var binding) &&
-            string.Equals(
-                binding.CertificateId,
-                $"{environmentId}/managedCertificates/{domain.CertificateName}",
-                StringComparison.OrdinalIgnoreCase) &&
-            binding.BindingType is "Auto" or "SniEnabled");
-
     private async Task<ContainerAppDetails> WaitForContainerAppAsync(
         CancellationToken cancellationToken)
     {
-        var deadline = DateTimeOffset.UtcNow + provisioningTimeout;
-        while (DateTimeOffset.UtcNow < deadline)
+        var deadline =
+            timeProvider.GetUtcNow() + provisioningTimeout;
+        while (timeProvider.GetUtcNow() < deadline)
         {
             var app = await GetContainerAppAsync(cancellationToken);
             if (app is not null)
@@ -325,7 +339,7 @@ internal sealed class BlogCustomDomainDeployment(
                 return app;
             }
 
-            await Task.Delay(pollInterval, cancellationToken);
+            await DelayAsync(cancellationToken);
         }
 
         throw new InvalidOperationException(
@@ -377,7 +391,7 @@ internal sealed class BlogCustomDomainDeployment(
             StringComparison.OrdinalIgnoreCase);
 
     private async Task EnsureValidationTokenAsync(
-        BlogCustomDomain domain,
+        BlogCustomDomainResource domain,
         string validationToken,
         CancellationToken cancellationToken)
     {
@@ -404,7 +418,7 @@ internal sealed class BlogCustomDomainDeployment(
     }
 
     private async Task RemoveValidationTokenAsync(
-        BlogCustomDomain domain,
+        BlogCustomDomainResource domain,
         string validationToken,
         CancellationToken cancellationToken)
     {
@@ -432,7 +446,7 @@ internal sealed class BlogCustomDomainDeployment(
     }
 
     private async Task RequireValidationRecordAsync(
-        BlogCustomDomain domain,
+        BlogCustomDomainResource domain,
         CancellationToken cancellationToken)
     {
         var recordSet = await GetValidationRecordAsync(
@@ -449,7 +463,7 @@ internal sealed class BlogCustomDomainDeployment(
     }
 
     private async Task<DnsTxtRecordSet?> GetValidationRecordAsync(
-        BlogCustomDomain domain,
+        BlogCustomDomainResource domain,
         CancellationToken cancellationToken)
     {
         var recordSets = await RunJsonAsync<DnsTxtRecordSet[]>(
@@ -510,6 +524,12 @@ internal sealed class BlogCustomDomainDeployment(
         return result.StandardOutput;
     }
 
+    private Task DelayAsync(CancellationToken cancellationToken) =>
+        Task.Delay(
+            pollInterval,
+            timeProvider,
+            cancellationToken);
+
     private static InvalidOperationException CommandFailed(
         string command,
         CommandOutput result)
@@ -539,6 +559,10 @@ internal sealed class BlogCustomDomainDeployment(
         string EnvironmentId,
         CustomDomainBinding[]? CustomDomains);
 
+    private sealed record ContainerAppEnvironmentId(
+        string ResourceGroup,
+        string Name);
+
     private sealed record ContainerAppEnvironment(string StaticIp);
 
     private sealed record CustomDomainBinding(
@@ -560,5 +584,4 @@ internal sealed class BlogCustomDomainDeployment(
         DnsTxtRecord[]? TxtRecords);
 
     private sealed record DnsTxtRecord(string[] Value);
-
 }

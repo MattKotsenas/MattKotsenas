@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 using Aspire.Hosting.Pipelines;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MattKotsenas.AppHost;
 
@@ -14,32 +15,39 @@ internal static class BlogHttpsHealth
         TimeSpan.FromDays(30);
 
 #pragma warning disable ASPIREPIPELINES001
-    internal static async Task CheckAsync(PipelineStepContext context)
+    internal static async Task CheckAsync(
+        PipelineStepContext context,
+        BlogCustomDomainResource domain)
     {
+        var timeProvider =
+            context.Services.GetRequiredService<TimeProvider>();
         using var httpClient = new HttpClient
         {
             Timeout = Timeout.InfiniteTimeSpan,
         };
+        using var timeout = new CancellationTokenSource(
+            TimeSpan.FromSeconds(30),
+            timeProvider);
+        using var linked = CancellationTokenSource
+            .CreateLinkedTokenSource(
+                context.CancellationToken,
+                timeout.Token);
 
-        foreach (var domain in BlogCustomDomains.All)
+        try
         {
-            using var timeout = CancellationTokenSource
-                .CreateLinkedTokenSource(context.CancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(30));
-            try
-            {
-                await CheckDomainAsync(
-                    httpClient,
-                    domain,
-                    context,
-                    timeout.Token);
-            }
-            catch (OperationCanceledException)
-                when (!context.CancellationToken.IsCancellationRequested)
-            {
-                throw new InvalidOperationException(
-                    $"The HTTPS check for '{domain.Hostname}' timed out.");
-            }
+            await CheckDomainAsync(
+                httpClient,
+                timeProvider,
+                domain,
+                context,
+                linked.Token);
+        }
+        catch (OperationCanceledException)
+            when (timeout.IsCancellationRequested &&
+                !context.CancellationToken.IsCancellationRequested)
+        {
+            throw new InvalidOperationException(
+                $"The HTTPS check for '{domain.Hostname}' timed out.");
         }
     }
 #pragma warning restore ASPIREPIPELINES001
@@ -47,7 +55,8 @@ internal static class BlogHttpsHealth
 #pragma warning disable ASPIREPIPELINES001
     private static async Task CheckDomainAsync(
         HttpClient httpClient,
-        BlogCustomDomain domain,
+        TimeProvider timeProvider,
+        BlogCustomDomainResource domain,
         PipelineStepContext context,
         CancellationToken cancellationToken)
     {
@@ -75,7 +84,7 @@ internal static class BlogHttpsHealth
         var expiresOn = new DateTimeOffset(
             certificate.NotAfter.ToUniversalTime());
         if (expiresOn <=
-            DateTimeOffset.UtcNow + MinimumCertificateLifetime)
+            timeProvider.GetUtcNow() + MinimumCertificateLifetime)
         {
             throw new InvalidOperationException(
                 $"The certificate for '{domain.Hostname}' expires on {expiresOn:O}.");

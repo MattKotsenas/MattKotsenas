@@ -17,6 +17,7 @@ internal static class DnsExtensions
     public static IResourceBuilder<AzureBicepResource> AddBlogDns(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<AzureBicepResource> legacyWeb,
+        IReadOnlyList<BlogCustomDomainResource> domains,
         string dnsResourceGroupName)
     {
         // App Service does not expose its shared inbound address through ARM.
@@ -33,7 +34,11 @@ internal static class DnsExtensions
             dnsResourceGroupName,
             publishValueAsDefault: true);
         var dns = builder
-            .AddAzureInfrastructure("blog-dns", AddDnsResources)
+            .AddAzureInfrastructure(
+                "blog-dns",
+                infrastructure => AddDnsResources(
+                    infrastructure,
+                    domains))
             .WithParameter(
                 "defaultHostName",
                 legacyWeb.GetOutput("defaultHostName"))
@@ -51,7 +56,9 @@ internal static class DnsExtensions
         return dns;
     }
 
-    private static void AddDnsResources(Infrastructure infrastructure)
+    private static void AddDnsResources(
+        Infrastructure infrastructure,
+        IReadOnlyList<BlogCustomDomainResource> domains)
     {
         var defaultHostName = new ProvisioningParameter(
             "defaultHostName",
@@ -73,75 +80,89 @@ internal static class DnsExtensions
             typeof(string));
         infrastructure.Add(legacyRootVerificationId);
 
-        foreach (var zoneDefinition in BlogCustomDomains.Zones)
+        foreach (var zoneDomains in domains.GroupBy(domain => domain.Zone))
         {
             var zone = DnsZone.FromExisting(
-                $"{zoneDefinition.BicepIdentifier}Zone");
-            zone.Name = zoneDefinition.Name;
+                $"{zoneDomains.Key.BicepIdentifier}Zone");
+            zone.Name = zoneDomains.Key.Name;
             infrastructure.Add(zone);
 
-            BicepValue<string>? additionalApexVerificationId = null;
-            if (zoneDefinition == BlogCustomDomains.RootZone)
+            foreach (var domain in zoneDomains)
             {
-                additionalApexVerificationId = legacyRootVerificationId;
+                AddRoutingRecord(
+                    infrastructure,
+                    zone,
+                    domain,
+                    defaultHostName,
+                    websiteInboundIpAddress);
             }
 
-            AddWebsiteRecords(
-                infrastructure,
-                zone,
-                zoneDefinition.BicepIdentifier,
-                defaultHostName,
-                customDomainVerificationId,
-                websiteInboundIpAddress,
-                additionalApexVerificationId);
+            foreach (var domain in zoneDomains)
+            {
+                AddOwnershipRecord(
+                    infrastructure,
+                    zone,
+                    domain,
+                    customDomainVerificationId,
+                    legacyRootVerificationId);
+            }
         }
     }
 
-    private static void AddWebsiteRecords(
+    private static void AddRoutingRecord(
         Infrastructure infrastructure,
         DnsZone zone,
-        string identifierPrefix,
+        BlogCustomDomainResource domain,
         BicepValue<string> defaultHostName,
-        BicepValue<string> customDomainVerificationId,
-        BicepValue<IPAddress> websiteInboundIpAddress,
-        BicepValue<string>? additionalApexVerificationId)
+        BicepValue<IPAddress> websiteInboundIpAddress)
     {
-        infrastructure.Add(new DnsARecord($"{identifierPrefix}Apex")
+        if (domain.IsApex)
         {
-            Parent = zone,
-            Name = "@",
-            TtlInSeconds = TtlInSeconds,
-            ARecords =
+            infrastructure.Add(new DnsARecord(domain.DnsBicepIdentifier)
             {
-                new DnsARecordInfo
+                Parent = zone,
+                Name = domain.DnsRecordName,
+                TtlInSeconds = TtlInSeconds,
+                ARecords =
                 {
-                    Ipv4Address = websiteInboundIpAddress,
+                    new DnsARecordInfo
+                    {
+                        Ipv4Address = websiteInboundIpAddress,
+                    },
                 },
-            },
-        });
-
-        infrastructure.Add(new DnsCnameRecord($"{identifierPrefix}Www")
+            });
+        }
+        else
         {
-            Parent = zone,
-            Name = "www",
-            TtlInSeconds = TtlInSeconds,
-            Cname = defaultHostName,
-        });
+            infrastructure.Add(new DnsCnameRecord(domain.DnsBicepIdentifier)
+            {
+                Parent = zone,
+                Name = domain.DnsRecordName,
+                TtlInSeconds = TtlInSeconds,
+                Cname = defaultHostName,
+            });
+        }
 
+    }
+
+    private static void AddOwnershipRecord(
+        Infrastructure infrastructure,
+        DnsZone zone,
+        BlogCustomDomainResource domain,
+        BicepValue<string> customDomainVerificationId,
+        BicepValue<string> legacyRootVerificationId)
+    {
+        var additionalVerificationId =
+            domain.IsApex && domain.Zone.IsRoot
+                ? legacyRootVerificationId
+                : null;
         AddVerificationRecord(
             infrastructure,
             zone,
-            $"{identifierPrefix}ApexVerification",
-            "asuid",
+            $"{domain.DnsBicepIdentifier}Verification",
+            domain.OwnershipRecordName,
             customDomainVerificationId,
-            additionalApexVerificationId);
-        AddVerificationRecord(
-            infrastructure,
-            zone,
-            $"{identifierPrefix}WwwVerification",
-            "asuid.www",
-            customDomainVerificationId,
-            additionalVerificationId: null);
+            additionalVerificationId);
     }
 
     private static void AddVerificationRecord(

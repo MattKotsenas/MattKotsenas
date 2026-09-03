@@ -29,6 +29,7 @@ var dnsResourceGroup =
     ?? throw new InvalidOperationException(
         "Blog:DnsResourceGroup is required.");
 IResourceBuilder<AzureContainerAppEnvironmentResource>? environment = null;
+IResourceBuilder<AzureBicepResource>? legacyWeb = null;
 
 if (builder.ExecutionContext.IsPublishMode)
 {
@@ -66,8 +67,7 @@ if (builder.ExecutionContext.IsPublishMode)
             infrastructure.Add(pushAssignment);
         });
 
-    var legacyWeb = builder.AddLegacyWebAppReference();
-    builder.AddBlogDns(legacyWeb, dnsResourceGroup);
+    legacyWeb = builder.AddLegacyWebAppReference();
 }
 
 var configuredPort = isRunMode
@@ -85,14 +85,28 @@ var blog = builder
         targetPort: useDevelopmentContainer ? 1313 : 8080,
         name: "http")
     .WithHttpHealthCheck("/", endpointName: "http")
-    .WithExternalHttpEndpoints()
-    .PublishAsAzureContainerApp((infrastructure, containerApp) =>
+    .WithExternalHttpEndpoints();
+
+IReadOnlyList<IResourceBuilder<BlogCustomDomainResource>>
+    customDomains = [];
+if (environment is not null)
+{
+    customDomains = blog.AddBlogCustomDomains(
+        azureSubscriptionId,
+        azureResourceGroup,
+        dnsResourceGroup);
+}
+
+blog.PublishAsAzureContainerApp((infrastructure, containerApp) =>
     {
         if (environment is not null)
         {
             containerApp.ConfigureBlogCustomDomains(
                 infrastructure,
-                environment.Resource);
+                environment.Resource,
+                customDomains
+                    .Select(domain => domain.Resource)
+                    .ToArray());
         }
 
         containerApp.Template.Scale.MinReplicas = 1;
@@ -103,11 +117,13 @@ var blog = builder
         container.Resources.Memory = "0.5Gi";
     });
 
-if (environment is not null)
+if (legacyWeb is not null)
 {
-    blog.WithBlogCustomDomainSteps(
-        azureSubscriptionId,
-        azureResourceGroup,
+    builder.AddBlogDns(
+        legacyWeb,
+        customDomains
+            .Select(domain => domain.Resource)
+            .ToArray(),
         dnsResourceGroup);
 }
 
