@@ -106,6 +106,10 @@ jobs:
     needs: [apphost, build]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
+    env:
+      Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      Azure__TenantId: ${{ vars.AZURE_TENANT_ID }}
+      DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
     permissions:
       contents: read
       id-token: write
@@ -127,9 +131,4 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy with Aspire
-        env:
-          Azure__Location: westus3
-          Azure__ResourceGroup: blog
-          Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
         run: dotnet aspire deploy --environment preview --non-interactive

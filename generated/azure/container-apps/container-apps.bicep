@@ -39,7 +39,7 @@ resource container_apps_law 'Microsoft.OperationalInsights/workspaces@2025-02-01
 }
 
 resource container_apps 'Microsoft.App/managedEnvironments@2025-07-01' = {
-  name: take('containerapps${uniqueString(resourceGroup().id)}', 24)
+  name: 'containerapps46vtxkge5it'
   location: location
   properties: {
     appLogsConfiguration: {
@@ -74,3 +74,5 @@ output AZURE_CONTAINER_APPS_ENVIRONMENT_NAME string = container_apps.name
 output AZURE_CONTAINER_APPS_ENVIRONMENT_ID string = container_apps.id
 
 output AZURE_CONTAINER_APPS_ENVIRONMENT_DEFAULT_DOMAIN string = container_apps.properties.defaultDomain
+
+output customDomainVerificationId string = container_apps.properties.customDomainConfiguration.customDomainVerificationId

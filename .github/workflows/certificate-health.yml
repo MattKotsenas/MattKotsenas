@@ -1,0 +1,28 @@
+name: Production HTTPS Health
+
+on:
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Check production HTTPS endpoints
+        run: >-
+          dotnet aspire do check-custom-domain-https
+          --environment preview
+          --non-interactive

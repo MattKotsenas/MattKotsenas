@@ -1,6 +1,7 @@
 using MattKotsenas.AppHost;
 
 using Aspire.Hosting.Azure;
+using Aspire.Hosting.Azure.AppContainers;
 using Azure.Provisioning;
 using Azure.Provisioning.Authorization;
 using Azure.Provisioning.ContainerRegistry;
@@ -14,14 +15,28 @@ var isRunMode = builder.ExecutionContext.IsRunMode;
 var useDevelopmentContainer =
     isRunMode &&
     !builder.Configuration.GetValue<bool>("Blog:UseProductionContainer");
+var dnsResourceGroup =
+    builder.Configuration["Parameters:dnsResourceGroupName"]
+    ?? builder.Configuration["Blog:DnsResourceGroup"]
+    ?? throw new InvalidOperationException(
+        "Blog:DnsResourceGroup is required.");
+var containerAppEnvironmentName =
+    builder.Configuration["Blog:ContainerAppEnvironmentName"]
+    ?? throw new InvalidOperationException(
+        "Blog:ContainerAppEnvironmentName is required.");
+IResourceBuilder<AzureContainerAppEnvironmentResource>? environment = null;
+IResourceBuilder<AzureBicepResource>? legacyWeb = null;
+IResourceBuilder<ParameterResource>? legacyWebInboundIpAddress = null;
+IResourceBuilder<ParameterResource>? legacyRootVerificationId = null;
 
 if (builder.ExecutionContext.IsPublishMode)
 {
     var deploymentPrincipalId = ObjectId.FromString(
         builder.Configuration["DeploymentPrincipalId"]);
 
-    var environment = builder
+    environment = builder
         .AddAzureContainerAppEnvironment("container-apps")
+        .WithAzureName(containerAppEnvironmentName)
         .WithDashboard(false);
     environment
         .GetAzureContainerRegistry()
@@ -51,8 +66,15 @@ if (builder.ExecutionContext.IsPublishMode)
             infrastructure.Add(pushAssignment);
         });
 
-    var legacyWeb = builder.AddLegacyWebAppReference();
-    builder.AddBlogDns(legacyWeb);
+    legacyWeb = builder.AddLegacyWebAppReference();
+    legacyWebInboundIpAddress = builder.AddParameter(
+        "legacyWebInboundIpAddress",
+        "168.62.20.37",
+        publishValueAsDefault: true);
+    legacyRootVerificationId = builder.AddParameter(
+        "legacyRootVerificationId",
+        "F883000E15157DBAA27BE77E3C2BFB8F5B8D3E5BED81331607354AA636C349BE",
+        publishValueAsDefault: true);
 }
 
 var configuredPort = isRunMode
@@ -80,6 +102,59 @@ var blog = builder
         container.Resources.Cpu = 0.25;
         container.Resources.Memory = "0.5Gi";
     });
+
+if (environment is not null &&
+    legacyWeb is not null &&
+    legacyWebInboundIpAddress is not null &&
+    legacyRootVerificationId is not null)
+{
+    blog.WithComputeEnvironment(environment);
+
+    var rootZone = builder.AddAzureDnsZone(
+        "root-zone",
+        "kotsenas.com",
+        dnsResourceGroup);
+    var mattZone = builder.AddAzureDnsZone(
+        "matt-zone",
+        "matt.kotsenas.com",
+        dnsResourceGroup);
+
+    var rootRoute = rootZone.AddARecord(
+        "root-route",
+        DnsRelativeName.Apex,
+        legacyWebInboundIpAddress);
+    var rootWwwRoute = rootZone.AddCnameRecord(
+        "root-www-route",
+        "www",
+        legacyWeb.GetOutput("defaultHostName"));
+    var mattRoute = mattZone.AddARecord(
+        "matt-route",
+        DnsRelativeName.Apex,
+        legacyWebInboundIpAddress);
+    var mattWwwRoute = mattZone.AddCnameRecord(
+        "matt-www-route",
+        "www",
+        legacyWeb.GetOutput("defaultHostName"));
+
+    var rootDomain = blog
+        .AddCustomDomain(rootRoute)
+        .WithManagedCertificate();
+    blog
+        .AddCustomDomain(rootWwwRoute)
+        .WithManagedCertificate();
+    blog
+        .AddCustomDomain(mattRoute)
+        .WithManagedCertificate();
+    blog
+        .AddCustomDomain(mattWwwRoute)
+        .WithManagedCertificate();
+
+    // App Service and Container Apps share the subscription verification ID.
+    // Only this older root-domain value remains migration-specific.
+    rootDomain
+        .GetOwnershipRecord()
+        .WithValue(legacyRootVerificationId);
+}
 
 if (useDevelopmentContainer)
 {

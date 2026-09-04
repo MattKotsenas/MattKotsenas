@@ -6,5 +6,3 @@ resource website 'Microsoft.Web/sites@2025-03-01' existing = {
 }
 
 output defaultHostName string = website.properties.defaultHostName
-
-output customDomainVerificationId string = website.properties.customDomainVerificationId
