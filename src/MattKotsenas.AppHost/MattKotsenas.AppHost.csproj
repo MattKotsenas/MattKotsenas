@@ -15,7 +15,14 @@
     <PackageReference Include="Azure.Provisioning.AppService" />
     <PackageReference Include="Azure.Provisioning.Dns" />
     <PackageReference Include="CliWrap" />
+    <PackageReference Include="DotNetDiag.HealthChecks.Uris" />
     <PackageReference Include="Vogen" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference
+      Include="..\MattKotsenas.HealthChecks.Network\MattKotsenas.HealthChecks.Network.csproj"
+      IsAspireProjectResource="false" />
   </ItemGroup>
 
 </Project>

@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/MattKotsenas.AppHost/MattKotsenas.AppHost.csproj" />
+    <Project Path="src/MattKotsenas.HealthChecks.Network/MattKotsenas.HealthChecks.Network.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MattKotsenas.AppHost.Tests/MattKotsenas.AppHost.Tests.csproj" />
+    <Project Path="tests/MattKotsenas.HealthChecks.Network.Tests/MattKotsenas.HealthChecks.Network.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,30 @@
+name: Public HTTPS Health
+
+on:
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-https:
+    runs-on: ubuntu-latest
+    env:
+      DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
+      - name: Check public HTTPS endpoints
+        run: >-
+          dotnet aspire do check-public-https
+          --environment preview
+          --non-interactive
