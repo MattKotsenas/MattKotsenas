@@ -23,6 +23,6 @@ jobs:
 
       - name: Check production HTTPS endpoints
         run: >-
-          dotnet aspire do check-blog-https
+          dotnet aspire do check-custom-domain-https
           --environment preview
           --non-interactive

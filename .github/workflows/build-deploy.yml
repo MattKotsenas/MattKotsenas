@@ -108,6 +108,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     env:
       Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      Azure__TenantId: ${{ vars.AZURE_TENANT_ID }}
       DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
     permissions:
       contents: read

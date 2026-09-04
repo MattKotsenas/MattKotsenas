@@ -9,15 +9,15 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MattKotsenas.AppHost;
 
-internal static class BlogHttpsHealth
+internal static class CustomDomainHttpsHealth
 {
-    private static readonly TimeSpan MinimumCertificateLifetime =
+    private static readonly TimeSpan RequiredCertificateLifetime =
         TimeSpan.FromDays(30);
 
 #pragma warning disable ASPIREPIPELINES001
     internal static async Task CheckAsync(
         PipelineStepContext context,
-        BlogCustomDomainResource domain)
+        CustomDomainResource domain)
     {
         var timeProvider =
             context.Services.GetRequiredService<TimeProvider>();
@@ -56,7 +56,7 @@ internal static class BlogHttpsHealth
     private static async Task CheckDomainAsync(
         HttpClient httpClient,
         TimeProvider timeProvider,
-        BlogCustomDomainResource domain,
+        CustomDomainResource domain,
         PipelineStepContext context,
         CancellationToken cancellationToken)
     {
@@ -84,7 +84,7 @@ internal static class BlogHttpsHealth
         var expiresOn = new DateTimeOffset(
             certificate.NotAfter.ToUniversalTime());
         if (expiresOn <=
-            timeProvider.GetUtcNow() + MinimumCertificateLifetime)
+            timeProvider.GetUtcNow() + RequiredCertificateLifetime)
         {
             throw new InvalidOperationException(
                 $"The certificate for '{domain.Hostname}' expires on {expiresOn:O}.");

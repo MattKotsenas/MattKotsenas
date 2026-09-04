@@ -7,7 +7,15 @@ param container_apps_outputs_azure_container_apps_environment_id string
 
 param blog_containerimage string
 
+param root_route_ownership_outputs_id string
+
 param container_apps_outputs_azure_container_apps_environment_name string
+
+param root_www_route_ownership_outputs_id string
+
+param matt_route_ownership_outputs_id string
+
+param matt_www_route_ownership_outputs_id string
 
 param container_apps_outputs_azure_container_registry_endpoint string
 
@@ -79,7 +87,7 @@ resource container_apps 'Microsoft.App/managedEnvironments@2025-07-01' existing 
   name: container_apps_outputs_azure_container_apps_environment_name
 }
 
-resource rootCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+resource root_route_domain_managed 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
   name: 'managed-kotsenas-com'
   location: resourceGroup().location
   properties: {
@@ -92,7 +100,7 @@ resource rootCertificate 'Microsoft.App/managedEnvironments/managedCertificates@
   ]
 }
 
-resource rootWwwCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+resource root_www_route_domain_managed 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
   name: 'managed-www-kotsenas-com'
   location: resourceGroup().location
   properties: {
@@ -105,7 +113,7 @@ resource rootWwwCertificate 'Microsoft.App/managedEnvironments/managedCertificat
   ]
 }
 
-resource blogCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+resource matt_route_domain_managed 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
   name: 'managed-matt-kotsenas-com'
   location: resourceGroup().location
   properties: {
@@ -118,7 +126,7 @@ resource blogCertificate 'Microsoft.App/managedEnvironments/managedCertificates@
   ]
 }
 
-resource blogWwwCertificate 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
+resource matt_www_route_domain_managed 'Microsoft.App/managedEnvironments/managedCertificates@2025-07-01' = {
   name: 'managed-www-matt-kotsenas-com'
   location: resourceGroup().location
   properties: {

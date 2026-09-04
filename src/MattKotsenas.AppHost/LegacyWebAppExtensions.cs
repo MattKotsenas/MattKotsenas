@@ -29,13 +29,6 @@ internal static class LegacyWebAppExtensions
                     {
                         Value = website.DefaultHostName,
                     });
-                infrastructure.Add(
-                    new ProvisioningOutput(
-                        "customDomainVerificationId",
-                        typeof(string))
-                    {
-                        Value = website.CustomDomainVerificationId,
-                    });
             });
         legacyWeb.Resource.Scope = new(resourceGroup.Resource);
 
