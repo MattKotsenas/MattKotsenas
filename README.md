@@ -41,6 +41,16 @@ West US 3.
 The publish model owns website records within the Azure DNS zones in resource group `dns`. Until the registrar
 nameservers change, those records are non-authoritative and point to the legacy Web App.
 
+## Public HTTPS health
+
+The **Public HTTPS Health** workflow runs daily to verify TLS trust, certificate lifetime, and HTTP availability for
+the public website domains. Run the same checks on demand after setting `DeploymentPrincipalId` to the deployment
+service principal's object ID:
+
+```bash
+dotnet aspire do check-public-https --environment preview --non-interactive
+```
+
 ## Creating a new post
 
 ```bash
