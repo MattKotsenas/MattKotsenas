@@ -8,6 +8,7 @@ internal static class HealthCheckPipelineExtensions
 {
     internal const string PublicHttpsTag = "public-https";
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(45);
 
     internal static IDistributedApplicationBuilder AddPublicHttpsHealthCheckPipeline(
         this IDistributedApplicationBuilder builder,
@@ -18,8 +19,11 @@ internal static class HealthCheckPipelineExtensions
         {
             var name = hostname.Replace('.', '-');
             healthChecks
-                .AddTlsCertificateHealthCheck(
-                    options => options.Hostname = hostname,
+                .AddSslHealthCheck(
+                    options => options.AddHost(
+                        hostname,
+                        port: 443,
+                        checkLeftDays: 30),
                     name: $"tls-{name}",
                     tags: [PublicHttpsTag],
                     timeout: CheckTimeout)
@@ -41,9 +45,9 @@ internal static class HealthCheckPipelineExtensions
             {
                 var service = context.Services
                     .GetRequiredService<HealthCheckService>();
-                var report = await service.CheckHealthAsync(
-                    registration => registration.Tags.Contains(
-                        PublicHttpsTag),
+                var report = await CheckAsync(
+                    service,
+                    OperationTimeout,
                     context.CancellationToken);
                 foreach (var (name, entry) in report.Entries
                     .OrderBy(entry => entry.Key, StringComparer.Ordinal))
@@ -60,6 +64,21 @@ internal static class HealthCheckPipelineExtensions
 #pragma warning restore ASPIREPIPELINES001
 
         return builder;
+    }
+
+    internal static Task<HealthReport> CheckAsync(
+        HealthCheckService service,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var check = service.CheckHealthAsync(
+            registration => registration.Tags.Contains(
+                PublicHttpsTag),
+            cancellationToken);
+
+        // Keep an outer bound because synchronous certificate verification
+        // cannot observe cancellation. See DotNetDiag/HealthChecks#40.
+        return check.WaitAsync(timeout, cancellationToken);
     }
 
     internal static void RequireHealthy(HealthReport report)

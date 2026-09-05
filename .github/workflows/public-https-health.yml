@@ -24,6 +24,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Check public HTTPS endpoints
+        timeout-minutes: 2
         run: >-
           dotnet aspire do check-public-https
           --environment preview

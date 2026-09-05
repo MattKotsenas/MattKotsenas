@@ -85,4 +85,45 @@ public sealed class PublicHttpsHealthTests
             "No public HTTPS health checks",
             exception.Message);
     }
+
+    [Fact]
+    public async Task PublicHttpsCheckHasOperationTimeout()
+    {
+        var started = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var stalled =
+            new TaskCompletionSource<HealthCheckResult>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddHealthChecks().AddAsyncCheck(
+            "stalled",
+            _ =>
+            {
+                started.SetResult();
+                return stalled.Task;
+            },
+            tags:
+            [
+                HealthCheckPipelineExtensions.PublicHttpsTag,
+            ]);
+        await using var provider = services.BuildServiceProvider();
+
+        var check = HealthCheckPipelineExtensions.CheckAsync(
+            provider.GetRequiredService<HealthCheckService>(),
+            TimeSpan.FromSeconds(1),
+            TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(
+            TestContext.Current.CancellationToken);
+
+        try
+        {
+            await Assert.ThrowsAsync<TimeoutException>(
+                async () => await check);
+        }
+        finally
+        {
+            stalled.TrySetResult(HealthCheckResult.Healthy());
+        }
+    }
 }
