@@ -8,6 +8,9 @@ using Azure.Provisioning.Expressions;
 using Microsoft.Extensions.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
+builder.AddPublicHttpsHealthCheckPipeline(
+    BlogDomains.PublicHostnames);
+
 var repositoryRoot = Path.GetFullPath(
     Path.Combine(builder.AppHostDirectory, "..", ".."));
 var isRunMode = builder.ExecutionContext.IsRunMode;

@@ -73,11 +73,11 @@ internal static class DnsExtensions
         infrastructure.Add(legacyRootVerificationId);
 
         var rootZone = DnsZone.FromExisting("rootZone");
-        rootZone.Name = "kotsenas.com";
+        rootZone.Name = BlogDomains.Root;
         infrastructure.Add(rootZone);
 
         var blogZone = DnsZone.FromExisting("blogZone");
-        blogZone.Name = "matt.kotsenas.com";
+        blogZone.Name = BlogDomains.Blog;
         infrastructure.Add(blogZone);
 
         AddWebsiteRecords(
