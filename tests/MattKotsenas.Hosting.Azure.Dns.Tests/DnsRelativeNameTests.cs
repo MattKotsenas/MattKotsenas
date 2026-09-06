@@ -38,6 +38,15 @@ public sealed class DnsRelativeNameTests
     }
 
     [Fact]
+    public void DefaultValueIsInvalid()
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => default(DnsRelativeName).Value);
+        Assert.Throws<InvalidOperationException>(
+            () => default(DnsRelativeName).ToString());
+    }
+
+    [Fact]
     public void OversizedNamesAreRejected()
     {
         Assert.Throws<ArgumentException>(

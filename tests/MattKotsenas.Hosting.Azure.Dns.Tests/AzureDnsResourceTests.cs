@@ -481,7 +481,9 @@ public sealed class AzureDnsResourceTests
                 name,
                 infrastructure =>
                 {
-                    infrastructure.ApplyAzureDnsZoneScope();
+                    ((IAzureDnsRecordResource)
+                        infrastructure.AspireResource)
+                        .ApplyAzureDnsZoneScope(infrastructure);
                     infrastructure.Add(new ProvisioningOutput(
                         "id",
                         typeof(string))

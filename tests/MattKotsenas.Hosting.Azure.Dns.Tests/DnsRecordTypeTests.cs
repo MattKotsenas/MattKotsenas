@@ -32,6 +32,8 @@ public sealed class DnsRecordTypeTests
     {
         Assert.Throws<InvalidOperationException>(
             () => default(DnsRecordType).Value);
+        Assert.Throws<InvalidOperationException>(
+            () => default(DnsRecordType).ToString());
     }
 
     [Fact]

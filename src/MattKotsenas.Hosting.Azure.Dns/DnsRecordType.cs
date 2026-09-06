@@ -3,8 +3,13 @@ namespace MattKotsenas.Hosting.Azure.Dns;
 /// <summary>
 /// Identifies a DNS resource-record type.
 /// </summary>
+/// <remarks>
+/// The default value is uninitialized and cannot identify a record type.
+/// </remarks>
 public readonly record struct DnsRecordType
 {
+    internal const string UninitializedMessage =
+        "The DNS record type is uninitialized.";
     private readonly string? _value;
 
     private DnsRecordType(string value)
@@ -17,7 +22,7 @@ public readonly record struct DnsRecordType
     /// </summary>
     public string Value => _value ??
         throw new InvalidOperationException(
-            "The DNS record type is uninitialized.");
+            UninitializedMessage);
 
     /// <summary>
     /// Gets the IPv4 address record type.
@@ -54,6 +59,5 @@ public readonly record struct DnsRecordType
     }
 
     /// <inheritdoc />
-    public override string ToString() =>
-        _value ?? string.Empty;
+    public override string ToString() => Value;
 }

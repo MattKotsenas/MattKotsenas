@@ -87,19 +87,17 @@ public static class AzureDnsResourceBuilderExtensions
         object address)
     {
         ArgumentNullException.ThrowIfNull(zone);
-        ArgumentNullException.ThrowIfNull(relativeName);
         ArgumentNullException.ThrowIfNull(address);
         ValidateAddressLiteral(address);
         var valueKind = ValidateParameterValue(
             address,
             nameof(address));
-        ValidateRecordName(
-            zone.Resource,
-            relativeName,
-            DnsRecordType.A);
         zone.ThrowIfRecordConflicts(
             relativeName,
             DnsRecordType.A);
+        ValidateHostnameLength(
+            zone.Resource,
+            relativeName);
         var record = zone.ApplicationBuilder.AddResource(
             new AzureDnsARecordResource(
                 name,
@@ -128,18 +126,16 @@ public static class AzureDnsResourceBuilderExtensions
             object target)
     {
         ArgumentNullException.ThrowIfNull(zone);
-        ArgumentNullException.ThrowIfNull(relativeName);
         ArgumentNullException.ThrowIfNull(target);
         var valueKind = ValidateParameterValue(
             target,
             nameof(target));
-        ValidateRecordName(
-            zone.Resource,
-            relativeName,
-            DnsRecordType.Cname);
         zone.ThrowIfRecordConflicts(
             relativeName,
             DnsRecordType.Cname);
+        ValidateHostnameLength(
+            zone.Resource,
+            relativeName);
         var record = zone.ApplicationBuilder.AddResource(
             new AzureDnsCnameRecordResource(
                 name,
@@ -167,18 +163,16 @@ public static class AzureDnsResourceBuilderExtensions
         object value)
     {
         ArgumentNullException.ThrowIfNull(zone);
-        ArgumentNullException.ThrowIfNull(relativeName);
         ArgumentNullException.ThrowIfNull(value);
         var valueKind = ValidateParameterValue(
             value,
             nameof(value));
-        ValidateRecordName(
-            zone.Resource,
-            relativeName,
-            DnsRecordType.Txt);
         zone.ThrowIfRecordConflicts(
             relativeName,
             DnsRecordType.Txt);
+        ValidateHostnameLength(
+            zone.Resource,
+            relativeName);
         var record = zone.ApplicationBuilder.AddResource(
             new AzureDnsTxtRecordResource(
                 name,
@@ -218,11 +212,17 @@ public static class AzureDnsResourceBuilderExtensions
         DnsRecordType recordType)
     {
         ArgumentNullException.ThrowIfNull(zone);
-        ArgumentNullException.ThrowIfNull(relativeName);
+        if (relativeName == default)
+        {
+            throw new ArgumentException(
+                DnsRelativeName.UninitializedMessage,
+                nameof(relativeName));
+        }
+
         if (recordType == default)
         {
             throw new ArgumentException(
-                "The DNS record type is uninitialized.",
+                DnsRecordType.UninitializedMessage,
                 nameof(recordType));
         }
 
@@ -232,11 +232,12 @@ public static class AzureDnsResourceBuilderExtensions
                 ReferenceEquals(record.Parent, zone.Resource) &&
                 record.RelativeName == relativeName)
             .ToArray();
-        if (existing.Any(record =>
-            record.RecordType == default))
+        if (existing.FirstOrDefault(record =>
+                record.RelativeName == default ||
+                record.RecordType == default) is { } invalid)
         {
             throw new InvalidOperationException(
-                $"Azure DNS record '{relativeName.ToHostname(zone.Resource.ZoneName)}' has a resource with an uninitialized record type.");
+                $"Azure DNS resource '{invalid.Name}' has uninitialized identity.");
         }
 
         var conflict = existing.FirstOrDefault(record =>
@@ -255,28 +256,32 @@ public static class AzureDnsResourceBuilderExtensions
     /// <summary>
     /// Applies a parent DNS zone's Azure scope to a custom record resource.
     /// </summary>
+    /// <param name="record">The custom DNS record resource.</param>
     /// <param name="infrastructure">
     /// The custom record's Azure infrastructure.
     /// </param>
     public static void ApplyAzureDnsZoneScope(
-        this AzureResourceInfrastructure infrastructure)
+        this IAzureDnsRecordResource record,
+        AzureResourceInfrastructure infrastructure)
     {
+        ArgumentNullException.ThrowIfNull(record);
         ArgumentNullException.ThrowIfNull(infrastructure);
         if (infrastructure.AspireResource is not
-            AzureBicepResource record ||
-            infrastructure.AspireResource is not
-                IAzureDnsRecordResource dnsRecord)
+            AzureBicepResource azureResource ||
+            !ReferenceEquals(
+                infrastructure.AspireResource,
+                record))
         {
             throw new ArgumentException(
-                "The Aspire resource must be an Azure Bicep DNS record resource.",
+                "The infrastructure must belong to the DNS record resource.",
                 nameof(infrastructure));
         }
 
-        var zone = dnsRecord.Parent;
+        var zone = record.Parent;
         var annotation = zone.Annotations
             .OfType<ExistingAzureResourceAnnotation>()
             .LastOrDefault();
-        record.Scope = annotation switch
+        azureResource.Scope = annotation switch
         {
             {
                 ResourceGroup: not null,
@@ -331,7 +336,7 @@ public static class AzureDnsResourceBuilderExtensions
     {
         var resource = (AzureDnsARecordResource)
             infrastructure.AspireResource;
-        infrastructure.ApplyAzureDnsZoneScope();
+        resource.ApplyAzureDnsZoneScope(infrastructure);
         var target = AddParameter<IPAddress>(
             infrastructure,
             TargetParameterName);
@@ -360,7 +365,7 @@ public static class AzureDnsResourceBuilderExtensions
     {
         var resource = (AzureDnsCnameRecordResource)
             infrastructure.AspireResource;
-        infrastructure.ApplyAzureDnsZoneScope();
+        resource.ApplyAzureDnsZoneScope(infrastructure);
         var target = AddParameter<string>(
             infrastructure,
             TargetParameterName);
@@ -383,7 +388,7 @@ public static class AzureDnsResourceBuilderExtensions
     {
         var resource = (AzureDnsTxtRecordResource)
             infrastructure.AspireResource;
-        infrastructure.ApplyAzureDnsZoneScope();
+        resource.ApplyAzureDnsZoneScope(infrastructure);
         var zone = (DnsZone)resource.Parent
             .AddAsExistingResource(infrastructure);
         var record = new DnsTxtRecord(
@@ -515,24 +520,15 @@ public static class AzureDnsResourceBuilderExtensions
         }
     }
 
-    private static void ValidateRecordName(
+    private static void ValidateHostnameLength(
         AzureDnsZoneResource zone,
-        DnsRelativeName relativeName,
-        DnsRecordType recordType)
+        DnsRelativeName relativeName)
     {
         var hostname = relativeName.ToHostname(zone.ZoneName);
-        if (hostname.Length > 253)
+        if (hostname.Length > DnsRelativeName.MaxNameLength)
         {
             throw new ArgumentException(
                 $"'{hostname}' exceeds the DNS name length limit.",
-                nameof(relativeName));
-        }
-
-        if (recordType == DnsRecordType.Cname &&
-            relativeName.IsApex)
-        {
-            throw new ArgumentException(
-                "A CNAME record cannot be created at the zone apex.",
                 nameof(relativeName));
         }
     }

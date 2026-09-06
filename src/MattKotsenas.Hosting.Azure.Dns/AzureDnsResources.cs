@@ -144,6 +144,13 @@ public sealed class AzureDnsCnameRecordResource
         Action<AzureResourceInfrastructure> configure)
         : base(name, configure)
     {
+        if (relativeName.IsApex)
+        {
+            throw new ArgumentException(
+                "A CNAME record cannot be created at the zone apex.",
+                nameof(relativeName));
+        }
+
         RelativeName = relativeName;
         Parent = parent;
     }
