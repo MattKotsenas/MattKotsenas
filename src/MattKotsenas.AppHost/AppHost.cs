@@ -1,4 +1,5 @@
 using MattKotsenas.AppHost;
+using MattKotsenas.Hosting.Azure.Dns;
 
 using Aspire.Hosting.Azure;
 using Azure.Provisioning;
@@ -55,7 +56,75 @@ if (builder.ExecutionContext.IsPublishMode)
         });
 
     var legacyWeb = builder.AddLegacyWebAppReference();
-    builder.AddBlogDns(legacyWeb);
+    var dnsResourceGroup = builder.AddParameter(
+        "dnsResourceGroupName",
+        "dns",
+        publishValueAsDefault: true);
+    var rootZoneName = builder.AddParameter(
+        "rootDnsZoneName",
+        BlogDomains.Root,
+        publishValueAsDefault: true);
+    var blogZoneName = builder.AddParameter(
+        "blogDnsZoneName",
+        BlogDomains.Blog,
+        publishValueAsDefault: true);
+    // App Service does not expose its shared inbound address through ARM.
+    var legacyWebInboundIpAddress = builder.AddParameter(
+        "legacyWebInboundIpAddress",
+        "168.62.20.37",
+        publishValueAsDefault: true);
+    var legacyRootVerificationId = builder.AddParameter(
+        "legacyRootVerificationId",
+        "F883000E15157DBAA27BE77E3C2BFB8F5B8D3E5BED81331607354AA636C349BE",
+        publishValueAsDefault: true);
+    var rootZone = builder
+        .AddAzureDnsZone("root-zone", BlogDomains.Root)
+        .PublishAsExisting(rootZoneName, dnsResourceGroup);
+    rootZone.Resource.Scope =
+        new AzureBicepResourceScope(dnsResourceGroup.Resource);
+    var blogZone = builder
+        .AddAzureDnsZone("blog-zone", BlogDomains.Blog)
+        .PublishAsExisting(blogZoneName, dnsResourceGroup);
+    blogZone.Resource.Scope =
+        new AzureBicepResourceScope(dnsResourceGroup.Resource);
+    var defaultHostName = legacyWeb.GetOutput("defaultHostName");
+    var verificationId =
+        legacyWeb.GetOutput("customDomainVerificationId");
+
+    rootZone.AddARecord(
+        "root-apex",
+        "@",
+        legacyWebInboundIpAddress);
+    rootZone.AddCnameRecord(
+        "root-www",
+        "www",
+        defaultHostName);
+    rootZone
+        .AddTxtRecord(
+            "root-apex-verification",
+            "asuid",
+            verificationId)
+        .WithValue(legacyRootVerificationId);
+    rootZone.AddTxtRecord(
+        "root-www-verification",
+        "asuid.www",
+        verificationId);
+    blogZone.AddARecord(
+        "blog-apex",
+        "@",
+        legacyWebInboundIpAddress);
+    blogZone.AddCnameRecord(
+        "blog-www",
+        "www",
+        defaultHostName);
+    blogZone.AddTxtRecord(
+        "blog-apex-verification",
+        "asuid",
+        verificationId);
+    blogZone.AddTxtRecord(
+        "blog-www-verification",
+        "asuid.www",
+        verificationId);
 }
 
 var configuredPort = isRunMode
