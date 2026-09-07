@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/MattKotsenas.AppHost/MattKotsenas.AppHost.csproj" />
+    <Project Path="src/MattKotsenas.Hosting.Azure.Dns/MattKotsenas.Hosting.Azure.Dns.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MattKotsenas.AppHost.Tests/MattKotsenas.AppHost.Tests.csproj" />
+    <Project Path="tests/MattKotsenas.Hosting.Azure.Dns.Tests/MattKotsenas.Hosting.Azure.Dns.Tests.csproj" />
   </Folder>
 </Solution>
