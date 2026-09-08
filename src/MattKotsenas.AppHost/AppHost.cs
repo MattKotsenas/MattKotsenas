@@ -91,40 +91,47 @@ if (builder.ExecutionContext.IsPublishMode)
     var verificationId =
         legacyWeb.GetOutput("customDomainVerificationId");
 
-    rootZone.AddARecord(
-        "root-apex",
-        "@",
-        legacyWebInboundIpAddress);
-    rootZone.AddCnameRecord(
-        "root-www",
-        "www",
-        defaultHostName);
     rootZone
-        .AddTxtRecord(
+        .AddARecordSet(
+            "root-apex",
+            "@")
+        .WithAddress(legacyWebInboundIpAddress);
+    rootZone
+        .AddCnameRecordSet(
+            "root-www",
+            "www")
+        .WithTarget(defaultHostName);
+    rootZone
+        .AddTxtRecordSet(
             "root-apex-verification",
-            "asuid",
-            verificationId)
-        .WithValue(legacyRootVerificationId);
-    rootZone.AddTxtRecord(
-        "root-www-verification",
-        "asuid.www",
-        verificationId);
-    blogZone.AddARecord(
-        "blog-apex",
-        "@",
-        legacyWebInboundIpAddress);
-    blogZone.AddCnameRecord(
-        "blog-www",
-        "www",
-        defaultHostName);
-    blogZone.AddTxtRecord(
-        "blog-apex-verification",
-        "asuid",
-        verificationId);
-    blogZone.AddTxtRecord(
-        "blog-www-verification",
-        "asuid.www",
-        verificationId);
+            "asuid")
+        .WithRecord(verificationId)
+        .WithRecord(legacyRootVerificationId);
+    rootZone
+        .AddTxtRecordSet(
+            "root-www-verification",
+            "asuid.www")
+        .WithRecord(verificationId);
+    blogZone
+        .AddARecordSet(
+            "blog-apex",
+            "@")
+        .WithAddress(legacyWebInboundIpAddress);
+    blogZone
+        .AddCnameRecordSet(
+            "blog-www",
+            "www")
+        .WithTarget(defaultHostName);
+    blogZone
+        .AddTxtRecordSet(
+            "blog-apex-verification",
+            "asuid")
+        .WithRecord(verificationId);
+    blogZone
+        .AddTxtRecordSet(
+            "blog-www-verification",
+            "asuid.www")
+        .WithRecord(verificationId);
 }
 
 var configuredPort = isRunMode

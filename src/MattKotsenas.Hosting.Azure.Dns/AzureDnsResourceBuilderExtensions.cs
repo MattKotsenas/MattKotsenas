@@ -1,10 +1,11 @@
 using System.Net;
+using System.Net.Sockets;
 
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Azure;
-using Azure.Provisioning;
 using Azure.Core;
+using Azure.Provisioning;
 using Azure.Provisioning.Dns;
 
 namespace MattKotsenas.Hosting.Azure.Dns;
@@ -19,6 +20,7 @@ public static class AzureDnsResourceBuilderExtensions
 {
     private static readonly TimeSpan DefaultTimeToLive =
         TimeSpan.FromHours(1);
+
     /// <summary>
     /// Adds an Azure DNS zone.
     /// </summary>
@@ -86,147 +88,202 @@ public static class AzureDnsResourceBuilderExtensions
                     Location = new AzureLocation("global"),
                     ZoneType = DnsZoneType.Public,
                 });
-        AddOutput(infrastructure, "id", zone.Id);
-        infrastructure.Add(new ProvisioningOutput(
-            "name",
-            typeof(string))
+
+        foreach (var recordSet in resource.RecordSets)
         {
-            Value = zone.Name,
-        });
-    }
-
-    /// <summary>Adds an Azure DNS A record.</summary>
-    public static IResourceBuilder<AzureDnsARecordResource> AddARecord(
-        this IResourceBuilder<AzureDnsZoneResource> zone,
-        string name,
-        string relativeName,
-        object address,
-        TimeSpan? timeToLive = null)
-    {
-        relativeName = NormalizeRelativeName(relativeName);
-        ThrowIfDuplicate<AzureDnsARecordResource>(zone, relativeName);
-        var record = zone.ApplicationBuilder.AddResource(
-            new AzureDnsARecordResource(
-                name,
-                relativeName,
-                zone.Resource,
-                ValidateTtl(timeToLive),
-                ConfigureARecord));
-        return SetParameter(record, "target", address);
-    }
-
-    /// <summary>Adds an Azure DNS CNAME record.</summary>
-    public static IResourceBuilder<AzureDnsCnameRecordResource>
-        AddCnameRecord(
-            this IResourceBuilder<AzureDnsZoneResource> zone,
-            string name,
-            string relativeName,
-            object target,
-            TimeSpan? timeToLive = null)
-    {
-        relativeName = NormalizeRelativeName(relativeName);
-        ThrowIfDuplicate<AzureDnsCnameRecordResource>(zone, relativeName);
-        var record = zone.ApplicationBuilder.AddResource(
-            new AzureDnsCnameRecordResource(
-                name,
-                relativeName,
-                zone.Resource,
-                ValidateTtl(timeToLive),
-                ConfigureCnameRecord));
-        return SetParameter(record, "target", target);
-    }
-
-    /// <summary>Adds an Azure DNS TXT record.</summary>
-    public static IResourceBuilder<AzureDnsTxtRecordResource> AddTxtRecord(
-        this IResourceBuilder<AzureDnsZoneResource> zone,
-        string name,
-        string relativeName,
-        object value,
-        TimeSpan? timeToLive = null)
-    {
-        relativeName = NormalizeRelativeName(relativeName);
-        ThrowIfDuplicate<AzureDnsTxtRecordResource>(zone, relativeName);
-        var record = zone.ApplicationBuilder.AddResource(
-            new AzureDnsTxtRecordResource(
-                name,
-                relativeName,
-                zone.Resource,
-                ValidateTtl(timeToLive),
-                ConfigureTxtRecord));
-        return record.WithValue(value);
-    }
-
-    /// <summary>Adds another TXT value.</summary>
-    public static IResourceBuilder<AzureDnsTxtRecordResource> WithValue(
-        this IResourceBuilder<AzureDnsTxtRecordResource> record,
-        object value)
-    {
-        var parameterName =
-            $"value{record.Resource.Annotations.OfType<AzureDnsTxtValueAnnotation>().Count()}";
-        return SetParameter(record, parameterName, value)
-            .WithAnnotation(
-                new AzureDnsTxtValueAnnotation(parameterName),
-                ResourceAnnotationMutationBehavior.Append);
-    }
-
-    private static void ConfigureARecord(
-        AzureResourceInfrastructure infrastructure)
-    {
-        var resource = (AzureDnsARecordResource)infrastructure.AspireResource;
-        ApplyParentScope(resource);
-        var target = AddParameter<IPAddress>(infrastructure, "target");
-        var zone = (DnsZone)resource.Parent.AddAsExistingResource(infrastructure);
-        var record = new DnsARecord(resource.GetBicepIdentifier())
-        {
-            Parent = zone,
-            Name = resource.RelativeName,
-            TtlInSeconds = (int)resource.TimeToLive.TotalSeconds,
-            ARecords = { new DnsARecordInfo { Ipv4Address = target } },
-        };
-        infrastructure.Add(record);
-        AddOutput(infrastructure, "id", record.Id);
-    }
-
-    private static void ConfigureCnameRecord(
-        AzureResourceInfrastructure infrastructure)
-    {
-        var resource = (AzureDnsCnameRecordResource)infrastructure.AspireResource;
-        ApplyParentScope(resource);
-        var target = AddParameter<string>(infrastructure, "target");
-        var zone = (DnsZone)resource.Parent.AddAsExistingResource(infrastructure);
-        var record = new DnsCnameRecord(resource.GetBicepIdentifier())
-        {
-            Parent = zone,
-            Name = resource.RelativeName,
-            TtlInSeconds = (int)resource.TimeToLive.TotalSeconds,
-            Cname = target,
-        };
-        infrastructure.Add(record);
-        AddOutput(infrastructure, "id", record.Id);
-    }
-
-    private static void ConfigureTxtRecord(
-        AzureResourceInfrastructure infrastructure)
-    {
-        var resource = (AzureDnsTxtRecordResource)infrastructure.AspireResource;
-        ApplyParentScope(resource);
-        var zone = (DnsZone)resource.Parent.AddAsExistingResource(infrastructure);
-        var record = new DnsTxtRecord(resource.GetBicepIdentifier())
-        {
-            Parent = zone,
-            Name = resource.RelativeName,
-            TtlInSeconds = (int)resource.TimeToLive.TotalSeconds,
-        };
-        foreach (var value in resource.Annotations.OfType<AzureDnsTxtValueAnnotation>())
-        {
-            var parameter = AddParameter<string>(infrastructure, value.ParameterName);
-            record.TxtRecords.Add(new DnsTxtRecordInfo
+            switch (recordSet)
             {
-                Values = { parameter },
-            });
+                case AzureDnsARecordSetResource a:
+                    AddARecordSet(infrastructure, zone, a);
+                    break;
+                case AzureDnsCnameRecordSetResource cname:
+                    AddCnameRecordSet(
+                        infrastructure,
+                        zone,
+                        cname);
+                    break;
+                case AzureDnsTxtRecordSetResource txt:
+                    AddTxtRecordSet(
+                        infrastructure,
+                        zone,
+                        txt);
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        $"Unsupported Azure DNS record set type '{recordSet.GetType().Name}'.");
+            }
         }
-        infrastructure.Add(record);
-        AddOutput(infrastructure, "id", record.Id);
+    }
+
+    /// <summary>Adds an Azure DNS A record set.</summary>
+    public static IResourceBuilder<AzureDnsARecordSetResource> AddARecordSet(
+        this IResourceBuilder<AzureDnsZoneResource> zone,
+        [ResourceName] string name,
+        string relativeName,
+        TimeSpan? timeToLive = null)
+    {
+        ArgumentNullException.ThrowIfNull(zone);
+        relativeName = NormalizeRelativeName(relativeName);
+        var ttl = timeToLive ?? DefaultTimeToLive;
+        ValidateTtl(ttl);
+        ThrowIfConflict<AzureDnsARecordSetResource>(
+            zone,
+            relativeName);
+        return AddRecordSet(
+            zone,
+            new AzureDnsARecordSetResource(
+                name,
+                relativeName,
+                zone.Resource,
+                ttl));
+    }
+
+    /// <summary>Adds an IPv4 address to an Azure DNS A record set.</summary>
+    public static IResourceBuilder<AzureDnsARecordSetResource> WithAddress(
+        this IResourceBuilder<AzureDnsARecordSetResource> recordSet,
+        IPAddress address)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        if (address.AddressFamily is not AddressFamily.InterNetwork)
+        {
+            throw new ArgumentException(
+                "An A record requires an IPv4 address.",
+                nameof(address));
+        }
+
+        return AddAddressValue(
+            recordSet,
+            ReferenceExpression.Create($"{address.ToString()}"));
+    }
+
+    /// <summary>Adds a parameterized IPv4 address to an Azure DNS A record set.</summary>
+    public static IResourceBuilder<AzureDnsARecordSetResource> WithAddress(
+        this IResourceBuilder<AzureDnsARecordSetResource> recordSet,
+        IResourceBuilder<ParameterResource> address)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        return AddAddressValue(
+            recordSet,
+            address.Resource);
+    }
+
+    /// <summary>Adds a dynamic Aspire value as an IPv4 address.</summary>
+    public static IResourceBuilder<AzureDnsARecordSetResource> WithAddress(
+        this IResourceBuilder<AzureDnsARecordSetResource> recordSet,
+        IExpressionValue address)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        return AddAddressValue(recordSet, address);
+    }
+
+    /// <summary>Adds an Azure DNS CNAME record set.</summary>
+    public static IResourceBuilder<AzureDnsCnameRecordSetResource>
+        AddCnameRecordSet(
+        this IResourceBuilder<AzureDnsZoneResource> zone,
+        [ResourceName] string name,
+        string relativeName,
+        TimeSpan? timeToLive = null)
+    {
+        ArgumentNullException.ThrowIfNull(zone);
+        relativeName = NormalizeRelativeName(relativeName);
+        var ttl = timeToLive ?? DefaultTimeToLive;
+        ValidateTtl(ttl);
+        ThrowIfConflict<AzureDnsCnameRecordSetResource>(
+            zone,
+            relativeName);
+        return AddRecordSet(
+            zone,
+            new AzureDnsCnameRecordSetResource(
+                name,
+                relativeName,
+                zone.Resource,
+                ttl));
+    }
+
+    /// <summary>Sets the target of an Azure DNS CNAME record set.</summary>
+    public static IResourceBuilder<AzureDnsCnameRecordSetResource> WithTarget(
+        this IResourceBuilder<AzureDnsCnameRecordSetResource> recordSet,
+        string target)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(target);
+        return SetTargetValue(
+            recordSet,
+            ReferenceExpression.Create($"{target}"));
+    }
+
+    /// <summary>Sets a parameterized target on an Azure DNS CNAME record set.</summary>
+    public static IResourceBuilder<AzureDnsCnameRecordSetResource> WithTarget(
+        this IResourceBuilder<AzureDnsCnameRecordSetResource> recordSet,
+        IResourceBuilder<ParameterResource> target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return SetTargetValue(
+            recordSet,
+            target.Resource);
+    }
+
+    /// <summary>Sets a dynamic Aspire value as a CNAME target.</summary>
+    public static IResourceBuilder<AzureDnsCnameRecordSetResource> WithTarget(
+        this IResourceBuilder<AzureDnsCnameRecordSetResource> recordSet,
+        IExpressionValue target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return SetTargetValue(recordSet, target);
+    }
+
+    /// <summary>Adds an Azure DNS TXT record set.</summary>
+    public static IResourceBuilder<AzureDnsTxtRecordSetResource>
+        AddTxtRecordSet(
+        this IResourceBuilder<AzureDnsZoneResource> zone,
+        [ResourceName] string name,
+        string relativeName,
+        TimeSpan? timeToLive = null)
+    {
+        ArgumentNullException.ThrowIfNull(zone);
+        relativeName = NormalizeRelativeName(relativeName);
+        var ttl = timeToLive ?? DefaultTimeToLive;
+        ValidateTtl(ttl);
+        ThrowIfConflict<AzureDnsTxtRecordSetResource>(
+            zone,
+            relativeName);
+        return AddRecordSet(
+            zone,
+            new AzureDnsTxtRecordSetResource(
+                name,
+                relativeName,
+                zone.Resource,
+                ttl));
+    }
+
+    /// <summary>Adds a TXT record to an Azure DNS TXT record set.</summary>
+    public static IResourceBuilder<AzureDnsTxtRecordSetResource> WithRecord(
+        this IResourceBuilder<AzureDnsTxtRecordSetResource> recordSet,
+        string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return AddTxtRecordValue(
+            recordSet,
+            ReferenceExpression.Create($"{value}"));
+    }
+
+    /// <summary>Adds a parameterized TXT record to an Azure DNS TXT record set.</summary>
+    public static IResourceBuilder<AzureDnsTxtRecordSetResource> WithRecord(
+        this IResourceBuilder<AzureDnsTxtRecordSetResource> recordSet,
+        IResourceBuilder<ParameterResource> value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return AddTxtRecordValue(
+            recordSet,
+            value.Resource);
+    }
+
+    /// <summary>Adds a dynamic Aspire value as a TXT record.</summary>
+    public static IResourceBuilder<AzureDnsTxtRecordSetResource> WithRecord(
+        this IResourceBuilder<AzureDnsTxtRecordSetResource> recordSet,
+        IExpressionValue value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return AddTxtRecordValue(recordSet, value);
     }
 
     private static string NormalizeRelativeName(string value)
@@ -235,93 +292,210 @@ public static class AzureDnsResourceBuilderExtensions
         return value.ToLowerInvariant();
     }
 
-    private static void ApplyParentScope(
-        AzureBicepResource record)
+    private static IResourceBuilder<T> AddRecordSet<T>(
+        IResourceBuilder<AzureDnsZoneResource> zone,
+        T recordSet)
+        where T : AzureDnsRecordSetResource
     {
-        var dnsRecord = (AzureDnsRecordResource)record;
-        var annotation = dnsRecord.Parent.Annotations
-            .OfType<ExistingAzureResourceAnnotation>()
-            .LastOrDefault();
-        record.Scope = dnsRecord.Parent.Scope ??
-            (annotation switch
-            {
-                {
-                    ResourceGroup: not null,
-                    Subscription: not null,
-                } => new AzureBicepResourceScope(
-                    annotation.ResourceGroup,
-                    annotation.Subscription),
-                { ResourceGroup: not null } =>
-                    new AzureBicepResourceScope(
-                        annotation.ResourceGroup),
-                _ => null,
-            });
+        var builder = zone.ApplicationBuilder.AddResource(recordSet);
+        zone.Resource.RecordSets.Add(recordSet);
+        return builder;
     }
 
-    private static TimeSpan ValidateTtl(TimeSpan? timeToLive)
+    private static void ValidateTtl(TimeSpan timeToLive)
     {
-        var ttl = timeToLive ?? DefaultTimeToLive;
-        if (ttl <= TimeSpan.Zero ||
-            ttl.Ticks % TimeSpan.TicksPerSecond != 0 ||
-            ttl.TotalSeconds > int.MaxValue)
+        if (timeToLive <= TimeSpan.Zero ||
+            timeToLive.Ticks % TimeSpan.TicksPerSecond != 0 ||
+            timeToLive.TotalSeconds > int.MaxValue)
         {
             throw new ArgumentOutOfRangeException(nameof(timeToLive));
         }
-        return ttl;
     }
 
-    private static void ThrowIfDuplicate<T>(
+    private static void ThrowIfConflict<T>(
         IResourceBuilder<AzureDnsZoneResource> zone,
         string relativeName)
-        where T : AzureDnsRecordResource
+        where T : AzureDnsRecordSetResource
     {
-        if (zone.ApplicationBuilder.Resources
+        var recordSets = zone.Resource.RecordSets
+            .Where(record => record.RelativeName == relativeName)
+            .ToList();
+        if (recordSets
             .OfType<T>()
-            .Any(record =>
-                ReferenceEquals(record.Parent, zone.Resource) &&
-                record.RelativeName == relativeName))
+            .Any())
         {
             throw new InvalidOperationException(
-                $"DNS record '{relativeName}' is already registered.");
+                $"DNS record set '{relativeName}' is already registered.");
+        }
+        if ((typeof(T) == typeof(AzureDnsCnameRecordSetResource) &&
+             recordSets.Count > 0) ||
+            recordSets.OfType<AzureDnsCnameRecordSetResource>().Any())
+        {
+            throw new InvalidOperationException(
+                $"A CNAME record set cannot coexist with another record set at '{relativeName}'.");
         }
     }
 
-    private static IResourceBuilder<T> SetParameter<T>(
-        IResourceBuilder<T> resource,
-        string name,
-        object value)
-        where T : AzureBicepResource =>
-        value switch
-        {
-            string text => resource.WithParameter(name, text),
-            IResourceBuilder<ParameterResource> parameter =>
-                resource.WithParameter(name, parameter),
-            BicepOutputReference output =>
-                resource.WithParameter(name, output),
-            ReferenceExpression expression =>
-                resource.WithParameter(name, expression),
-            _ => throw new ArgumentException(
-                $"Unsupported parameter value '{value.GetType().Name}'.",
-                nameof(value)),
-        };
-
-    private static ProvisioningParameter AddParameter<T>(
-        Infrastructure infrastructure,
-        string name)
+    private static void AddARecordSet(
+        AzureResourceInfrastructure infrastructure,
+        DnsZone zone,
+        AzureDnsARecordSetResource resource)
     {
-        var parameter = new ProvisioningParameter(name, typeof(T));
-        infrastructure.Add(parameter);
-        return parameter;
+        var recordSet = new DnsARecord(
+            Infrastructure.NormalizeBicepIdentifier(resource.Name))
+        {
+            Parent = zone,
+            Name = resource.RelativeName,
+            TtlInSeconds = (int)resource.TimeToLive.TotalSeconds,
+        };
+        for (var index = 0; index < resource.Addresses.Count; index++)
+        {
+            recordSet.ARecords.Add(new DnsARecordInfo
+            {
+                Ipv4Address = resource.Addresses[index]
+                    .AsProvisioningParameter(
+                        infrastructure,
+                        Infrastructure.NormalizeBicepIdentifier(
+                            $"{resource.Name}_address_{index}"),
+                        GetIsSecure(resource.Addresses[index])),
+            });
+        }
+        infrastructure.Add(recordSet);
     }
 
-    private static void AddOutput(
-        Infrastructure infrastructure,
-        string name,
-        BicepValue<ResourceIdentifier> value) =>
-        infrastructure.Add(new ProvisioningOutput(name, typeof(string))
+    private static void AddCnameRecordSet(
+        AzureResourceInfrastructure infrastructure,
+        DnsZone zone,
+        AzureDnsCnameRecordSetResource resource)
+    {
+        var recordSet = new DnsCnameRecord(
+            Infrastructure.NormalizeBicepIdentifier(resource.Name))
         {
-            Value = value,
-        });
+            Parent = zone,
+            Name = resource.RelativeName,
+            TtlInSeconds = (int)resource.TimeToLive.TotalSeconds,
+        };
+        if (resource.Target is { } target)
+        {
+            recordSet.Cname = target.AsProvisioningParameter(
+                infrastructure,
+                Infrastructure.NormalizeBicepIdentifier(
+                    $"{resource.Name}_target_0"),
+                GetIsSecure(target));
+        }
+        infrastructure.Add(recordSet);
+    }
+
+    private static void AddTxtRecordSet(
+        AzureResourceInfrastructure infrastructure,
+        DnsZone zone,
+        AzureDnsTxtRecordSetResource resource)
+    {
+        var recordSet = new DnsTxtRecord(
+            Infrastructure.NormalizeBicepIdentifier(resource.Name))
+        {
+            Parent = zone,
+            Name = resource.RelativeName,
+            TtlInSeconds = (int)resource.TimeToLive.TotalSeconds,
+        };
+        for (var index = 0; index < resource.Records.Count; index++)
+        {
+            recordSet.TxtRecords.Add(new DnsTxtRecordInfo
+            {
+                Values =
+                {
+                    resource.Records[index]
+                        .AsProvisioningParameter(
+                            infrastructure,
+                            Infrastructure.NormalizeBicepIdentifier(
+                                $"{resource.Name}_record_{index}"),
+                            GetIsSecure(resource.Records[index])),
+                },
+            });
+        }
+        infrastructure.Add(recordSet);
+    }
+
+    private static IResourceBuilder<AzureDnsARecordSetResource>
+        AddAddressValue(
+            IResourceBuilder<AzureDnsARecordSetResource> recordSet,
+            IExpressionValue address)
+    {
+        ArgumentNullException.ThrowIfNull(recordSet);
+        AddReferenceRelationship(GetZoneBuilder(recordSet), address);
+        recordSet.Resource.Addresses.Add(address);
+        return recordSet;
+    }
+
+    private static IResourceBuilder<AzureDnsCnameRecordSetResource>
+        SetTargetValue(
+            IResourceBuilder<AzureDnsCnameRecordSetResource> recordSet,
+            IExpressionValue target)
+    {
+        ArgumentNullException.ThrowIfNull(recordSet);
+        if (recordSet.Resource.Target is not null)
+        {
+            throw new InvalidOperationException(
+                $"CNAME record set '{recordSet.Resource.RelativeName}' already has a target.");
+        }
+        AddReferenceRelationship(GetZoneBuilder(recordSet), target);
+        recordSet.Resource.Target = target;
+        return recordSet;
+    }
+
+    private static IResourceBuilder<AzureDnsTxtRecordSetResource>
+        AddTxtRecordValue(
+            IResourceBuilder<AzureDnsTxtRecordSetResource> recordSet,
+            IExpressionValue value)
+    {
+        ArgumentNullException.ThrowIfNull(recordSet);
+        AddReferenceRelationship(GetZoneBuilder(recordSet), value);
+        recordSet.Resource.Records.Add(value);
+        return recordSet;
+    }
+
+    private static IResourceBuilder<AzureDnsZoneResource> GetZoneBuilder<T>(
+        IResourceBuilder<T> recordSet)
+        where T : AzureDnsRecordSetResource =>
+        recordSet.ApplicationBuilder.CreateResourceBuilder(
+            recordSet.Resource.Parent);
+
+    private static void AddReferenceRelationship(
+        IResourceBuilder<AzureDnsZoneResource> zone,
+        IExpressionValue value)
+    {
+        AddReferenceRelationship(zone, (object)value);
+
+        static void AddReferenceRelationship(
+            IResourceBuilder<AzureDnsZoneResource> zone,
+            object value)
+        {
+            if (value is IResource resource)
+            {
+                zone.WithReferenceRelationship(resource);
+            }
+            if (value is IValueWithReferences references)
+            {
+                foreach (var reference in references.References)
+                {
+                    AddReferenceRelationship(zone, reference);
+                }
+            }
+        }
+    }
+
+    private static bool? GetIsSecure(IExpressionValue value) =>
+        ContainsSecret(value) ? true : null;
+
+    private static bool ContainsSecret(object value) =>
+        value switch
+        {
+            ParameterResource { Secret: true } => true,
+            IValueWithReferences references
+                when references.References
+                    .Any(ContainsSecret) => true,
+            _ => false,
+        };
 }
 
 #pragma warning restore AZPROVISION001

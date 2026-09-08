@@ -1,13 +1,7 @@
-using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Azure;
-using Azure.Provisioning;
-using Azure.Provisioning.Dns;
-using Azure.Provisioning.Primitives;
 
 namespace MattKotsenas.Hosting.Azure.Dns;
-
-#pragma warning disable AZPROVISION001
 
 /// <summary>
 /// Represents an Azure DNS zone.
@@ -29,38 +23,22 @@ public sealed class AzureDnsZoneResource
     /// </summary>
     public string ZoneName { get; }
 
-    /// <summary>
-    /// Gets the provisioned zone name.
-    /// </summary>
-    public BicepOutputReference NameOutputReference =>
-        new("name", this);
-
-    /// <inheritdoc />
-    public override ProvisionableResource AddAsExistingResource(
-        AzureResourceInfrastructure infra)
-    {
-        var zone = DnsZone.FromExisting(
-            this.GetBicepIdentifier());
-        zone.Name = NameOutputReference.AsProvisioningParameter(
-            infra);
-        infra.Add(zone);
-        return zone;
-    }
+    internal List<AzureDnsRecordSetResource> RecordSets { get; } = [];
 }
 
 /// <summary>
-/// Represents an Azure DNS record.
+/// Represents an Azure DNS record set.
 /// </summary>
-public abstract class AzureDnsRecordResource
-    : AzureProvisioningResource
+public abstract class AzureDnsRecordSetResource
+    : Resource,
+      IResourceWithParent<AzureDnsZoneResource>
 {
-    internal AzureDnsRecordResource(
+    internal AzureDnsRecordSetResource(
         string name,
         string relativeName,
         AzureDnsZoneResource parent,
-        TimeSpan timeToLive,
-        Action<AzureResourceInfrastructure> configure)
-        : base(name, configure)
+        TimeSpan timeToLive)
+        : base(name)
     {
         RelativeName = relativeName;
         Parent = parent;
@@ -80,32 +58,32 @@ public abstract class AzureDnsRecordResource
     public TimeSpan TimeToLive { get; }
 }
 
-/// <summary>Represents an Azure DNS A record.</summary>
-public sealed class AzureDnsARecordResource
-    : AzureDnsRecordResource
+/// <summary>Represents an Azure DNS A record set.</summary>
+public sealed class AzureDnsARecordSetResource
+    : AzureDnsRecordSetResource
 {
-    internal AzureDnsARecordResource(
+    internal AzureDnsARecordSetResource(
         string name,
         string relativeName,
         AzureDnsZoneResource parent,
-        TimeSpan timeToLive,
-        Action<AzureResourceInfrastructure> configure)
-        : base(name, relativeName, parent, timeToLive, configure)
+        TimeSpan timeToLive)
+        : base(name, relativeName, parent, timeToLive)
     {
     }
+
+    internal List<IExpressionValue> Addresses { get; } = [];
 }
 
-/// <summary>Represents an Azure DNS CNAME record.</summary>
-public sealed class AzureDnsCnameRecordResource
-    : AzureDnsRecordResource
+/// <summary>Represents an Azure DNS CNAME record set.</summary>
+public sealed class AzureDnsCnameRecordSetResource
+    : AzureDnsRecordSetResource
 {
-    internal AzureDnsCnameRecordResource(
+    internal AzureDnsCnameRecordSetResource(
         string name,
         string relativeName,
         AzureDnsZoneResource parent,
-        TimeSpan timeToLive,
-        Action<AzureResourceInfrastructure> configure)
-        : base(name, relativeName, parent, timeToLive, configure)
+        TimeSpan timeToLive)
+        : base(name, relativeName, parent, timeToLive)
     {
         if (relativeName == "@")
         {
@@ -114,25 +92,22 @@ public sealed class AzureDnsCnameRecordResource
                 nameof(relativeName));
         }
     }
+
+    internal IExpressionValue? Target { get; set; }
 }
 
-/// <summary>Represents an Azure DNS TXT record.</summary>
-public sealed class AzureDnsTxtRecordResource
-    : AzureDnsRecordResource
+/// <summary>Represents an Azure DNS TXT record set.</summary>
+public sealed class AzureDnsTxtRecordSetResource
+    : AzureDnsRecordSetResource
 {
-    internal AzureDnsTxtRecordResource(
+    internal AzureDnsTxtRecordSetResource(
         string name,
         string relativeName,
         AzureDnsZoneResource parent,
-        TimeSpan timeToLive,
-        Action<AzureResourceInfrastructure> configure)
-        : base(name, relativeName, parent, timeToLive, configure)
+        TimeSpan timeToLive)
+        : base(name, relativeName, parent, timeToLive)
     {
     }
+
+    internal List<IExpressionValue> Records { get; } = [];
 }
-
-internal sealed record AzureDnsTxtValueAnnotation(
-    string ParameterName)
-    : IResourceAnnotation;
-
-#pragma warning restore AZPROVISION001
