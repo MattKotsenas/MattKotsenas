@@ -10,9 +10,13 @@ param legacyWebResourceGroupName string = 'Default-Web-WestUS'
 
 param dnsResourceGroupName string = 'dns'
 
+param rootDnsZoneName string = 'kotsenas.com'
+
 param legacyWebInboundIpAddress string = '168.62.20.37'
 
 param legacyRootVerificationId string = 'F883000E15157DBAA27BE77E3C2BFB8F5B8D3E5BED81331607354AA636C349BE'
+
+param blogDnsZoneName string = 'matt.kotsenas.com'
 
 resource rg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: resourceGroupName
@@ -46,15 +50,30 @@ module legacy_web 'legacy-web/legacy-web.bicep' = {
   }
 }
 
-module blog_dns 'blog-dns/blog-dns.bicep' = {
-  name: 'blog-dns'
+module root_zone 'root-zone/root-zone.bicep' = {
+  name: 'root-zone'
   scope: resourceGroup(dnsResourceGroupName)
   params: {
     location: location
-    defaultHostName: legacy_web.outputs.defaultHostName
-    customDomainVerificationId: legacy_web.outputs.customDomainVerificationId
-    websiteInboundIpAddress: legacyWebInboundIpAddress
-    legacyRootVerificationId: legacyRootVerificationId
+    rootDnsZoneName: rootDnsZoneName
+    root_apex_address_0: legacyWebInboundIpAddress
+    root_www_target_0: legacy_web.outputs.defaultHostName
+    root_apex_verification_record_0: legacy_web.outputs.customDomainVerificationId
+    root_apex_verification_record_1: legacyRootVerificationId
+    root_www_verification_record_0: legacy_web.outputs.customDomainVerificationId
+  }
+}
+
+module blog_zone 'blog-zone/blog-zone.bicep' = {
+  name: 'blog-zone'
+  scope: resourceGroup(dnsResourceGroupName)
+  params: {
+    location: location
+    blogDnsZoneName: blogDnsZoneName
+    blog_apex_address_0: legacyWebInboundIpAddress
+    blog_www_target_0: legacy_web.outputs.defaultHostName
+    blog_apex_verification_record_0: legacy_web.outputs.customDomainVerificationId
+    blog_www_verification_record_0: legacy_web.outputs.customDomainVerificationId
   }
 }
 
