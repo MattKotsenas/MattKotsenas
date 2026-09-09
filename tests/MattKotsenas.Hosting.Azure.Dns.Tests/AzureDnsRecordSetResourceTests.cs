@@ -166,7 +166,7 @@ public sealed class AzureDnsRecordSetResourceTests
     }
 
     [Fact]
-    public void RecordSetValuesAddReferencesToTheZone()
+    public void ZoneOwnsRecordSetValueParameters()
     {
         var builder = DistributedApplication.CreateBuilder();
         var parameter = builder.AddParameter("address");
@@ -182,12 +182,17 @@ public sealed class AzureDnsRecordSetResourceTests
         zone.AddCnameRecordSet("cname", "cname").WithTarget(output);
         zone.AddTxtRecordSet("txt", "txt").WithRecord(expression);
 
-        var references = zone.Resource.Annotations
-            .OfType<ResourceRelationshipAnnotation>()
-            .Select(annotation => annotation.Resource)
-            .ToList();
-        Assert.Contains(parameter.Resource, references);
-        Assert.Contains(source.Resource, references);
+        _ = zone.Resource.GetBicepTemplateString();
+
+        Assert.Same(
+            parameter.Resource,
+            zone.Resource.Parameters["a_address_0"]);
+        Assert.Same(
+            output,
+            zone.Resource.Parameters["cname_target_0"]);
+        Assert.Same(
+            expression,
+            zone.Resource.Parameters["txt_record_0"]);
     }
 
     [Fact]

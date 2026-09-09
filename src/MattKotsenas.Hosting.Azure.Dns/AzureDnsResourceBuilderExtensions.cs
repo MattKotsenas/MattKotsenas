@@ -352,12 +352,10 @@ public static class AzureDnsResourceBuilderExtensions
         {
             recordSet.ARecords.Add(new DnsARecordInfo
             {
-                Ipv4Address = resource.Addresses[index]
-                    .AsProvisioningParameter(
-                        infrastructure,
-                        Infrastructure.NormalizeBicepIdentifier(
-                            $"{resource.Name}_address_{index}"),
-                        GetIsSecure(resource.Addresses[index])),
+                Ipv4Address = AsProvisioningParameter(
+                    resource.Addresses[index],
+                    infrastructure,
+                    $"{resource.Name}_address_{index}"),
             });
         }
         infrastructure.Add(recordSet);
@@ -377,11 +375,10 @@ public static class AzureDnsResourceBuilderExtensions
         };
         if (resource.Target is { } target)
         {
-            recordSet.Cname = target.AsProvisioningParameter(
+            recordSet.Cname = AsProvisioningParameter(
+                target,
                 infrastructure,
-                Infrastructure.NormalizeBicepIdentifier(
-                    $"{resource.Name}_target_0"),
-                GetIsSecure(target));
+                $"{resource.Name}_target_0");
         }
         infrastructure.Add(recordSet);
     }
@@ -404,12 +401,10 @@ public static class AzureDnsResourceBuilderExtensions
             {
                 Values =
                 {
-                    resource.Records[index]
-                        .AsProvisioningParameter(
-                            infrastructure,
-                            Infrastructure.NormalizeBicepIdentifier(
-                                $"{resource.Name}_record_{index}"),
-                            GetIsSecure(resource.Records[index])),
+                    AsProvisioningParameter(
+                        resource.Records[index],
+                        infrastructure,
+                        $"{resource.Name}_record_{index}"),
                 },
             });
         }
@@ -422,7 +417,6 @@ public static class AzureDnsResourceBuilderExtensions
             IExpressionValue address)
     {
         ArgumentNullException.ThrowIfNull(recordSet);
-        AddReferenceRelationship(GetZoneBuilder(recordSet), address);
         recordSet.Resource.Addresses.Add(address);
         return recordSet;
     }
@@ -438,7 +432,6 @@ public static class AzureDnsResourceBuilderExtensions
             throw new InvalidOperationException(
                 $"CNAME record set '{recordSet.Resource.RelativeName}' already has a target.");
         }
-        AddReferenceRelationship(GetZoneBuilder(recordSet), target);
         recordSet.Resource.Target = target;
         return recordSet;
     }
@@ -449,53 +442,27 @@ public static class AzureDnsResourceBuilderExtensions
             IExpressionValue value)
     {
         ArgumentNullException.ThrowIfNull(recordSet);
-        AddReferenceRelationship(GetZoneBuilder(recordSet), value);
         recordSet.Resource.Records.Add(value);
         return recordSet;
     }
 
-    private static IResourceBuilder<AzureDnsZoneResource> GetZoneBuilder<T>(
-        IResourceBuilder<T> recordSet)
-        where T : AzureDnsRecordSetResource =>
-        recordSet.ApplicationBuilder.CreateResourceBuilder(
-            recordSet.Resource.Parent);
-
-    private static void AddReferenceRelationship(
-        IResourceBuilder<AzureDnsZoneResource> zone,
-        IExpressionValue value)
+    private static ProvisioningParameter AsProvisioningParameter(
+        IExpressionValue value,
+        AzureResourceInfrastructure infrastructure,
+        string name)
     {
-        AddReferenceRelationship(zone, (object)value);
-
-        static void AddReferenceRelationship(
-            IResourceBuilder<AzureDnsZoneResource> zone,
-            object value)
+        var parameterName = Infrastructure.NormalizeBicepIdentifier(name);
+        return value switch
         {
-            if (value is IResource resource)
-            {
-                zone.WithReferenceRelationship(resource);
-            }
-            if (value is IValueWithReferences references)
-            {
-                foreach (var reference in references.References)
-                {
-                    AddReferenceRelationship(zone, reference);
-                }
-            }
-        }
-    }
-
-    private static bool? GetIsSecure(IExpressionValue value) =>
-        ContainsSecret(value) ? true : null;
-
-    private static bool ContainsSecret(object value) =>
-        value switch
-        {
-            ParameterResource { Secret: true } => true,
-            IValueWithReferences references
-                when references.References
-                    .Any(ContainsSecret) => true,
-            _ => false,
+            ParameterResource parameter =>
+                parameter.AsProvisioningParameter(
+                    infrastructure,
+                    parameterName),
+            _ => value.AsProvisioningParameter(
+                infrastructure,
+                parameterName),
         };
+    }
 }
 
 #pragma warning restore AZPROVISION001
