@@ -18,6 +18,21 @@ var isRunMode = builder.ExecutionContext.IsRunMode;
 var useDevelopmentContainer =
     isRunMode &&
     !builder.Configuration.GetValue<bool>("Blog:UseProductionContainer");
+var configuredPort = isRunMode
+    ? builder.Configuration.GetValue<int>("Blog:HostPort")
+    : 0;
+var blog = builder
+    .AddDockerfile(
+        "blog",
+        repositoryRoot,
+        "build/Dockerfile",
+        stage: useDevelopmentContainer ? "dev" : "final")
+    .WithHttpEndpoint(
+        port: configuredPort is 0 ? null : configuredPort,
+        targetPort: useDevelopmentContainer ? 1313 : 8080,
+        name: "http")
+    .WithHttpHealthCheck("/", endpointName: "http")
+    .WithExternalHttpEndpoints();
 
 if (builder.ExecutionContext.IsPublishMode)
 {
@@ -132,25 +147,41 @@ if (builder.ExecutionContext.IsPublishMode)
             "blog-www-verification",
             "asuid.www")
         .WithRecord(verificationId);
-}
 
-var configuredPort = isRunMode
-    ? builder.Configuration.GetValue<int>("Blog:HostPort")
-    : 0;
+    var rootDomain = builder.AddParameter(
+        "rootCustomDomain",
+        BlogDomains.Root,
+        publishValueAsDefault: true);
+    var rootCertificateName = builder.AddParameter(
+        "rootCustomDomainCertificateName",
+        string.Empty,
+        publishValueAsDefault: true);
+    var rootWwwDomain = builder.AddParameter(
+        "rootWwwCustomDomain",
+        $"www.{BlogDomains.Root}",
+        publishValueAsDefault: true);
+    var rootWwwCertificateName = builder.AddParameter(
+        "rootWwwCustomDomainCertificateName",
+        string.Empty,
+        publishValueAsDefault: true);
+    var blogDomain = builder.AddParameter(
+        "blogCustomDomain",
+        BlogDomains.Blog,
+        publishValueAsDefault: true);
+    var blogCertificateName = builder.AddParameter(
+        "blogCustomDomainCertificateName",
+        string.Empty,
+        publishValueAsDefault: true);
+    var blogWwwDomain = builder.AddParameter(
+        "blogWwwCustomDomain",
+        $"www.{BlogDomains.Blog}",
+        publishValueAsDefault: true);
+    var blogWwwCertificateName = builder.AddParameter(
+        "blogWwwCustomDomainCertificateName",
+        string.Empty,
+        publishValueAsDefault: true);
 
-var blog = builder
-    .AddDockerfile(
-        "blog",
-        repositoryRoot,
-        "build/Dockerfile",
-        stage: useDevelopmentContainer ? "dev" : "final")
-    .WithHttpEndpoint(
-        port: configuredPort is 0 ? null : configuredPort,
-        targetPort: useDevelopmentContainer ? 1313 : 8080,
-        name: "http")
-    .WithHttpHealthCheck("/", endpointName: "http")
-    .WithExternalHttpEndpoints()
-    .PublishAsAzureContainerApp((_, containerApp) =>
+    blog.PublishAsAzureContainerApp((_, containerApp) =>
     {
         containerApp.Template.Scale.MinReplicas = 1;
         containerApp.Template.Scale.MaxReplicas = 1;
@@ -158,7 +189,21 @@ var blog = builder
         var container = containerApp.Template.Containers[0].Value!;
         container.Resources.Cpu = 0.25;
         container.Resources.Memory = "0.5Gi";
+
+        containerApp.ConfigureCustomDomain(
+            rootDomain,
+            rootCertificateName);
+        containerApp.ConfigureCustomDomain(
+            rootWwwDomain,
+            rootWwwCertificateName);
+        containerApp.ConfigureCustomDomain(
+            blogDomain,
+            blogCertificateName);
+        containerApp.ConfigureCustomDomain(
+            blogWwwDomain,
+            blogWwwCertificateName);
     });
+}
 
 if (useDevelopmentContainer)
 {
