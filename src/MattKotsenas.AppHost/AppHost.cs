@@ -155,7 +155,7 @@ if (builder.ExecutionContext.IsPublishMode)
     var rootCertificateName = builder.AddParameter(
         "rootCustomDomainCertificateName",
         string.Empty,
-        publishValueAsDefault: true);
+        publishValueAsDefault: true).AsOptional();
     var rootWwwDomain = builder.AddParameter(
         "rootWwwCustomDomain",
         $"www.{BlogDomains.Root}",
@@ -163,7 +163,7 @@ if (builder.ExecutionContext.IsPublishMode)
     var rootWwwCertificateName = builder.AddParameter(
         "rootWwwCustomDomainCertificateName",
         string.Empty,
-        publishValueAsDefault: true);
+        publishValueAsDefault: true).AsOptional();
     var blogDomain = builder.AddParameter(
         "blogCustomDomain",
         BlogDomains.Blog,
@@ -171,7 +171,7 @@ if (builder.ExecutionContext.IsPublishMode)
     var blogCertificateName = builder.AddParameter(
         "blogCustomDomainCertificateName",
         string.Empty,
-        publishValueAsDefault: true);
+        publishValueAsDefault: true).AsOptional();
     var blogWwwDomain = builder.AddParameter(
         "blogWwwCustomDomain",
         $"www.{BlogDomains.Blog}",
@@ -179,7 +179,7 @@ if (builder.ExecutionContext.IsPublishMode)
     var blogWwwCertificateName = builder.AddParameter(
         "blogWwwCustomDomainCertificateName",
         string.Empty,
-        publishValueAsDefault: true);
+        publishValueAsDefault: true).AsOptional();
 
     blog.PublishAsAzureContainerApp((_, containerApp) =>
     {
