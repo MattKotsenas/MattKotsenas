@@ -74,3 +74,5 @@ output AZURE_CONTAINER_APPS_ENVIRONMENT_NAME string = container_apps.name
 output AZURE_CONTAINER_APPS_ENVIRONMENT_ID string = container_apps.id
 
 output AZURE_CONTAINER_APPS_ENVIRONMENT_DEFAULT_DOMAIN string = container_apps.properties.defaultDomain
+
+output AZURE_CONTAINER_APPS_ENVIRONMENT_LOCATION string = toLower(replace(container_apps.location, ' ', ''))
