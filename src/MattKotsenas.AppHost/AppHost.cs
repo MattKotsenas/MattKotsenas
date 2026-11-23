@@ -35,11 +35,16 @@ if (builder.ExecutionContext.IsPublishMode)
     builder.AddAzureContainerAppEnvironment("container-apps")
         .WithDashboard(false);
 
-    var legacyWeb = builder.AddLegacyWebAppReference();
+    var legacyResourceGroup = builder.AddParameter(
+        "legacyWebResourceGroupName",
+        "Default-Web-WestUS",
+        publishValueAsDefault: true);
+    var legacyWeb = builder.AddLegacyWebAppReference(legacyResourceGroup);
     var dnsResourceGroup = builder.AddParameter(
         "dnsResourceGroupName",
         "dns",
         publishValueAsDefault: true);
+    builder.AddDeploymentBootstrap(dnsResourceGroup, legacyResourceGroup);
     var rootZoneName = builder.AddParameter(
         "rootDnsZoneName",
         BlogDomains.Root,
@@ -176,5 +181,9 @@ if (useDevelopmentContainer)
         .WithBindMount(repositoryRoot, "/src")
         .WithArgs("server", "--bind", "0.0.0.0");
 }
+
+#pragma warning disable ASPIREPIPELINES005
+builder.WithOutputDiffing();
+#pragma warning restore ASPIREPIPELINES005
 
 builder.Build().Run();

@@ -4,7 +4,7 @@ using CliWrap;
 using CliWrap.Buffered;
 using Microsoft.Extensions.Configuration;
 
-namespace MattKotsenas.Bootstrap.AppHost;
+namespace MattKotsenas.AppHost;
 
 internal static class BootstrapPreflight
 {
@@ -38,7 +38,7 @@ internal static class BootstrapPreflight
             !Guid.TryParseExact(tenantId, "D", out _) ||
             (configuredTenantId is not null && !string.Equals(configuredTenantId, tenantId, StringComparison.OrdinalIgnoreCase)))
         {
-            throw new InvalidOperationException("Azure CLI account does not match the native Azure subscription and tenant configuration.");
+            throw new InvalidOperationException("Azure CLI account differs from the configured subscription or tenant.");
         }
 
         foreach (var requiredGroup in requiredGroups)
@@ -75,7 +75,7 @@ internal static class BootstrapPreflight
             !string.Equals(matches[0].GetProperty("id").GetString(), expectedId, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(matches[0].GetProperty("tenantId").GetString(), tenantId, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Existing bootstrap identity does not match the expected Azure resource and tenant.");
+            throw new InvalidOperationException("Existing bootstrap identity differs from the expected Azure resource or tenant.");
         }
 
         var credentialsResult = await Cli.Wrap("az")
@@ -104,7 +104,7 @@ internal static class BootstrapPreflight
             credential.GetProperty("subject").GetString() != Subject ||
             !credential.GetProperty("audiences").EnumerateArray().Select(value => value.GetString()).SequenceEqual([Audience], StringComparer.Ordinal))
         {
-            throw new InvalidOperationException("Existing bootstrap identity has unexpected federated trust. No Azure grants will be applied.");
+            throw new InvalidOperationException("Existing bootstrap identity has unexpected federated trust; preflight stopped before role provisioning.");
         }
     }
 }

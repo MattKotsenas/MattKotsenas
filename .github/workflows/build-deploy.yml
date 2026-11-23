@@ -26,26 +26,12 @@ jobs:
       - name: Build AppHost
         run: dotnet build MattKotsenas.slnx --configuration Release
 
-      - name: Generate deployment artifacts
+      - name: Verify generated artifacts
         run: >-
-          dotnet aspire publish
+          dotnet aspire do publish-and-diff
           --output-path generated/azure
           --environment preview
           --non-interactive
-
-      - name: Generate bootstrap artifacts
-        run: >-
-          dotnet aspire publish
-          --apphost src/MattKotsenas.Bootstrap.AppHost
-          --output-path generated/bootstrap
-          --environment preview
-          --non-interactive
-
-      - name: Verify generated artifacts
-        shell: bash
-        run: |
-          git diff --exit-code
-          test -z "$(git ls-files --others --exclude-standard)"
 
       - name: Validate deployment artifacts
         shell: bash
@@ -137,4 +123,4 @@ jobs:
           Azure__Location: westus3
           Azure__ResourceGroup: blog
           Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-        run: sh build/deploy-preview.sh
+        run: dotnet aspire deploy --environment preview --non-interactive

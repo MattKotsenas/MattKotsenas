@@ -1,8 +1,6 @@
 using Aspire.Hosting.ApplicationModel;
-using CliWrap;
-using CliWrap.Buffered;
 using CliWrap.Exceptions;
-using MattKotsenas.Bootstrap.AppHost;
+using MattKotsenas.AppHost;
 using Microsoft.Extensions.Configuration;
 
 namespace MattKotsenas.AppHost.Tests;
@@ -30,7 +28,6 @@ public sealed class BootstrapCliTests
         Assert.Contains("group show --name missing --subscription " + Subscription, cli.Trace);
         Assert.DoesNotContain("group exists", cli.Trace);
         Assert.DoesNotContain("identity", cli.Trace);
-        Assert.DoesNotContain("native deploy", cli.Trace);
     }
 
     [Theory]
@@ -48,32 +45,6 @@ public sealed class BootstrapCliTests
         Assert.Contains($"group show --name {legacy} --subscription {Subscription}", cli.Trace);
         Assert.Contains("group exists --name blog", cli.Trace);
         Assert.DoesNotContain("identity", cli.Trace);
-    }
-
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task PreviewDeploymentInvokesAspireOnlyAfterSuccessfulHostingGroupRead(bool missing)
-    {
-        using var cli = new FakeCli(missing ? "blog" : "missing");
-        Assert.Empty(cli.Trace);
-        var root = Path.GetFullPath(Path.Combine(Projects.MattKotsenas_AppHost.ProjectPath, "..", ".."));
-        var script = Path.Combine(root, "build", "deploy-preview.sh");
-        Assert.True(File.Exists(script), script);
-        var result = await Cli.Wrap("sh").WithArguments([script])
-            .WithEnvironmentVariables(new Dictionary<string, string?> { ["Azure__SubscriptionId"] = Subscription })
-            .WithValidation(CommandResultValidation.None)
-            .ExecuteBufferedAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(missing ? 44 : 0, result.ExitCode);
-        Assert.Contains("group show --name blog --subscription " + Subscription, cli.Trace);
-        if (missing)
-        {
-            Assert.DoesNotContain("native deploy", cli.Trace);
-        }
-        else
-        {
-            Assert.Contains("native deploy aspire deploy --environment preview --non-interactive", cli.Trace);
-        }
     }
 
     private static IConfiguration Configuration() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -105,10 +76,6 @@ public sealed class BootstrapCliTests
                   'group exists') printf '%s\n' false ;;
                   *) exit 95 ;;
                 esac
-                """);
-            // If invoked, this fake stands in for native deployment with creation-capable credentials.
-            Write("dotnet", $$"""
-                printf 'native deploy %s\n' "$*" >> {{trace}}
                 """);
             Environment.SetEnvironmentVariable("PATH", directory + Path.PathSeparator + originalPath);
         }

@@ -31,7 +31,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MattKotsenas.AppHost\MattKotsenas.AppHost.csproj" />
-    <ProjectReference Include="..\..\src\MattKotsenas.Bootstrap.AppHost\MattKotsenas.Bootstrap.AppHost.csproj" />
   </ItemGroup>
 
 </Project>

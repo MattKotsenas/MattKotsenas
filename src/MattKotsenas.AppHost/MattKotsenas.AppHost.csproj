@@ -14,6 +14,8 @@
     <PackageReference Include="Aspire.Hosting.Azure" />
     <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
     <PackageReference Include="Azure.Provisioning.AppService" />
+    <PackageReference Include="Azure.Provisioning.Dns" />
+    <PackageReference Include="CliWrap" />
     <PackageReference Include="DotNetDiag.HealthChecks.Network" />
     <PackageReference Include="DotNetDiag.HealthChecks.Uris" />
   </ItemGroup>

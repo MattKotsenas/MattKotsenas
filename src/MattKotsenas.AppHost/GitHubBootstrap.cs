@@ -2,7 +2,7 @@ using System.Text.Json;
 using CliWrap;
 using CliWrap.Buffered;
 
-namespace MattKotsenas.Bootstrap.AppHost;
+namespace MattKotsenas.AppHost;
 
 internal static class GitHubBootstrap
 {
@@ -26,7 +26,7 @@ internal static class GitHubBootstrap
             repository.GetProperty("name").GetString() != "MattKotsenas" ||
             repository.GetProperty("full_name").GetString() != Repository)
         {
-            throw new InvalidOperationException("GitHub repository metadata does not match the known immutable owner/repository IDs and subject prefix.");
+            throw new InvalidOperationException("GitHub repository metadata differs from the known immutable owner/repository IDs and subject prefix.");
         }
     }
 
@@ -44,7 +44,7 @@ internal static class GitHubBootstrap
             !string.Equals(subscriptionId, expectedSubscriptionId, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(tenantId, expectedTenantId, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Native bootstrap outputs are missing or do not match the verified Azure target. GitHub settings were not changed.");
+            throw new InvalidOperationException("Native bootstrap outputs must contain valid IDs matching the verified Azure target.");
         }
 
         await VerifyRepositoryAsync(cancellationToken);
@@ -76,7 +76,7 @@ internal static class GitHubBootstrap
             !configuration.GetProperty("use_immutable_subject").GetBoolean() ||
             configuration.GetProperty("subject_claim_prefix").GetString() != BootstrapPreflight.SubjectPrefix)
         {
-            throw new InvalidOperationException("GitHub did not establish the expected immutable default OIDC subject. Repository variables were not changed.");
+            throw new InvalidOperationException("GitHub immutable OIDC readback differs from the expected default subject; variable writes stopped.");
         }
     }
 }

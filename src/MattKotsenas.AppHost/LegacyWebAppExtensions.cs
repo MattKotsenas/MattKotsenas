@@ -9,12 +9,9 @@ namespace MattKotsenas.AppHost;
 internal static class LegacyWebAppExtensions
 {
     public static IResourceBuilder<AzureBicepResource> AddLegacyWebAppReference(
-        this IDistributedApplicationBuilder builder)
+        this IDistributedApplicationBuilder builder,
+        IResourceBuilder<ParameterResource> resourceGroup)
     {
-        var resourceGroup = builder.AddParameter(
-            "legacyWebResourceGroupName",
-            "Default-Web-WestUS",
-            publishValueAsDefault: true);
         var legacyWeb = builder.AddAzureInfrastructure(
             "legacy-web",
             infrastructure =>

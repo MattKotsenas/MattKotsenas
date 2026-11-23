@@ -22,18 +22,21 @@ dotnet aspire start
 
 An authorized operator runs the [native Aspire bootstrap](docs/configure-azure-deployment.md) to create a
 main-only GitHub OIDC identity. Aspire owns the blog application and its role assignments inside the `blog`
-resource group. Bootstrap is separate from routine deployment; it does not run in CI.
+resource group. The existing AppHost defines the operator-only `bootstrap` target and routine native deployment
+targets.
 
 [The migration checklist](docs/container-app-migration.md) tracks temporary external permissions, identity
 handoff, registry compatibility, and the later DNS/certificate/traffic stages.
 
 Run the **Build and Deploy** workflow manually to deploy the preview Container App to the existing `blog` resource
-group in West US 3. The workflow checks that the group exists before invoking deployment.
+group in West US 3 with `dotnet aspire deploy --environment preview --non-interactive`. Routine deployment
+selects application resources; bootstrap modules and GitHub settings actions remain unselected. Publish exports
+the full model to `generated/azure`; CI checks that output with `publish-and-diff`.
 
 ## Azure DNS
 
 The publish model owns website records within the existing Azure DNS zones in resource group `dns`. These
-records point to the legacy Web App; preview deployment does not cut public traffic over to Container Apps.
+records point to the legacy Web App throughout preview. Traffic cutover requires separate approval.
 
 ## Public HTTPS health
 

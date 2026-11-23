@@ -6,17 +6,19 @@ using Azure.Provisioning.Authorization;
 using Azure.Provisioning.Dns;
 using Azure.Provisioning.Expressions;
 
-namespace MattKotsenas.Bootstrap.AppHost;
+namespace MattKotsenas.AppHost;
 
 // Temporary permissions for the existing DNS and legacy-site model. Removal gates: docs/container-app-migration.md.
 // The DNS SDK marks its API experimental, including references to existing zones.
 #pragma warning disable AZPROVISION001
 internal static class MigrationPermissions
 {
-    internal static ParameterResource[] AddMigrationPermissions(this IDistributedApplicationBuilder builder, BicepOutputReference principal)
+    internal static AzureBicepResource[] AddMigrationPermissions(
+        this IDistributedApplicationBuilder builder,
+        BicepOutputReference principal,
+        IResourceBuilder<ParameterResource> dnsGroup,
+        IResourceBuilder<ParameterResource> legacyGroup)
     {
-        var dnsGroup = builder.AddParameter("dnsResourceGroupName", "dns", publishValueAsDefault: true);
-        var legacyGroup = builder.AddParameter("legacyWebResourceGroupName", "Default-Web-WestUS", publishValueAsDefault: true);
         var dns = builder.AddAzureInfrastructure("migration-dns-permissions", infrastructure =>
         {
             var principalId = principal.AsProvisioningParameter(infrastructure);
@@ -46,7 +48,7 @@ internal static class MigrationPermissions
             infrastructure.Add(assignment);
         });
         legacy.Resource.Scope = new AzureBicepResourceScope(legacyGroup.Resource);
-        return [dnsGroup.Resource, legacyGroup.Resource];
+        return [dns.Resource, legacy.Resource];
     }
 
     private static RoleAssignment CreateRole(string name, ProvisioningParameter principal, string role) => new(name)

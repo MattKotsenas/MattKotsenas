@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 using Aspire.Hosting;
 using Aspire.Hosting.Azure;
 using Aspire.Hosting.Pipelines;
-using MattKotsenas.Bootstrap.AppHost;
+using MattKotsenas.AppHost;
 using Microsoft.Extensions.Configuration;
 
 namespace MattKotsenas.AppHost.Tests;
@@ -109,7 +109,7 @@ public sealed class BootstrapTests
     public async Task NativeBootstrapDeclaresMainOnlyIdentityAndGroupBoundaryWithExplicitMigrationExceptions()
     {
         var token = TestContext.Current.CancellationToken;
-        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_Bootstrap_AppHost>(["--operation", "publish"], token);
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_AppHost>(["--operation", "publish"], token);
         builder.Services.Configure<PipelineOptions>(options => options.Step = WellKnownPipelineSteps.BeforeStart);
         await using var app = await builder.BuildAsync(token);
         await app.StartAsync(token);
@@ -136,8 +136,47 @@ public sealed class BootstrapTests
         Assert.Contains("scope: legacySite", legacy.GetBicepTemplateString());
     }
 
+    [Theory]
+    [InlineData("dns", "Default-Web-WestUS")]
+    [InlineData("custom-dns-group", "custom-legacy-group")]
+    public async Task BootstrapAndApplicationUseTheSameResolvedExternalGroups(string dnsGroup, string legacyGroup)
+    {
+        var token = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_AppHost>(
+            [
+                "--operation", "publish",
+                "Pipeline:ListSteps=true",
+                "AppHost:DeploymentStatePathSha256=",
+                "AppHost:LegacyDeploymentStatePathSha256=",
+            ], token);
+        builder.Services.Configure<PipelineOptions>(options => options.Step = WellKnownPipelineSteps.BeforeStart);
+        await using var app = await builder.BuildAsync(token);
+        await app.StartAsync(token);
+        var model = app.Services.GetRequiredService<DistributedApplicationModel>();
+        var dnsParameter = Assert.Single(model.Resources.OfType<ParameterResource>(), parameter => parameter.Name == "dnsResourceGroupName");
+        var legacyParameter = Assert.Single(model.Resources.OfType<ParameterResource>(), parameter => parameter.Name == "legacyWebResourceGroupName");
+        Assert.Equal("dns", await dnsParameter.GetValueAsync(token));
+        Assert.Equal("Default-Web-WestUS", await legacyParameter.GetValueAsync(token));
+        await dnsParameter.SetValueAsync(dnsGroup, token);
+        await legacyParameter.SetValueAsync(legacyGroup, token);
+        Assert.Equal(dnsGroup, await dnsParameter.GetValueAsync(token));
+        Assert.Equal(legacyGroup, await legacyParameter.GetValueAsync(token));
+        foreach (var name in new[] { "root-zone", "blog-zone", "migration-dns-permissions" })
+        {
+            var module = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == name));
+            Assert.NotNull(module.Scope);
+            Assert.Same(dnsParameter, module.Scope.ResourceGroup);
+        }
+        var legacyPermissions = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == "migration-legacy-reader"));
+        Assert.NotNull(legacyPermissions.Scope);
+        Assert.Same(legacyParameter, legacyPermissions.Scope.ResourceGroup);
+        var legacyReference = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == "legacy-web"));
+        Assert.Contains("param legacyWebResourceGroupName string", legacyReference.GetBicepTemplateString());
+        Assert.Same(legacyParameter, legacyReference.Parameters["legacyWebResourceGroupName"]);
+    }
+
     [Fact]
-    public async Task ApplicationRegistryNeedsNoPinnedDeploymentPrincipalOrCustomPushAssignment()
+    public async Task ApplicationRegistryUsesNativeRuntimePullAssignments()
     {
         var token = TestContext.Current.CancellationToken;
         var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_AppHost>(["--operation", "publish"], token);
@@ -151,6 +190,9 @@ public sealed class BootstrapTests
         Assert.DoesNotContain("userPrincipalId", template);
         Assert.DoesNotContain("8311e382-0749-4cb8-b61a-304f252e45ec", template);
         Assert.DoesNotContain(model.Resources, resource => resource.Name == "DeploymentPrincipalId");
+        var hosting = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == "container-apps"));
+        Assert.Contains("'7f951dda-4ed3-4680-a7ca-43fe172d538d'", hosting.GetBicepTemplateString());
+        Assert.Contains("principalId: container_apps_mi.properties.principalId", hosting.GetBicepTemplateString());
     }
 
     private static JsonObject Credential() => new()
