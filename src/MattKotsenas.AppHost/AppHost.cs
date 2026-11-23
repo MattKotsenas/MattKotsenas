@@ -220,8 +220,8 @@ if (isRunMode)
         executeCommand: DeploymentSetup.ExecuteAsync,
         commandOptions: new CommandOptions
         {
-            Description = "Configures GitHub-to-Azure OIDC deployment.",
-            ConfirmationMessage = "Create or update the Entra application, federated credential, subscription roles, immutable GitHub OIDC subject, and repository variables?",
+            Description = "Configures GitHub-to-Azure OIDC deployment with scoped grants on existing resources.",
+            ConfirmationMessage = "Create or update the Entra application, federated credential, scoped role grants on existing resources, immutable GitHub OIDC subject, and repository variables? Existing broad grants will not be revoked.",
             IconName = "CloudArrowUp",
             Arguments =
             [
@@ -232,6 +232,13 @@ if (isRunMode)
                     InputType = InputType.Text,
                     Required = false,
                     MaxLength = 36,
+                },
+                new InteractionInput
+                {
+                    Name = "registryResourceId",
+                    Label = "Existing blog container registry resource ID",
+                    InputType = InputType.Text,
+                    Required = true,
                 },
             ],
         });

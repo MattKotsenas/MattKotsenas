@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 
 using Aspire.Hosting.ApplicationModel;
 
+using Azure.Core;
+
 namespace MattKotsenas.AppHost;
 
 internal sealed class DeploymentSetup(ICommandRunner runner)
@@ -20,9 +22,10 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
         try
         {
             var applicationId = context.Arguments.GetString("applicationId");
+            var registryResourceId = context.Arguments.GetString("registryResourceId");
             var configuredApplicationId = await new DeploymentSetup(
                     new CliWrapCommandRunner())
-                .ConfigureAsync(applicationId, context.CancellationToken);
+                .ConfigureAsync(applicationId, context.CancellationToken, registryResourceId);
 
             return CommandResults.Success(
                 $"Configured application '{configuredApplicationId}' for deployments from the main branch.");
@@ -40,7 +43,8 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
 
     internal async Task<string> ConfigureAsync(
         string? applicationId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? registryResourceId = null)
     {
         if (!string.IsNullOrWhiteSpace(applicationId) &&
             !Guid.TryParseExact(applicationId, "D", out _))
@@ -49,12 +53,23 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
                 "The application ID must be a GUID in 00000000-0000-0000-0000-000000000000 format.");
         }
 
+        var registryId = ParseRegistryResourceId(registryResourceId);
         var account = await RunJsonAsync<AzureAccount>(
             "az",
             cancellationToken,
             "account", "show",
             "--only-show-errors",
             "--output", "json");
+        if (!string.Equals(
+                registryId.SubscriptionId,
+                account.Id,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "The registry resource ID must use the current Azure account subscription.");
+        }
+
+        await VerifyExistingResourcesAsync(registryId, account.Id, cancellationToken);
         var repository = await RunJsonAsync<GitHubRepository>(
             "gh",
             cancellationToken,
@@ -62,7 +77,6 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
         var canonicalRepository = $"{repository.Owner.Login}/{repository.Name}";
         var immutableSubjectPrefix =
             $"repo:{repository.Owner.Login}@{repository.Owner.Id}/{repository.Name}@{repository.Id}";
-        var scope = $"/subscriptions/{account.Id}";
 
         var application = string.IsNullOrWhiteSpace(applicationId)
             ? await CreateApplicationAsync(cancellationToken)
@@ -82,7 +96,8 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
         await ConfigureRolesAsync(
             application,
             servicePrincipal,
-            scope,
+            account.Id,
+            registryId,
             cancellationToken);
         await SetRepositoryVariablesAsync(
             canonicalRepository,
@@ -325,32 +340,109 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
         }
     }
 
+    private static ResourceIdentifier ParseRegistryResourceId(string? registryResourceId)
+    {
+        const string error =
+            "Provide the resource ID of an existing registry in resource group 'blog' " +
+            "in the current Azure account subscription.";
+        if (string.IsNullOrWhiteSpace(registryResourceId))
+        {
+            throw new InvalidOperationException(error);
+        }
+
+        try
+        {
+            var registryId = new ResourceIdentifier(registryResourceId);
+            if (!Guid.TryParseExact(registryId.SubscriptionId, "D", out _) ||
+                !string.Equals(registryId.ResourceGroupName, "blog", StringComparison.OrdinalIgnoreCase) ||
+                registryId.ResourceType != new ResourceType("Microsoft.ContainerRegistry/registries") ||
+                registryId.Parent?.ResourceType != new ResourceType("Microsoft.Resources/resourceGroups"))
+            {
+                throw new InvalidOperationException(error);
+            }
+
+            return registryId;
+        }
+        catch (Exception exception) when (exception is ArgumentException or FormatException)
+        {
+            throw new InvalidOperationException(error, exception);
+        }
+    }
+
+    private async Task VerifyExistingResourcesAsync(
+        ResourceIdentifier registryId,
+        string subscriptionId,
+        CancellationToken cancellationToken)
+    {
+        var registry = await RunJsonAsync<AzureResource>(
+            "az",
+            cancellationToken,
+            "acr", "show",
+            "--ids", registryId.ToString(),
+            "--subscription", subscriptionId,
+            "--only-show-errors",
+            "--output", "json");
+        if (!string.Equals(registry.Id, registryId.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Azure did not return the expected existing registry '{registryId}'.");
+        }
+
+        foreach (var group in new[] { "blog", "dns" })
+        {
+            var resourceGroup = await RunJsonAsync<AzureResource>(
+                "az",
+                cancellationToken,
+                "group", "show",
+                "--name", group,
+                "--subscription", subscriptionId,
+                "--only-show-errors",
+                "--output", "json");
+            var expectedId = $"/subscriptions/{subscriptionId}/resourceGroups/{group}";
+            if (!string.Equals(resourceGroup.Id, expectedId, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Azure did not return the expected existing resource group '{expectedId}'.");
+            }
+        }
+    }
+
     private async Task ConfigureRolesAsync(
         EntraApplication application,
         ServicePrincipal servicePrincipal,
-        string scope,
+        string subscriptionId,
+        ResourceIdentifier registryId,
         CancellationToken cancellationToken)
     {
-        var roleAssignments = await RunJsonAsync<RoleAssignment[]>(
-            "az",
-            cancellationToken,
-            "role", "assignment", "list",
-            "--assignee", servicePrincipal.Id,
-            "--scope", scope,
-            "--only-show-errors",
-            "--output", "json");
+        var subscriptionScope = $"/subscriptions/{subscriptionId}";
+        var blogScope = $"{subscriptionScope}/resourceGroups/blog";
+        var dnsScope = $"{subscriptionScope}/resourceGroups/dns";
+        (string Role, string Scope)[] grants =
+        [
+            ("b24988ac-6180-42a0-ab88-20f7382dd24c", blogScope), // Contributor
+            ("1c9b6475-caf0-4164-b5a1-2142a7116f4b", dnsScope), // Template Spec Contributor: ARM deployments in the DNS group.
+            ("befefa01-2a29-4197-83a8-272ff33ce314", $"{dnsScope}/providers/Microsoft.Network/dnsZones/kotsenas.com"), // DNS Zone Contributor
+            ("befefa01-2a29-4197-83a8-272ff33ce314", $"{dnsScope}/providers/Microsoft.Network/dnsZones/matt.kotsenas.com"), // DNS Zone Contributor
+            ("acdd72a7-3385-48ef-bd42-f606fba81ae7", $"{subscriptionScope}/resourceGroups/Default-Web-WestUS/providers/Microsoft.Web/sites/mattkotsenas"), // Reader
+            ("f58310d9-a9f6-439a-9e8d-f62e7b41a168", registryId.ToString()), // Role Based Access Control Administrator
+        ];
 
-        foreach (var role in new[]
-                 {
-                     "Contributor",
-                     "Role Based Access Control Administrator",
-                 })
+        foreach (var (role, scope) in grants)
         {
+            var roleAssignments = await RunJsonAsync<RoleAssignment[]>(
+                "az",
+                cancellationToken,
+                "role", "assignment", "list",
+                "--assignee", servicePrincipal.Id,
+                "--scope", scope,
+                "--subscription", subscriptionId,
+                "--only-show-errors",
+                "--output", "json");
+            var roleDefinitionId =
+                $"{subscriptionScope}/providers/Microsoft.Authorization/roleDefinitions/{role}";
             if (roleAssignments.Any(assignment =>
-                    string.Equals(
-                        assignment.RoleDefinitionName,
-                        role,
-                        StringComparison.Ordinal)))
+                    string.Equals(assignment.RoleDefinitionId, roleDefinitionId, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(assignment.Scope, scope, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
@@ -358,10 +450,8 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
             var verified = await GetApplicationAsync(
                 application.AppId,
                 cancellationToken);
-            if (!string.Equals(
-                    verified.AppId,
-                    application.AppId,
-                    StringComparison.Ordinal))
+            if (!string.Equals(verified.Id, application.Id, StringComparison.Ordinal) ||
+                !string.Equals(verified.AppId, application.AppId, StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
                     "The deployment application changed during setup. " +
@@ -376,6 +466,7 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
                 "--assignee-principal-type", "ServicePrincipal",
                 "--role", role,
                 "--scope", scope,
+                "--subscription", subscriptionId,
                 "--only-show-errors",
                 "--output", "none");
         }
@@ -489,8 +580,11 @@ internal sealed class DeploymentSetup(ICommandRunner runner)
         string Description,
         string[] Audiences);
 
+    private sealed record AzureResource(string Id);
+
     private sealed record RoleAssignment(
-        string RoleDefinitionName);
+        string RoleDefinitionId,
+        string Scope);
 
     private sealed record OidcConfiguration(
         [property: JsonPropertyName("use_default")]

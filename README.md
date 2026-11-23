@@ -20,26 +20,18 @@ dotnet aspire start
 
 ## Container App preview deployment
 
-After signing in with the Azure and GitHub CLIs, start the AppHost and run **Configure Container App deployment** on
-the `blog` resource. The command configures GitHub-to-Azure OIDC deployment. It can also be run from the terminal:
+An authorized operator configures GitHub-to-Azure OIDC and scoped deployment roles for the existing preview
+environment. The setup command requires its registry resource ID and, when reusing an application, its verified
+application ID. See [Configure Azure deployment](docs/configure-azure-deployment.md) for prerequisites, commands,
+permission scopes, and the rollout procedure for replacing subscription-wide grants.
 
-```bash
-dotnet aspire start
-dotnet aspire resource blog configure-container-app-deployment
-dotnet aspire stop
-```
-
-Run `dotnet aspire stop` even if configuration fails. If the application already exists, verify its application ID and
-pass it with `--applicationId`. If the deployment service principal is replaced, rerun this command and commit the
-regenerated deployment artifacts.
-
-Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
-West US 3.
+Run the **Build and Deploy** workflow manually to deploy the preview Container App to the existing `blog` resource
+group in West US 3. The workflow cannot create that resource group.
 
 ## Azure DNS
 
-The publish model owns website records within the Azure DNS zones in resource group `dns`. Until the registrar
-nameservers change, those records are non-authoritative and point to the legacy Web App.
+The publish model owns website records within the existing Azure DNS zones in resource group `dns`. These
+records point to the legacy Web App; preview deployment does not cut public traffic over to Container Apps.
 
 ## Public HTTPS health
 

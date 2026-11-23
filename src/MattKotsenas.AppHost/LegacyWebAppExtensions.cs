@@ -2,6 +2,7 @@ using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Azure;
 using Azure.Provisioning;
 using Azure.Provisioning.AppService;
+using Azure.Provisioning.Expressions;
 
 namespace MattKotsenas.AppHost;
 
@@ -19,25 +20,36 @@ internal static class LegacyWebAppExtensions
             infrastructure =>
             {
                 var website = WebSite.FromExisting("website");
-                website.Name = "mattkotsenas";
-                infrastructure.Add(website);
+                var legacyResourceGroup = resourceGroup.Resource
+                    .AsProvisioningParameter(infrastructure);
+                var websiteId = new FunctionCallExpression(
+                    new IdentifierExpression("resourceId"),
+                    new MemberExpression(
+                        new FunctionCallExpression(new IdentifierExpression("subscription")),
+                        "subscriptionId"),
+                    new IdentifierExpression(legacyResourceGroup.BicepIdentifier),
+                    website.ResourceType.ToString(),
+                    "mattkotsenas");
+                var websiteProperties = new FunctionCallExpression(
+                    new IdentifierExpression("reference"),
+                    websiteId,
+                    website.ResourceVersion!);
 
                 infrastructure.Add(
                     new ProvisioningOutput(
                         "defaultHostName",
                         typeof(string))
                     {
-                        Value = website.DefaultHostName,
+                        Value = new MemberExpression(websiteProperties, "defaultHostName"),
                     });
                 infrastructure.Add(
                     new ProvisioningOutput(
                         "customDomainVerificationId",
                         typeof(string))
                     {
-                        Value = website.CustomDomainVerificationId,
+                        Value = new MemberExpression(websiteProperties, "customDomainVerificationId"),
                     });
             });
-        legacyWeb.Resource.Scope = new(resourceGroup.Resource);
 
         return legacyWeb;
     }

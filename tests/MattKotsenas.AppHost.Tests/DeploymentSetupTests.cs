@@ -9,6 +9,20 @@ public sealed class DeploymentSetupTests
     private const string AppId = "44444444-4444-4444-4444-444444444444";
     private const string AppObjectId = "33333333-3333-3333-3333-333333333333";
     private const string ServicePrincipalId = "55555555-5555-5555-5555-555555555555";
+    private const string SubscriptionId = "11111111-1111-1111-1111-111111111111";
+    private const string SubscriptionScope = "/subscriptions/" + SubscriptionId;
+    private const string BlogScope = SubscriptionScope + "/resourceGroups/blog";
+    private const string DnsScope = SubscriptionScope + "/resourceGroups/dns";
+    private const string RegistryId = BlogScope + "/providers/Microsoft.ContainerRegistry/registries/blogregistry";
+    private static readonly (string Role, string Scope)[] RequiredGrants =
+    [
+        ("b24988ac-6180-42a0-ab88-20f7382dd24c", BlogScope),
+        ("1c9b6475-caf0-4164-b5a1-2142a7116f4b", DnsScope),
+        ("befefa01-2a29-4197-83a8-272ff33ce314", DnsScope + "/providers/Microsoft.Network/dnsZones/kotsenas.com"),
+        ("befefa01-2a29-4197-83a8-272ff33ce314", DnsScope + "/providers/Microsoft.Network/dnsZones/matt.kotsenas.com"),
+        ("acdd72a7-3385-48ef-bd42-f606fba81ae7", SubscriptionScope + "/resourceGroups/Default-Web-WestUS/providers/Microsoft.Web/sites/mattkotsenas"),
+        ("f58310d9-a9f6-439a-9e8d-f62e7b41a168", RegistryId),
+    ];
     private static readonly string[] AzureAdTokenExchangeAudience =
         ["api://AzureADTokenExchange"];
 
@@ -86,7 +100,7 @@ public sealed class DeploymentSetupTests
         });
 
         var configuredId = await new DeploymentSetup(runner)
-            .ConfigureAsync(applicationId: null, TestContext.Current.CancellationToken);
+            .ConfigureAsync(applicationId: null, TestContext.Current.CancellationToken, RegistryId);
 
         Assert.Equal(AppId, configuredId);
         Assert.Contains(
@@ -111,19 +125,7 @@ public sealed class DeploymentSetupTests
         Assert.True(federatedCredentialIndex >= 0);
         Assert.True(immutableSubjectIndex > federatedCredentialIndex);
         Assert.True(firstRoleIndex > immutableSubjectIndex);
-        Assert.Collection(
-            runner.Invocations.Where(invocation =>
-                invocation.Arguments.StartsWith(
-                    "role assignment create ",
-                    StringComparison.Ordinal)),
-            invocation => Assert.Contains(
-                "--role Contributor ",
-                invocation.Arguments,
-                StringComparison.Ordinal),
-            invocation => Assert.Contains(
-                "--role Role Based Access Control Administrator ",
-                invocation.Arguments,
-                StringComparison.Ordinal));
+        AssertScopedGrants(runner);
         Assert.Collection(
             runner.Invocations.Where(invocation =>
                 invocation.Arguments.StartsWith(
@@ -152,7 +154,7 @@ public sealed class DeploymentSetupTests
             return (command, invocation) switch
             {
                 ("az", "account show --only-show-errors --output json") =>
-                    Json(new { id = "subscription", tenantId = "tenant" }),
+                    Json(new { id = SubscriptionId, tenantId = "tenant" }),
                 ("gh", "api repos/MattKotsenas/MattKotsenas") =>
                     Json(new
                     {
@@ -173,7 +175,7 @@ public sealed class DeploymentSetupTests
             () => new DeploymentSetup(runner)
                 .ConfigureAsync(
                     applicationId: null,
-                    TestContext.Current.CancellationToken));
+                    TestContext.Current.CancellationToken, RegistryId));
 
         Assert.Contains(
             "provide its application ID",
@@ -226,7 +228,7 @@ public sealed class DeploymentSetupTests
             () => new DeploymentSetup(runner)
                 .ConfigureAsync(
                     AppId,
-                    TestContext.Current.CancellationToken));
+                    TestContext.Current.CancellationToken, RegistryId));
 
         Assert.Contains(
             "unrecognized federated credentials",
@@ -254,18 +256,14 @@ public sealed class DeploymentSetupTests
                     audiences = AzureAdTokenExchangeAudience,
                 },
             ],
-            roles:
-            [
-                new { roleDefinitionName = "Contributor" },
-                new
-                {
-                    roleDefinitionName =
-                        "Role Based Access Control Administrator",
-                },
-            ]);
+            roles: RequiredGrants.Select(grant => (object)new
+            {
+                roleDefinitionId = RoleDefinitionId(grant.Role),
+                scope = grant.Scope,
+            }).ToArray());
 
         var configuredId = await new DeploymentSetup(runner)
-            .ConfigureAsync(AppId, TestContext.Current.CancellationToken);
+            .ConfigureAsync(AppId, TestContext.Current.CancellationToken, RegistryId);
 
         Assert.Equal(AppId, configuredId);
         Assert.DoesNotContain(
@@ -281,9 +279,208 @@ public sealed class DeploymentSetupTests
                     StringComparison.Ordinal)));
     }
 
+    [Fact]
+    public async Task WrongScopeOrDisplayNameGrantsDoNotSatisfyRequiredGrants()
+    {
+        var roles = RequiredGrants.Select(grant => (object)new
+        {
+            roleDefinitionName = "Contributor",
+            roleDefinitionId = RoleDefinitionId(grant.Role),
+            scope = SubscriptionScope,
+        }).Concat(RequiredGrants.Select(grant => (object)new
+        {
+            roleDefinitionName = "Contributor",
+            roleDefinitionId = RoleDefinitionId("00000000-0000-0000-0000-000000000000"),
+            scope = grant.Scope,
+        })).ToArray();
+        var runner = CreateExistingIdentityRunner([], roles);
+
+        await new DeploymentSetup(runner).ConfigureAsync(AppId, TestContext.Current.CancellationToken, RegistryId);
+
+        AssertScopedGrants(runner);
+    }
+
+    [Fact]
+    public async Task RegistryResourceIdIsRequiredForExistingCallSignature()
+    {
+        var runner = CreateExistingIdentityRunner([]);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new DeploymentSetup(runner).ConfigureAsync(AppId, TestContext.Current.CancellationToken));
+
+        Assert.Contains("registry", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(runner.Invocations);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("not-a-resource-id")]
+    [InlineData(SubscriptionScope)]
+    [InlineData(BlogScope)]
+    [InlineData("/subscriptions/99999999-9999-9999-9999-999999999999/resourceGroups/blog/providers/Microsoft.ContainerRegistry/registries/blogregistry")]
+    [InlineData(SubscriptionScope + "/resourceGroups/other/providers/Microsoft.ContainerRegistry/registries/blogregistry")]
+    [InlineData(BlogScope + "/providers/Microsoft.Web/sites/blogregistry")]
+    [InlineData(RegistryId + "/replications/westus")]
+    public async Task RegistryInputMustIdentifyBlogRegistry(string? registryId)
+    {
+        var runner = CreateExistingIdentityRunner([]);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new DeploymentSetup(runner).ConfigureAsync(AppId, TestContext.Current.CancellationToken, registryId));
+
+        Assert.Contains("registry", exception.Message, StringComparison.OrdinalIgnoreCase);
+        AssertNoMutations(runner);
+    }
+
+    [Theory]
+    [InlineData("registry-mismatch")]
+    [InlineData("registry-missing")]
+    [InlineData("blog-mismatch")]
+    [InlineData("dns-mismatch")]
+    [InlineData("group-missing")]
+    public async Task ResourcePreflightFailsBeforeIdentityMutation(string failure)
+    {
+        var runner = CreateExistingIdentityRunner([], response: (command, arguments) =>
+        {
+            if (command == "az" && arguments is ["acr", "show", ..])
+            {
+                if (failure == "registry-mismatch")
+                {
+                    return Json(new { id = RegistryId + "other" });
+                }
+
+                if (failure == "registry-missing")
+                {
+                    return new CommandOutput(1, "", "registry not found");
+                }
+            }
+
+            if (command == "az" && arguments is ["group", "show", ..])
+            {
+                if (failure == "group-missing")
+                {
+                    return new CommandOutput(1, "", "group not found");
+                }
+
+                if (failure == arguments[3] + "-mismatch")
+                {
+                    return Json(new { id = BlogScope + "other" });
+                }
+            }
+
+            return null;
+        });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new DeploymentSetup(runner).ConfigureAsync(AppId, TestContext.Current.CancellationToken, RegistryId));
+
+        AssertNoMutations(runner);
+    }
+
+    [Fact]
+    public async Task RoleFailureStopsAssignmentsAndVariableWrites()
+    {
+        var runner = CreateExistingIdentityRunner([], response: (command, arguments) =>
+            command == "az" && arguments is ["role", "assignment", "create", ..]
+                ? new CommandOutput(1, "", "role assignment denied")
+                : null);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new DeploymentSetup(runner).ConfigureAsync(AppId, TestContext.Current.CancellationToken, RegistryId));
+
+        Assert.Contains("role assignment denied", exception.Message, StringComparison.Ordinal);
+        Assert.Single(runner.Invocations, invocation => invocation.Arguments.StartsWith("role assignment create ", StringComparison.Ordinal));
+        Assert.DoesNotContain(runner.Invocations, invocation => invocation.Arguments.StartsWith("variable set ", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(true, 0)]
+    [InlineData(false, 0)]
+    [InlineData(true, 1)]
+    public async Task ChangedApplicationBlocksNextGrant(bool changeObjectId, int successfulGrants)
+    {
+        var reads = 0;
+        var runner = CreateExistingIdentityRunner([], response: (command, arguments) =>
+        {
+            if (command != "az" || arguments is not ["ad", "app", "show", ..])
+            {
+                return null;
+            }
+
+            reads++;
+            return reads > successfulGrants + 1
+                ? Json(new
+                {
+                    id = changeObjectId ? "66666666-6666-6666-6666-666666666666" : AppObjectId,
+                    appId = changeObjectId ? AppId : "77777777-7777-7777-7777-777777777777",
+                })
+                : Json(Application());
+        });
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new DeploymentSetup(runner).ConfigureAsync(AppId, TestContext.Current.CancellationToken, RegistryId));
+
+        Assert.Contains("changed during setup", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(successfulGrants, runner.Invocations.Count(invocation => invocation.Arguments.StartsWith("role assignment create ", StringComparison.Ordinal)));
+        Assert.DoesNotContain(runner.Invocations, invocation => invocation.Arguments.StartsWith("variable set ", StringComparison.Ordinal));
+    }
+
+    private static void AssertScopedGrants(RecordingCommandRunner runner)
+    {
+        var creates = runner.Invocations.Where(invocation =>
+            invocation.Arguments.StartsWith("role assignment create ", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(RequiredGrants.Length, creates.Length);
+        foreach (var (role, scope) in RequiredGrants)
+        {
+            Assert.Contains(creates, invocation => invocation.Command == "az" &&
+                invocation.Arguments == $"role assignment create --assignee-object-id {ServicePrincipalId} --assignee-principal-type ServicePrincipal --role {role} --scope {scope} --subscription {SubscriptionId} --only-show-errors --output none");
+            Assert.Contains(runner.Invocations, invocation => invocation.Arguments ==
+                $"role assignment list --assignee {ServicePrincipalId} --scope {scope} --subscription {SubscriptionId} --only-show-errors --output json");
+        }
+
+        Assert.DoesNotContain(creates, invocation => invocation.Arguments.Contains($"--scope {SubscriptionScope} --", StringComparison.Ordinal));
+        Assert.DoesNotContain(runner.Invocations, invocation => invocation.Arguments.Contains(" delete ", StringComparison.Ordinal));
+    }
+
+    private static void AssertNoMutations(RecordingCommandRunner runner) =>
+        Assert.DoesNotContain(runner.Invocations, invocation =>
+            invocation.Arguments.Contains(" create ", StringComparison.Ordinal) ||
+            invocation.Arguments.Contains(" update ", StringComparison.Ordinal) ||
+            invocation.Arguments.Contains(" set ", StringComparison.Ordinal) ||
+            invocation.Arguments.Contains("--method PUT", StringComparison.Ordinal));
+
+    private static string RoleDefinitionId(string role) =>
+        SubscriptionScope + "/providers/Microsoft.Authorization/roleDefinitions/" + role;
+
+    private static CommandOutput? ResourceRead(string command, IReadOnlyList<string> arguments)
+    {
+        if (command != "az")
+        {
+            return null;
+        }
+
+        if (arguments is ["acr", "show", ..])
+        {
+            Assert.Equal($"acr show --ids {RegistryId} --subscription {SubscriptionId} --only-show-errors --output json", string.Join(' ', arguments));
+            return Json(new { id = RegistryId });
+        }
+
+        if (arguments is ["group", "show", ..])
+        {
+            Assert.Equal($"group show --name {arguments[3]} --subscription {SubscriptionId} --only-show-errors --output json", string.Join(' ', arguments));
+            Assert.True(arguments[3] is "blog" or "dns");
+            return Json(new { id = SubscriptionScope + "/resourceGroups/" + arguments[3] });
+        }
+
+        return null;
+    }
+
     private static RecordingCommandRunner CreateExistingIdentityRunner(
         object[] federatedCredentials,
-        object[]? roles = null) =>
+        object[]? roles = null,
+        Func<string, IReadOnlyList<string>, CommandOutput?>? response = null) =>
         new((command, arguments) =>
         {
             var invocation = string.Join(' ', arguments);
@@ -335,7 +532,7 @@ public sealed class DeploymentSetupTests
                     }),
                 _ => Success(),
             };
-        });
+        }, response);
 
     private static object Application() =>
         new
@@ -352,7 +549,8 @@ public sealed class DeploymentSetupTests
         new(0, string.Empty, string.Empty);
 
     private sealed class RecordingCommandRunner(
-        Func<string, IReadOnlyList<string>, CommandOutput> handler)
+        Func<string, IReadOnlyList<string>, CommandOutput> handler,
+        Func<string, IReadOnlyList<string>, CommandOutput?>? responseOverride = null)
         : ICommandRunner
     {
         public List<(string Command, string Arguments)> Invocations { get; } = [];
@@ -364,7 +562,7 @@ public sealed class DeploymentSetupTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             Invocations.Add((command, string.Join(' ', arguments)));
-            return Task.FromResult(handler(command, arguments));
+            return Task.FromResult(responseOverride?.Invoke(command, arguments) ?? ResourceRead(command, arguments) ?? handler(command, arguments));
         }
     }
 }

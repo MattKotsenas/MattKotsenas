@@ -44,9 +44,10 @@ module container_apps 'container-apps/container-apps.bicep' = {
 
 module legacy_web 'legacy-web/legacy-web.bicep' = {
   name: 'legacy-web'
-  scope: resourceGroup(legacyWebResourceGroupName)
+  scope: rg
   params: {
     location: location
+    legacyWebResourceGroupName: legacyWebResourceGroupName
   }
 }
 
