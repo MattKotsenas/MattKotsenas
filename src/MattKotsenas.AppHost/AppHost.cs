@@ -2,10 +2,6 @@ using MattKotsenas.AppHost;
 using MattKotsenas.Hosting.Azure.Dns;
 
 using Aspire.Hosting.Azure;
-using Azure.Provisioning;
-using Azure.Provisioning.Authorization;
-using Azure.Provisioning.ContainerRegistry;
-using Azure.Provisioning.Expressions;
 using Microsoft.Extensions.Configuration;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -36,39 +32,8 @@ var blog = builder
 
 if (builder.ExecutionContext.IsPublishMode)
 {
-    var deploymentPrincipalId = ObjectId.FromString(
-        builder.Configuration["DeploymentPrincipalId"]);
-
-    var environment = builder
-        .AddAzureContainerAppEnvironment("container-apps")
+    builder.AddAzureContainerAppEnvironment("container-apps")
         .WithDashboard(false);
-    environment
-        .GetAzureContainerRegistry()
-        .ConfigureInfrastructure(infrastructure =>
-        {
-            var registryService = infrastructure
-                .GetProvisionableResources()
-                .OfType<ContainerRegistryService>()
-                .Single();
-            var principalId = new ProvisioningParameter(
-                AzureBicepResource.KnownParameters.UserPrincipalId,
-                typeof(string))
-            {
-                Value = new BicepValue<string>(
-                    deploymentPrincipalId.ToString()),
-            };
-            infrastructure.Add(principalId);
-
-            var pushAssignment = registryService.CreateRoleAssignment(
-                ContainerRegistryBuiltInRole.AcrPush,
-                RoleManagementPrincipalType.ServicePrincipal,
-                principalId);
-            pushAssignment.Name = BicepFunction.CreateGuid(
-                registryService.Id,
-                principalId,
-                pushAssignment.RoleDefinitionId);
-            infrastructure.Add(pushAssignment);
-        });
 
     var legacyWeb = builder.AddLegacyWebAppReference();
     var dnsResourceGroup = builder.AddParameter(
@@ -210,38 +175,6 @@ if (useDevelopmentContainer)
     blog
         .WithBindMount(repositoryRoot, "/src")
         .WithArgs("server", "--bind", "0.0.0.0");
-}
-
-if (isRunMode)
-{
-    blog.WithCommand(
-        name: "configure-container-app-deployment",
-        displayName: "Configure Container App deployment",
-        executeCommand: DeploymentSetup.ExecuteAsync,
-        commandOptions: new CommandOptions
-        {
-            Description = "Configures GitHub-to-Azure OIDC deployment with scoped grants on existing resources.",
-            ConfirmationMessage = "Create or update the Entra application, federated credential, scoped role grants on existing resources, immutable GitHub OIDC subject, and repository variables? Existing broad grants will not be revoked.",
-            IconName = "CloudArrowUp",
-            Arguments =
-            [
-                new InteractionInput
-                {
-                    Name = "applicationId",
-                    Label = "Existing application ID (optional)",
-                    InputType = InputType.Text,
-                    Required = false,
-                    MaxLength = 36,
-                },
-                new InteractionInput
-                {
-                    Name = "registryResourceId",
-                    Label = "Existing blog container registry resource ID",
-                    InputType = InputType.Text,
-                    Required = true,
-                },
-            ],
-        });
 }
 
 builder.Build().Run();

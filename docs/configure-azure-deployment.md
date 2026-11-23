@@ -1,116 +1,97 @@
 # Configure Azure deployment
 
-An authorized operator runs **Configure Container App deployment** on the AppHost's `blog` resource to configure
-GitHub-to-Azure OIDC and scoped deployment roles. The command can create a deployment application or reuse a
-verified application. It changes the application's federated credential, the repository OIDC configuration,
-repository variables, and Azure role assignments. It does not deploy the website or revoke existing access.
+Bootstrap creates a user-assigned managed identity for this repository, gives it authority over the blog
+application, and hands its IDs to GitHub Actions. Native Aspire/Azure.Provisioning resources replace the
+Entra application reconciliation script. Routine deployment remains `aspire deploy`.
 
-## Prerequisites
+## Authority and prerequisites
 
-Sign in with the Azure and GitHub CLIs using an operator account authorized to manage the Entra application,
-assign roles at the scopes below, and update the repository's OIDC settings and Actions variables.
-The GitHub deployment identity does not need these operator-level bootstrap permissions.
+Run bootstrap as an authorized operator, **not** as the CI identity it creates. Authenticate Azure CLI and GitHub
+CLI first. The operator needs Azure resource/deployment and role-assignment authority at the scopes below,
+plus permission to configure this repository's Actions OIDC subject and variables. Bootstrap does not create an
+Entra application or require Graph application-administration consent.
 
-The following resources must already exist in the selected subscription:
+The selected subscription is explicit; the hosting resource group is fixed to `blog`. Bootstrap may create that
+group. Existing `dns` and `Default-Web-WestUS` groups and their referenced zones/site must already exist. Routine
+CI checks that `blog` exists before invoking deployment and must not run bootstrap.
 
-- Resource groups `blog` and `dns`.
-- DNS zones `kotsenas.com` and `matt.kotsenas.com` in `dns`.
-- Web App `mattkotsenas` in `Default-Web-WestUS`.
-- The container registry used by the preview deployment, in `blog`.
+| Scope | Identity grants | Purpose |
+| --- | --- | --- |
+| `blog` resource group | Contributor; Role Based Access Control Administrator | Aspire manages the application, registry, runtime identities, and assignments |
+| `dns` resource group | Template Spec Contributor | Temporary deployment authority for the existing DNS modules |
+| `kotsenas.com` and `matt.kotsenas.com` zones in `dns` | DNS Zone Contributor on each zone | Temporary record-update authority |
+| `mattkotsenas` Web App in `Default-Web-WestUS` | Reader on the site | Temporary legacy hostname/verification lookup |
 
-The operator also registers `Microsoft.App`, `Microsoft.ContainerRegistry`, `Microsoft.ManagedIdentity`,
-`Microsoft.OperationalInsights`, `Microsoft.Network`, and `Microsoft.Web` before deployment. Provider registration
-and resource-group creation are bootstrap operations; this command does not perform them. The deployment
-workflow disables resource-group creation. Bootstrap a fresh environment separately under operator authority.
+The two `blog` roles deliberately grant application-level authority, not a resource-by-resource allowlist. External
+grants are isolated in `MigrationPermissions.cs`; see their [removal gates](container-app-migration.md).
 
-These scopes match the AppHost's default resource names. If deployment parameters select different DNS zones
-or resource groups, an operator must review and configure the corresponding permissions separately.
+## Operator command
 
-## Configure the identity
-
-Inspect the selected account and available registry IDs with these read-only commands:
-
-```bash
-az account show --query '{subscription:id,tenant:tenantId}' --output json
-az acr list --resource-group blog --query '[].{name:name,id:id}' --output json
-```
-
-Set `RegistryResourceId` to the verified resource ID of the preview registry from that output. Setup validates
-its subscription, resource group, resource type, and existence. It also checks both resource groups before
-making identity changes. It does not guess a registry name or choose the first registry returned.
-
-For an existing deployment application, verify its ownership and set `ApplicationId` to its client/application ID.
-Do not substitute its object ID or the service principal's object ID. In Bash, run:
+From the repository root, after reviewing the target and the rollout gates below:
 
 ```bash
-(
-  set -e
-  dotnet tool restore
-  trap 'dotnet aspire stop' EXIT
-  dotnet aspire start
-  dotnet aspire resource blog configure-container-app-deployment -- \
-    --registryResourceId "$RegistryResourceId" --applicationId "$ApplicationId"
-)
+dotnet tool restore
+dotnet aspire do bootstrap \
+  --apphost src/MattKotsenas.Bootstrap.AppHost \
+  --environment preview \
+  -- \
+  --Azure:SubscriptionId="$SUBSCRIPTION_ID" \
+  --Azure:Location=westus3
 ```
 
-For a new application, omit `--applicationId`. If an application with the configured display name already exists,
-setup stops and asks for its verified application ID. Stop the AppHost even when setup fails. The dashboard
-command accepts the same registry and application inputs.
+**This command provisions resources and changes repository settings.** To list the pipeline without executing it,
+add `--list-steps` before `--`. Listing is not an Azure what-if or an authorization check. To generate templates
+without applying them, use `dotnet aspire publish --apphost src/MattKotsenas.Bootstrap.AppHost`.
 
-Setup is not transactional: a failure can leave identity settings or some grants updated. Inspect the failure,
-correct its cause, and rerun with the same verified application ID. Setup does not roll back or delete grants.
+The pipeline verifies the subscription/repository metadata, reads the required external groups, and inspects any
+existing federated credentials on the named managed identity. It then applies the native Azure deployment, enables
+and verifies immutable GitHub OIDC, and writes `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`.
+The identity is `github-MattKotsenas-blog`; its only declared federated credential is `github-main-immutable`.
+Its issuer is exactly `https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`, and
+subject `repo:MattKotsenas@51421/MattKotsenas@8395662:ref:refs/heads/main`. PRs and other branches do not match.
 
-Setup verifies immutable GitHub OIDC claims and sets `AZURE_CLIENT_ID`, `AZURE_DEPLOYMENT_PRINCIPAL_ID`,
-`AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID`. It rechecks the application identity before each role grant.
-If the service principal changes, regenerate the Azure publication artifacts with its new object ID in
-`DeploymentPrincipalId`, then review and commit them before deployment.
+An existing identity with unexpected federated credentials is rejected before new grants. An identity with no
+credentials can converge after a partial creation. These checks do not inventory all effective/inherited permissions
+or prevent a separately authorized writer from changing trust later.
 
-## Deployment permissions
+Group-existence checks are preflight checks, not Azure authorization constraints. Aspire 17 overrides
+`AllowResourceGroupCreation` during deploy and can attempt creation if a subsequent group read fails. Do not rely
+on that option. The CI wrapper stops before Aspire when its initial `blog` read fails; bootstrap similarly checks
+its external groups before provisioning. These checks do not lock the groups against concurrent deletion. Effective
+Azure permissions remain the authority boundary; keep routine CI scoped and retire superseded broad grants through
+the approved handoff.
 
-All scopes below are within the selected subscription. Setup grants built-in roles by their definition IDs and
-recognizes an existing grant only when its role-definition ID and exact scope match.
+## Controlled rollout
 
-| Role | Scope | Purpose |
-|---|---|---|
-| Contributor | `blog` resource group | Hosting resources and their ARM deployments |
-| Template Spec Contributor | `dns` resource group | ARM deployment operations and resource-group reads for the DNS modules |
-| DNS Zone Contributor | `kotsenas.com` zone | Root website record sets |
-| DNS Zone Contributor | `matt.kotsenas.com` zone | Blog website record sets |
-| Reader | Existing `mattkotsenas` Web App | Dynamic hostname and domain-verification properties |
-| Role Based Access Control Administrator | Verified preview registry | Role assignments declared by the hosting templates |
+1. Review both generated template trees and inventory the existing deployment identity, direct/inherited grants,
+   repository variables, and OIDC configuration. Retain a recovery operator and the old identity until validation.
+2. **Check the existing ACR permissions mode before deployment.** This model uses native Aspire 17 registry/runtime
+   roles. In `LegacyRegistryPermissions`, inherited Contributor permits deployment push/pull; in
+   `AbacRepositoryPermissions`, Contributor and legacy `AcrPull`/`AcrPush` do not provide repository data access.
+   Inspect with `az acr show --name "$REGISTRY_NAME" --resource-group blog --subscription "$SUBSCRIPTION_ID" --query roleAssignmentMode`.
+   The pinned provisioning SDK cannot declare this mode. An unread/unknown/ABAC mode blocks rollout: explicitly
+   approve a mode change or preview-registry recreation, or design compatible repository roles first. Do not restore
+   the old pinned-principal push workaround. Fresh registry creation uses the service's legacy-RBAC default.
+3. With the identity handoff approved, run bootstrap. It replaces the three GitHub Azure variables; it does not
+   revoke old access. If GitHub OIDC was mutable, enabling immutable subjects also affects other workflows using it;
+   verify their trust configuration before proceeding.
+4. Review and commit regenerated application artifacts, then run a fresh main-only OIDC deployment using the new
+   identity. Confirm native resource provisioning, image push/pull, DNS-module updates, and legacy lookups. Public
+   records must still point to App Service. This is a preview deployment, not traffic cutover.
+5. Only after approved validation, remove superseded broad grants/old identity and the unused
+   `AZURE_DEPLOYMENT_PRINCIPAL_ID` variable. Keep the recovery operator. Removing a declaration from an incremental
+   deployment does **not** remove its Azure grant; cleanup needs an explicit inventory and separately approved action.
 
-[Template Spec Contributor](https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/management-and-governance#template-spec-contributor)
-includes ARM deployment operations and also permits template-spec management within `dns`. It avoids a custom
-role while keeping DNS write authority limited to the two zone scopes. Zone-level DNS grants alone cannot
-submit ARM deployments at resource-group scope.
+No live bootstrap or narrow-only deployment has been validated by this source change. Follow the
+[migration checklist](container-app-migration.md) for certificate and traffic changes; neither is part of bootstrap.
 
-Registry-scoped RBAC Administrator permits all role-assignment management at that registry. The generated
-hosting templates use it for `AcrPush` and `AcrPull`; the grant is not conditioned to those two roles.
-Setup requests no subscription-scoped Contributor or RBAC Administrator grant.
+## Reruns and failures
 
-The `legacy-web` module deploys in `blog` and reads the existing website across scope through an ARM reference.
-It does not submit a deployment in `Default-Web-WestUS` or create/update that website. Retire its Reader grant
-when the legacy lookup is removed. Root DNS record ownership and default custom-domain binding behavior are
-unchanged by this preparation.
+Native incremental deployment owns resource convergence. It does not delete undeclared credentials, grants,
+identities, or external resources. Bootstrap deliberately does not discover/create Entra apps or revoke access.
 
-## Replace broad assignments safely
-
-A setup-code change does not revoke existing access. An authorized operator performs this rollout separately
-from merging code:
-
-1. Record the deployment service principal's current direct and inherited role assignments, including assignment
-   IDs, role-definition IDs, principal IDs, and scopes. Keep an independently authorized operator available for
-   recovery. Confirm provider registrations and the existing resources above.
-2. Run setup with the verified existing application and registry IDs. Inspect the resulting six scoped grants.
-   Adding them while broad grants remain does not prove that they are sufficient.
-3. With explicit approval, remove only the identified old subscription-scoped Contributor and RBAC Administrator
-   assignments for this deployment principal. Review any other inherited access separately. Setup never deletes
-   assignments automatically, and rerunning this version cannot restore those subscription-wide grants.
-4. Allow RBAC propagation and start a fresh GitHub Actions/OIDC session. After confirming broad inherited access
-   is absent, run the manual **Build and Deploy** workflow with deployment approval. Require a successful
-   Container App deployment, unchanged DNS record values, and a healthy application.
-5. If deployment is denied, retain the failed operation and scope as evidence. Use the authorized operator for
-   recovery and correct the missing scoped permission. Do not treat an automatic broad-role fallback as success.
-
-Local tests verify setup decisions and generated infrastructure. They do not establish effective Azure access.
-The narrowed role set remains unverified in Azure until the controlled deployment runs without broad grants.
+The operation is **not transactional**. Azure resources/grants can remain after deployment failure. GitHub OIDC
+may be enabled while a readback or variable write fails; earlier variable writes remain. Stop competing deployments,
+inspect the CLI error and current Azure/GitHub state, and rerun only after the cause is understood. There is no
+rollback promise. Never delete/recreate the identity as a blind retry: its principal changes while existing role
+assignment names may remain, requiring explicit stale-assignment cleanup and another controlled variable handoff.

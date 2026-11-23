@@ -20,13 +20,15 @@ dotnet aspire start
 
 ## Container App preview deployment
 
-An authorized operator configures GitHub-to-Azure OIDC and scoped deployment roles for the existing preview
-environment. The setup command requires its registry resource ID and, when reusing an application, its verified
-application ID. See [Configure Azure deployment](docs/configure-azure-deployment.md) for prerequisites, commands,
-permission scopes, and the rollout procedure for replacing subscription-wide grants.
+An authorized operator runs the [native Aspire bootstrap](docs/configure-azure-deployment.md) to create a
+main-only GitHub OIDC identity. Aspire owns the blog application and its role assignments inside the `blog`
+resource group. Bootstrap is separate from routine deployment; it does not run in CI.
+
+[The migration checklist](docs/container-app-migration.md) tracks temporary external permissions, identity
+handoff, registry compatibility, and the later DNS/certificate/traffic stages.
 
 Run the **Build and Deploy** workflow manually to deploy the preview Container App to the existing `blog` resource
-group in West US 3. The workflow cannot create that resource group.
+group in West US 3. The workflow checks that the group exists before invoking deployment.
 
 ## Azure DNS
 
@@ -35,9 +37,8 @@ records point to the legacy Web App; preview deployment does not cut public traf
 
 ## Public HTTPS health
 
-The **Public HTTPS Health** workflow runs daily to verify TLS trust, certificate lifetime, and HTTP availability for
-the public website domains. Run the same checks on demand after setting `DeploymentPrincipalId` to the deployment
-service principal's object ID:
+The **Public HTTPS Health** workflow defines daily TLS, certificate-lifetime, and HTTP checks for the public
+website domains. Its schedule is currently disabled in GitHub. Run the same checks locally on demand:
 
 ```bash
 dotnet aspire do check-public-https --environment preview --non-interactive

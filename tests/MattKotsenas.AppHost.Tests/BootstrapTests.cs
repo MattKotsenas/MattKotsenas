@@ -1,0 +1,163 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Aspire.Hosting;
+using Aspire.Hosting.Azure;
+using Aspire.Hosting.Pipelines;
+using MattKotsenas.Bootstrap.AppHost;
+using Microsoft.Extensions.Configuration;
+
+namespace MattKotsenas.AppHost.Tests;
+
+public sealed class BootstrapTests
+{
+    [Theory]
+    [InlineData("id", "8395663")]
+    [InlineData("name", "\"Renamed\"")]
+    [InlineData("full_name", "\"Other/MattKotsenas\"")]
+    [InlineData("owner.id", "51422")]
+    [InlineData("owner.login", "\"Transferred\"")]
+    public void RepositoryRenameOrTransferRequiresExplicitTrustUpdate(string field, string value)
+    {
+        var repository = JsonNode.Parse("""
+            {"id":8395662,"name":"MattKotsenas","full_name":"MattKotsenas/MattKotsenas","owner":{"id":51421,"login":"MattKotsenas"}}
+            """)!;
+        GitHubBootstrap.VerifyRepository(JsonSerializer.SerializeToElement(repository));
+        var parts = field.Split('.');
+        if (parts.Length is 1)
+        {
+            repository[field] = JsonNode.Parse(value);
+        }
+        else
+        {
+            repository[parts[0]]![parts[1]] = JsonNode.Parse(value);
+        }
+        Assert.Throws<InvalidOperationException>(() => GitHubBootstrap.VerifyRepository(JsonSerializer.SerializeToElement(repository)));
+    }
+
+    [Theory]
+    [InlineData("name", "\"unexpected\"")]
+    [InlineData("issuer", "\"https://token.actions.githubusercontent.com/\"")]
+    [InlineData("subject", "\"repo:MattKotsenas/MattKotsenas:ref:refs/heads/main\"")]
+    [InlineData("subject", "\"repo:MattKotsenas@51421/MattKotsenas@8395662:ref:refs/heads/preview\"")]
+    [InlineData("audiences", "[\"other\"]")]
+    [InlineData("audiences", "[\"api://AzureADTokenExchange\",\"extra\"]")]
+    public void ExistingIdentityMustHaveOnlyExpectedTrust(string field, string value)
+    {
+        var credential = Credential();
+        var credentials = new JsonArray(credential);
+        BootstrapPreflight.VerifyCredentials(JsonSerializer.SerializeToElement(credentials));
+        credential[field] = JsonNode.Parse(value);
+        Assert.Throws<InvalidOperationException>(() => BootstrapPreflight.VerifyCredentials(JsonSerializer.SerializeToElement(credentials)));
+    }
+
+    [Fact]
+    public void EmptyTrustCanConvergeAfterPartialDeploymentButExtraTrustIsRejected()
+    {
+        var credentials = new JsonArray();
+        Assert.Empty(credentials);
+        BootstrapPreflight.VerifyCredentials(JsonSerializer.SerializeToElement(credentials));
+        credentials.Add(Credential());
+        BootstrapPreflight.VerifyCredentials(JsonSerializer.SerializeToElement(credentials));
+        credentials.Add(Credential());
+        Assert.Equal(2, credentials.Count);
+        Assert.Throws<InvalidOperationException>(() => BootstrapPreflight.VerifyCredentials(JsonSerializer.SerializeToElement(credentials)));
+    }
+
+    [Theory]
+    [InlineData("use_default", "false")]
+    [InlineData("use_immutable_subject", "false")]
+    [InlineData("subject_claim_prefix", "\"repo:MattKotsenas/MattKotsenas\"")]
+    public void GitHubReadbackMustMatchImmutableSubject(string field, string value)
+    {
+        var configuration = new JsonObject { ["use_default"] = true, ["use_immutable_subject"] = true, ["subject_claim_prefix"] = BootstrapPreflight.SubjectPrefix };
+        GitHubBootstrap.VerifyOidcConfiguration(JsonSerializer.SerializeToElement(configuration));
+        configuration[field] = JsonNode.Parse(value);
+        Assert.Throws<InvalidOperationException>(() => GitHubBootstrap.VerifyOidcConfiguration(JsonSerializer.SerializeToElement(configuration)));
+    }
+
+    [Theory]
+    [InlineData(null, "westus3", "blog")]
+    [InlineData("not-a-guid", "westus3", "blog")]
+    [InlineData("11111111-1111-1111-1111-111111111111", null, "blog")]
+    [InlineData("11111111-1111-1111-1111-111111111111", "westus3", "other")]
+    public async Task InvalidTargetFailsBeforeCliExecution(string? subscription, string? location, string group)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Azure:SubscriptionId"] = subscription,
+            ["Azure:Location"] = location,
+            ["Azure:ResourceGroup"] = group,
+        }).Build();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => BootstrapPreflight.VerifyAsync(configuration, [], TestContext.Current.CancellationToken));
+        Assert.StartsWith("Bootstrap requires", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("not-a-guid")]
+    [InlineData("11111111-1111-1111-1111-111111111111")]
+    public async Task BadNativeOutputsDoNotChangeGitHub(string? clientId)
+    {
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => GitHubBootstrap.ConfigureAsync(clientId,
+            "22222222-2222-2222-2222-222222222222", "33333333-3333-3333-3333-333333333333",
+            "44444444-4444-4444-4444-444444444444", "22222222-2222-2222-2222-222222222222", TestContext.Current.CancellationToken));
+        Assert.StartsWith("Native bootstrap outputs", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task NativeBootstrapDeclaresMainOnlyIdentityAndGroupBoundaryWithExplicitMigrationExceptions()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_Bootstrap_AppHost>(["--operation", "publish"], token);
+        builder.Services.Configure<PipelineOptions>(options => options.Step = WellKnownPipelineSteps.BeforeStart);
+        await using var app = await builder.BuildAsync(token);
+        await app.StartAsync(token);
+        var model = app.Services.GetRequiredService<DistributedApplicationModel>();
+        var bootstrap = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == "deployment-bootstrap"));
+        var template = bootstrap.GetBicepTemplateString();
+        Assert.Null(bootstrap.Scope);
+        Assert.Contains("issuer: 'https://token.actions.githubusercontent.com'", template);
+        Assert.Contains($"subject: '{BootstrapPreflight.Subject}'", template);
+        Assert.Contains("'b24988ac-6180-42a0-ab88-20f7382dd24c'", template);
+        Assert.Contains("'f58310d9-a9f6-439a-9e8d-f62e7b41a168'", template);
+        Assert.DoesNotContain("scope:", template);
+        Assert.DoesNotContain("Microsoft.Graph", template);
+        foreach (var name in new[] { "clientId", "principalId", "tenantId", "subscriptionId" })
+        {
+            Assert.Contains($"output {name} string", template);
+        }
+        var dns = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == "migration-dns-permissions"));
+        Assert.NotNull(dns.Scope);
+        Assert.Contains("scope: rootZone", dns.GetBicepTemplateString());
+        Assert.Contains("scope: blogZone", dns.GetBicepTemplateString());
+        var legacy = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == "migration-legacy-reader"));
+        Assert.NotNull(legacy.Scope);
+        Assert.Contains("scope: legacySite", legacy.GetBicepTemplateString());
+    }
+
+    [Fact]
+    public async Task ApplicationRegistryNeedsNoPinnedDeploymentPrincipalOrCustomPushAssignment()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_AppHost>(["--operation", "publish"], token);
+        builder.Services.Configure<PipelineOptions>(options => options.Step = WellKnownPipelineSteps.BeforeStart);
+        await using var app = await builder.BuildAsync(token);
+        await app.StartAsync(token);
+        var model = app.Services.GetRequiredService<DistributedApplicationModel>();
+        var registry = Assert.IsAssignableFrom<AzureBicepResource>(Assert.Single(model.Resources, resource => resource.Name == "container-apps-acr"));
+        var template = registry.GetBicepTemplateString();
+        Assert.Contains("Microsoft.ContainerRegistry/registries", template);
+        Assert.DoesNotContain("userPrincipalId", template);
+        Assert.DoesNotContain("8311e382-0749-4cb8-b61a-304f252e45ec", template);
+        Assert.DoesNotContain(model.Resources, resource => resource.Name == "DeploymentPrincipalId");
+    }
+
+    private static JsonObject Credential() => new()
+    {
+        ["name"] = BootstrapPreflight.CredentialName,
+        ["issuer"] = BootstrapPreflight.Issuer,
+        ["subject"] = BootstrapPreflight.Subject,
+        ["audiences"] = new JsonArray(BootstrapPreflight.Audience),
+    };
+}

@@ -14,10 +14,8 @@
     <PackageReference Include="Aspire.Hosting.Azure" />
     <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
     <PackageReference Include="Azure.Provisioning.AppService" />
-    <PackageReference Include="CliWrap" />
     <PackageReference Include="DotNetDiag.HealthChecks.Network" />
     <PackageReference Include="DotNetDiag.HealthChecks.Uris" />
-    <PackageReference Include="Vogen" />
   </ItemGroup>
 
   <ItemGroup>

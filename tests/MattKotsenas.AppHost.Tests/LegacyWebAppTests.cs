@@ -19,7 +19,6 @@ public sealed class LegacyWebAppTests
             .CreateAsync<Projects.MattKotsenas_AppHost>(
                 [
                     "--operation", "publish",
-                    "DeploymentPrincipalId=55555555-5555-5555-5555-555555555555",
                 ],
                 cancellationToken);
         appHost.Services.Configure<PipelineOptions>(

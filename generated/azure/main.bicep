@@ -28,7 +28,6 @@ module container_apps_acr 'container-apps-acr/container-apps-acr.bicep' = {
   scope: rg
   params: {
     location: location
-    userPrincipalId: principalId
   }
 }
 
