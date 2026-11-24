@@ -4,7 +4,7 @@ using Aspire.Hosting;
 using Aspire.Hosting.Azure;
 using Aspire.Hosting.Pipelines;
 using MattKotsenas.AppHost;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace MattKotsenas.AppHost.Tests;
 
@@ -76,20 +76,61 @@ public sealed class BootstrapTests
     }
 
     [Theory]
-    [InlineData(null, "westus3", "blog")]
-    [InlineData("not-a-guid", "westus3", "blog")]
-    [InlineData("11111111-1111-1111-1111-111111111111", null, "blog")]
-    [InlineData("11111111-1111-1111-1111-111111111111", "westus3", "other")]
-    public async Task InvalidTargetFailsBeforeCliExecution(string? subscription, string? location, string group)
+    [InlineData(null, "westus3", "blog", "Azure:SubscriptionId")]
+    [InlineData("", "westus3", "blog", "Azure:SubscriptionId")]
+    [InlineData("not-a-guid", "westus3", "blog", "Azure:SubscriptionId")]
+    [InlineData("11111111111111111111111111111111", "westus3", "blog", "Azure:SubscriptionId")]
+    [InlineData("11111111-1111-1111-1111-111111111111", null, "blog", "Azure:Location")]
+    [InlineData("11111111-1111-1111-1111-111111111111", " ", "blog", "Azure:Location")]
+    [InlineData("11111111-1111-1111-1111-111111111111", "westus3", null, "Azure:ResourceGroup")]
+    [InlineData("11111111-1111-1111-1111-111111111111", "westus3", "", "Azure:ResourceGroup")]
+    [InlineData("11111111-1111-1111-1111-111111111111", "westus3", "other", "Azure:ResourceGroup")]
+    public async Task InvalidTargetFailsBeforeCliExecution(string? subscription, string? location, string? group, string expectedKey)
     {
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Azure:SubscriptionId"] = subscription,
-            ["Azure:Location"] = location,
-            ["Azure:ResourceGroup"] = group,
-        }).Build();
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => BootstrapPreflight.VerifyAsync(configuration, [], TestContext.Current.CancellationToken));
-        Assert.StartsWith("Bootstrap requires", error.Message, StringComparison.Ordinal);
+        var token = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_AppHost>(["--operation", "publish"], token);
+        builder.Configuration["Azure:SubscriptionId"] = subscription;
+        builder.Configuration["Azure:Location"] = location;
+        builder.Configuration["Azure:ResourceGroup"] = group;
+        await using var app = await builder.BuildAsync(token);
+        var options = app.Services.GetRequiredService<IOptions<BootstrapAzureOptions>>();
+        var error = await Assert.ThrowsAsync<OptionsValidationException>(() => BootstrapPreflight.VerifyAsync(options, [], token));
+        Assert.StartsWith(expectedKey, Assert.Single(error.Failures), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("11111111-1111-1111-1111-111111111111", "westus3", "blog", null)]
+    [InlineData("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA", "eastus2", "BLOG", "22222222-2222-2222-2222-222222222222")]
+    public async Task BootstrapOptionsBindExistingAzureKeys(string subscription, string location, string group, string? tenant)
+    {
+        var token = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_AppHost>(["--operation", "publish"], token);
+        builder.Configuration["Azure:SubscriptionId"] = subscription;
+        builder.Configuration["Azure:Location"] = location;
+        builder.Configuration["Azure:ResourceGroup"] = group;
+        builder.Configuration["Azure:TenantId"] = tenant;
+        await using var app = await builder.BuildAsync(token);
+        var target = app.Services.GetRequiredService<IOptions<BootstrapAzureOptions>>().Value;
+        Assert.Equal(subscription, target.SubscriptionId);
+        Assert.Equal(location, target.Location);
+        Assert.Equal(group, target.ResourceGroup);
+        Assert.Equal(tenant, target.TenantId);
+    }
+
+    [Fact]
+    public async Task BootstrapOptionsReportAllConfigurationFailures()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.MattKotsenas_AppHost>(["--operation", "publish"], token);
+        builder.Configuration["Azure:SubscriptionId"] = "invalid";
+        builder.Configuration["Azure:Location"] = string.Empty;
+        builder.Configuration["Azure:ResourceGroup"] = "other";
+        await using var app = await builder.BuildAsync(token);
+        var options = app.Services.GetRequiredService<IOptions<BootstrapAzureOptions>>();
+        var error = Assert.Throws<OptionsValidationException>(() => options.Value);
+        Assert.Equal(
+            ["Azure:SubscriptionId", "Azure:Location", "Azure:ResourceGroup"],
+            error.Failures.Select(failure => failure.Split(' ')[0]));
     }
 
     [Theory]

@@ -2,7 +2,7 @@ using System.Text.Json;
 using Aspire.Hosting.ApplicationModel;
 using CliWrap;
 using CliWrap.Buffered;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace MattKotsenas.AppHost;
 
@@ -16,17 +16,11 @@ internal static class BootstrapPreflight
     internal const string SubjectPrefix = "repo:MattKotsenas@51421/MattKotsenas@8395662";
     internal const string Subject = SubjectPrefix + ":ref:refs/heads/main";
 
-    internal static async Task<string> VerifyAsync(IConfiguration configuration, IEnumerable<ParameterResource> requiredGroups, CancellationToken cancellationToken)
+    internal static async Task<string> VerifyAsync(IOptions<BootstrapAzureOptions> options, IEnumerable<ParameterResource> requiredGroups, CancellationToken cancellationToken)
     {
-        var subscriptionId = configuration["Azure:SubscriptionId"];
-        var configuredTenantId = configuration["Azure:TenantId"];
-        if (!Guid.TryParseExact(subscriptionId, "D", out _) ||
-            string.IsNullOrWhiteSpace(configuration["Azure:Location"]) ||
-            !string.Equals(configuration["Azure:ResourceGroup"], ResourceGroup, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                "Bootstrap requires Azure:SubscriptionId (a GUID), Azure:Location, and resource group 'blog'.");
-        }
+        var target = options.Value;
+        var subscriptionId = target.SubscriptionId!;
+        var configuredTenantId = target.TenantId;
 
         await GitHubBootstrap.VerifyRepositoryAsync(cancellationToken);
         var accountResult = await Cli.Wrap("az")

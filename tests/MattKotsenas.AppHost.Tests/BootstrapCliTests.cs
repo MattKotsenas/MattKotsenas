@@ -1,7 +1,7 @@
 using Aspire.Hosting.ApplicationModel;
 using CliWrap.Exceptions;
 using MattKotsenas.AppHost;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace MattKotsenas.AppHost.Tests;
 
@@ -22,7 +22,7 @@ public sealed class BootstrapCliTests
         using var cli = new FakeCli("missing");
         Assert.Empty(cli.Trace);
         var error = await Assert.ThrowsAsync<CommandExecutionException>(() => BootstrapPreflight.VerifyAsync(
-            Configuration(), [new ParameterResource("dns", _ => dns), new ParameterResource("legacy", _ => legacy)],
+            TargetOptions(), [new ParameterResource("dns", _ => dns), new ParameterResource("legacy", _ => legacy)],
             TestContext.Current.CancellationToken));
         Assert.Equal(44, error.ExitCode);
         Assert.Contains("group show --name missing --subscription " + Subscription, cli.Trace);
@@ -38,7 +38,7 @@ public sealed class BootstrapCliTests
         using var cli = new FakeCli("missing");
         Assert.Empty(cli.Trace);
         var tenant = await BootstrapPreflight.VerifyAsync(
-            Configuration(), [new ParameterResource("dns", _ => dns), new ParameterResource("legacy", _ => legacy)],
+            TargetOptions(), [new ParameterResource("dns", _ => dns), new ParameterResource("legacy", _ => legacy)],
             TestContext.Current.CancellationToken);
         Assert.Equal(Tenant, tenant);
         Assert.Contains($"group show --name {dns} --subscription {Subscription}", cli.Trace);
@@ -47,12 +47,12 @@ public sealed class BootstrapCliTests
         Assert.DoesNotContain("identity", cli.Trace);
     }
 
-    private static IConfiguration Configuration() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    private static IOptions<BootstrapAzureOptions> TargetOptions() => Options.Create(new BootstrapAzureOptions
     {
-        ["Azure:SubscriptionId"] = Subscription,
-        ["Azure:Location"] = "westus3",
-        ["Azure:ResourceGroup"] = "blog",
-    }).Build();
+        SubscriptionId = Subscription,
+        Location = "westus3",
+        ResourceGroup = "blog",
+    });
 
     private sealed class FakeCli : IDisposable
     {

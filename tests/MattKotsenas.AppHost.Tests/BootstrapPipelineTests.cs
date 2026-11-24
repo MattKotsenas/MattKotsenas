@@ -120,8 +120,8 @@ public sealed class BootstrapPipelineTests
         SetTarget(app, target);
         Assert.Equal(0, reachedExternalBoundary);
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => ExecuteAsync(app));
-        var preflightError = Assert.IsType<InvalidOperationException>(error.InnerException);
-        Assert.StartsWith("Bootstrap requires", preflightError.Message, StringComparison.Ordinal);
+        var preflightError = Assert.IsType<OptionsValidationException>(error.InnerException);
+        Assert.Contains("Azure:SubscriptionId must be a GUID in D format.", preflightError.Failures);
         Assert.Equal(0, reachedExternalBoundary);
     }
 

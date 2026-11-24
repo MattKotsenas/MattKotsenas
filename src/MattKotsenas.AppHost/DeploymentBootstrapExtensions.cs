@@ -6,6 +6,8 @@ using Azure.Provisioning.Resources;
 using Azure.Provisioning.Roles;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Azure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace MattKotsenas.AppHost;
 
@@ -18,6 +20,9 @@ internal static class DeploymentBootstrapExtensions
         IResourceBuilder<ParameterResource> legacyGroup)
     {
         builder.Configuration["Azure:ResourceGroup"] ??= BootstrapPreflight.ResourceGroup;
+        builder.Services.AddOptions<BootstrapAzureOptions>()
+            .Bind(builder.Configuration.GetSection("Azure"));
+        builder.Services.AddSingleton<IValidateOptions<BootstrapAzureOptions>, BootstrapAzureOptionsValidator>();
         string? verifiedTenantId = null;
 
         var bootstrap = builder.AddAzureInfrastructure("deployment-bootstrap", infrastructure =>
@@ -67,8 +72,9 @@ internal static class DeploymentBootstrapExtensions
                     return;
                 }
 
-                verifiedTenantId = await BootstrapPreflight.VerifyAsync(builder.Configuration, [dnsGroup.Resource, legacyGroup.Resource], context.CancellationToken);
-                context.Summary.Add("Bootstrap target", $"{builder.Configuration["Azure:SubscriptionId"]}/{BootstrapPreflight.ResourceGroup}");
+                var options = context.Services.GetRequiredService<IOptions<BootstrapAzureOptions>>();
+                verifiedTenantId = await BootstrapPreflight.VerifyAsync(options, [dnsGroup.Resource, legacyGroup.Resource], context.CancellationToken);
+                context.Summary.Add("Bootstrap target", $"{options.Value.SubscriptionId}/{options.Value.ResourceGroup}");
                 context.Summary.Add("GitHub subject", BootstrapPreflight.Subject);
             },
             requiredBy: WellKnownPipelineSteps.DeployPrereq);
@@ -83,7 +89,7 @@ internal static class DeploymentBootstrapExtensions
                 var subscriptionId = await bootstrap.GetOutput("subscriptionId").GetValueAsync(cancellationToken);
                 await GitHubBootstrap.ConfigureAsync(
                     clientId, tenantId, subscriptionId,
-                    builder.Configuration["Azure:SubscriptionId"], verifiedTenantId, cancellationToken);
+                    context.Services.GetRequiredService<IOptions<BootstrapAzureOptions>>().Value.SubscriptionId, verifiedTenantId, cancellationToken);
                 context.Summary.Add("GitHub repository variables", "AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID");
             });
 
