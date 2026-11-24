@@ -28,7 +28,6 @@ module container_apps_acr 'container-apps-acr/container-apps-acr.bicep' = {
   scope: rg
   params: {
     location: location
-    userPrincipalId: principalId
   }
 }
 
@@ -44,9 +43,36 @@ module container_apps 'container-apps/container-apps.bicep' = {
 
 module legacy_web 'legacy-web/legacy-web.bicep' = {
   name: 'legacy-web'
+  scope: rg
+  params: {
+    location: location
+    legacyWebResourceGroupName: legacyWebResourceGroupName
+  }
+}
+
+module deployment_bootstrap 'deployment-bootstrap/deployment-bootstrap.bicep' = {
+  name: 'deployment-bootstrap'
+  scope: rg
+  params: {
+    location: location
+  }
+}
+
+module migration_dns_permissions 'migration-dns-permissions/migration-dns-permissions.bicep' = {
+  name: 'migration-dns-permissions'
+  scope: resourceGroup(dnsResourceGroupName)
+  params: {
+    location: location
+    deployment_bootstrap_outputs_principalid: deployment_bootstrap.outputs.principalId
+  }
+}
+
+module migration_legacy_reader 'migration-legacy-reader/migration-legacy-reader.bicep' = {
+  name: 'migration-legacy-reader'
   scope: resourceGroup(legacyWebResourceGroupName)
   params: {
     location: location
+    deployment_bootstrap_outputs_principalid: deployment_bootstrap.outputs.principalId
   }
 }
 

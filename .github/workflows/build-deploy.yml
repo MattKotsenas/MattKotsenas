@@ -26,27 +26,19 @@ jobs:
       - name: Build AppHost
         run: dotnet build MattKotsenas.slnx --configuration Release
 
-      - name: Generate deployment artifacts
-        env:
-          DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
+      - name: Verify generated artifacts
         run: >-
-          dotnet aspire publish
+          dotnet aspire do publish-and-diff
           --output-path generated/azure
           --environment preview
           --non-interactive
-
-      - name: Verify generated artifacts
-        shell: bash
-        run: |
-          git diff --exit-code
-          test -z "$(git ls-files --others --exclude-standard)"
 
       - name: Validate deployment artifacts
         shell: bash
         run: |
           while IFS= read -r -d '' file; do
             az bicep build --file "$file" --stdout > /dev/null
-          done < <(find generated/azure -name '*.bicep' -print0)
+          done < <(find generated -name '*.bicep' -print0)
 
       - name: Verify AppHost formatting
         run: >-
@@ -131,5 +123,4 @@ jobs:
           Azure__Location: westus3
           Azure__ResourceGroup: blog
           Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-          DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
         run: dotnet aspire deploy --environment preview --non-interactive

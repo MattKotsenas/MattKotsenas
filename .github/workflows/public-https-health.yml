@@ -11,8 +11,6 @@ permissions:
 jobs:
   public-https:
     runs-on: ubuntu-latest
-    env:
-      DeploymentPrincipalId: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_ID }}
     steps:
       - uses: actions/checkout@v4
 

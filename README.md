@@ -20,32 +20,28 @@ dotnet aspire start
 
 ## Container App preview deployment
 
-After signing in with the Azure and GitHub CLIs, start the AppHost and run **Configure Container App deployment** on
-the `blog` resource. The command configures GitHub-to-Azure OIDC deployment. It can also be run from the terminal:
+An authorized operator runs the [native Aspire bootstrap](docs/configure-azure-deployment.md) to create a
+main-only GitHub OIDC identity. Aspire owns the blog application and its role assignments inside the `blog`
+resource group. The existing AppHost defines the operator-only `bootstrap` target and routine native deployment
+targets.
 
-```bash
-dotnet aspire start
-dotnet aspire resource blog configure-container-app-deployment
-dotnet aspire stop
-```
+[The migration checklist](docs/container-app-migration.md) tracks temporary external permissions, identity
+handoff, registry compatibility, and the later DNS/certificate/traffic stages.
 
-Run `dotnet aspire stop` even if configuration fails. If the application already exists, verify its application ID and
-pass it with `--applicationId`. If the deployment service principal is replaced, rerun this command and commit the
-regenerated deployment artifacts.
-
-Run the **Build and Deploy** workflow manually to deploy the preview Container App to the `blog` resource group in
-West US 3.
+Run the **Build and Deploy** workflow manually to deploy the preview Container App to the existing `blog` resource
+group in West US 3 with `dotnet aspire deploy --environment preview --non-interactive`. Routine deployment
+selects application resources; bootstrap modules and GitHub settings actions remain unselected. Publish exports
+the full model to `generated/azure`; CI checks that output with `publish-and-diff`.
 
 ## Azure DNS
 
-The publish model owns website records within the Azure DNS zones in resource group `dns`. Until the registrar
-nameservers change, those records are non-authoritative and point to the legacy Web App.
+The publish model owns website records within the existing Azure DNS zones in resource group `dns`. These
+records point to the legacy Web App throughout preview. Traffic cutover requires separate approval.
 
 ## Public HTTPS health
 
-The **Public HTTPS Health** workflow runs daily to verify TLS trust, certificate lifetime, and HTTP availability for
-the public website domains. Run the same checks on demand after setting `DeploymentPrincipalId` to the deployment
-service principal's object ID:
+The **Public HTTPS Health** workflow defines daily TLS, certificate-lifetime, and HTTP checks for the public
+website domains. Its schedule is currently disabled in GitHub. Run the same checks locally on demand:
 
 ```bash
 dotnet aspire do check-public-https --environment preview --non-interactive

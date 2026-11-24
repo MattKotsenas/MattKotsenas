@@ -16,7 +16,6 @@
     <PackageVersion Include="DotNetDiag.HealthChecks.Network" Version="10.0.14" />
     <PackageVersion Include="DotNetDiag.HealthChecks.Uris" Version="10.0.14" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageVersion Include="Vogen" Version="8.0.7" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

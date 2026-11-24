@@ -1,3 +1,6 @@
+using CliWrap;
+using CliWrap.Buffered;
+
 namespace MattKotsenas.AppHost.Tests;
 
 public sealed class BlogTests
@@ -100,11 +103,9 @@ public sealed class BlogTests
                     "container.id",
                     StringComparison.Ordinal))
             .Value);
-        var runner = new CliWrapCommandRunner();
-        var user = await runner.RunAsync(
-            "docker",
-            ["inspect", "--format", "{{.Config.User}}", containerId],
-            cancellationToken);
+        var user = await Cli.Wrap("docker")
+            .WithArguments(["inspect", "--format", "{{.Config.User}}", containerId])
+            .ExecuteBufferedAsync(cancellationToken);
 
         Assert.Equal(0, user.ExitCode);
         Assert.Equal("101", user.StandardOutput.Trim());
