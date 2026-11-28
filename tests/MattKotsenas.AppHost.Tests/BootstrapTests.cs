@@ -66,10 +66,12 @@ public sealed class BootstrapTests
     [Theory]
     [InlineData("use_default", "false")]
     [InlineData("use_immutable_subject", "false")]
-    [InlineData("subject_claim_prefix", "\"repo:MattKotsenas/MattKotsenas\"")]
+    [InlineData("sub_claim_prefix", "\"repo:MattKotsenas/MattKotsenas\"")]
     public void GitHubReadbackMustMatchImmutableSubject(string field, string value)
     {
-        var configuration = new JsonObject { ["use_default"] = true, ["use_immutable_subject"] = true, ["subject_claim_prefix"] = BootstrapPreflight.SubjectPrefix };
+        var configuration = JsonNode.Parse("""
+            {"use_default":true,"use_immutable_subject":true,"sub_claim_prefix":"repo:MattKotsenas@51421/MattKotsenas@8395662"}
+            """)!;
         GitHubBootstrap.VerifyOidcConfiguration(JsonSerializer.SerializeToElement(configuration));
         configuration[field] = JsonNode.Parse(value);
         Assert.Throws<InvalidOperationException>(() => GitHubBootstrap.VerifyOidcConfiguration(JsonSerializer.SerializeToElement(configuration)));

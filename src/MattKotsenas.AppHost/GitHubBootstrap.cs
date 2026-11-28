@@ -74,7 +74,7 @@ internal static class GitHubBootstrap
     {
         if (!configuration.GetProperty("use_default").GetBoolean() ||
             !configuration.GetProperty("use_immutable_subject").GetBoolean() ||
-            configuration.GetProperty("subject_claim_prefix").GetString() != BootstrapPreflight.SubjectPrefix)
+            configuration.GetProperty("sub_claim_prefix").GetString() != BootstrapPreflight.SubjectPrefix)
         {
             throw new InvalidOperationException("GitHub immutable OIDC readback differs from the expected default subject; variable writes stopped.");
         }
